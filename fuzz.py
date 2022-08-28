@@ -23,17 +23,25 @@ import os
 import sys
 import time
 import random
+import resource
+import optparse
+import stat
 from random import choice
-
+from functools import partial
 
 
 class PlainHelpFormatter(optparse.IndentedHelpFormatter):
 
-    def format_description(self, description):
+    def format_description(description):
         if description:
             return description + "\n"
         else:
             return ""
+
+def setlimits(t):
+    # Set maximum CPU time to 1 second in child process, after fork() but before exec()
+    print("Setting resource limit in child (pid %d)" % os.getpid())
+    resource.setrlimit(resource.RLIMIT_CPU, (t, t))
 
 
 usage = "usage: %prog [options] "
@@ -51,9 +59,8 @@ def set_up_parser():
       dest="verbose", help="Print more output")
 
     parser.add_option(
-      "--seed", dest="fuzz_seed_start",
-      help="Fuzz test start seed. Otherwise, random seed is picked"
-      " (printed to console)", type=int)
+      "--seed", dest="rnd_seed",
+      help="Fuzz test start seed. Otherwise, random seed is picked", type=int)
 
     parser.add_option(
       "--novalgrind", dest="dovalgrind", default=True,
@@ -64,18 +71,93 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=25,
+      "--tout", "-t", dest="maxtime", type=int, default=10,
       help="Max time to run. Default: %default")
 
     parser.add_option(
-      "--textra", dest="maxtimediff", type=int, default=5,
-      help="Extra time on top of timeout for processing."
-      " Default: %default")
+        "--textra", dest="maxtimediff", type=int, default=5,
+        help="Extra time on top of timeout for processing."
+        " Default: %default")
+
+    parser.add_option(
+      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak",
+      help="Location of ganak. Default: %default")
+
+    parser.add_option(
+      "--appmc", dest="appmc", type=str, default="../approxmc/build/approxmc",
+      help="Location of approxmc. Default: %default")
+
+    parser.add_option(
+      "--sharpsat", dest="sharpsat", type=str, default="../sharpSAT/build/sharpSAT",
+      help="Location of approxmc. Default: %default")
 
     return parser
 
 
+def run(command):
+    print("Executing: %s" % command)
+    if options.verbose:
+        print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
+    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
+          stdout=subprocess.PIPE, universal_newlines=True,
+          preexec_fn=partial(setlimits, options.maxtime))
+
+    consoleOutput, err = p.communicate()
+    if options.verbose:
+        print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
+            resource.getrlimit(resource.RLIMIT_CPU))
+    return consoleOutput, err
+
+def gen_fuzz_call(fuzzer, fname):
+    seed = random.randint(0, 1000000)
+    print("Fuzzer individual seed:", seed)
+    call = "{0} {1} > {2}".format(fuzzer, seed, fname)
+
+    return call
+
+def unique_file(fname_begin, fname_end=".cnf"):
+    counter = 1
+    while 1:
+        fname = "out/" + fname_begin + '_' + str(counter) + fname_end
+        try:
+            fd = os.open(
+                fname, os.O_CREAT | os.O_EXCL, stat.S_IREAD | stat.S_IWRITE)
+            os.fdopen(fd).close()
+            return fname
+        except OSError:
+            pass
+
+        counter += 1
+        if counter > 300:
+            print("Cannot create unique_file, last try was: %s" % fname)
+            exit(-1)
+
+def run_one_counter(counter, fname):
+    curr_time = time.time()
+    out, err = run([counter, fname])
+    diff_time = time.time() - curr_time
+    if diff_time > options.maxtime - options.maxtimediff:
+        print("Too much time to solve with %s, aborted!" % solver)
+        return None
+
+    num = None
+    for l in out.split("\n"):
+        l = l.strip()
+        if len(l) < 4:
+            continue
+        if l[0] == 'c':
+            continue
+        if l[:4] == "s mc":#
+            if num is not None:
+                print("ERROR: Two 's mc' lines in output!!")
+                exit(-1)
+            num = int(l.split()[2])
+    if num == None:
+        print("ERROR, could not find 's mc' in output")
+        exit(-1)
+
+    return num
 
 if __name__ == "__main__":
     if not os.path.isdir("out"):
@@ -89,16 +171,56 @@ if __name__ == "__main__":
         print("Valgrind Frequency must be at least 1")
         exit(-1)
 
-    fuzzers_frat = fuzzers_noxor
-    fuzzers_nofrat = fuzzers_noxor + fuzzers_xor
+    if options.rnd_seed is None:
+        rnd_seed = random.randint(0, 1000*1000*1000)
+        print("Using seed:" , rnd_seed)
+    else:
+        rnd_seed = options.rnd_seed
+    random.seed(rnd_seed)
 
-    print_version()
-    tester = Tester()
-    tester.needDebugLib = False
-    num = 0
-    rnd_seed = options.fuzz_seed_start
-    if rnd_seed is None:
-        rnd_seed = random.randint(0, 1000*1000*100)
+    if os.path.exists("out") and  os.path.isfile("out"):
+        print("ERROR: file 'out' exists, but we need a directory named 'out'")
+        exit(-1)
+
+    if not os.path.isdir("out"):
+        print("Creating neccessary directory 'out'")
+        os.mkdir("out")
+
+    while True:
+        fname = unique_file("fuzzTest")
+        print("Checking fname: ", fname)
+
+        call = gen_fuzz_call("./biere-fuzz", fname)
+        status = subprocess.call(call, shell=True)
+        if status != 0:
+            print("Failed call: ", call)
+            exit(-1)
+
+        counts = []
+        solvers = [options.ganak, options.sharpsat]
+        for solver in solvers:
+            count = run_one_counter(solver, fname)
+            if count is not None:
+                counts.append([solver, count])
+
+        for a,b in zip(counts,counts[1:]):
+            if a[1] != b[1]:
+                print("ERROR!")
+                print("%s counted: %s" %(a[0], a[1]))
+                print("%s counted: %s" %(b[0], b[1]))
+            else:
+                print("OK, %s count matches %s count" % (a[0], b[0]))
+
+
+
+
+
+
+
+
+
+
+
 
 
 
