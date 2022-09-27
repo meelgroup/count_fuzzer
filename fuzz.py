@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright (C) 2022 Mate Soos
@@ -51,8 +51,7 @@ desc = """Fuzz model counter
 
 def set_up_parser():
     parser = optparse.OptionParser(
-      usage=usage, description=desc,
-      formatter=PlainHelpFormatter())
+      usage=usage, description=desc)
 
     parser.add_option(
       "--verbose", "-v", action="store_true", default=False,
@@ -109,12 +108,14 @@ def run(command):
             resource.getrlimit(resource.RLIMIT_CPU))
     return consoleOutput, err
 
+
 def gen_fuzz_call(fuzzer, fname):
     seed = random.randint(0, 1000000)
     print("Fuzzer individual seed:", seed)
     call = "{0} {1} > {2}".format(fuzzer, seed, fname)
 
     return call
+
 
 def unique_file(fname_begin, fname_end=".cnf"):
     counter = 1
@@ -133,6 +134,7 @@ def unique_file(fname_begin, fname_end=".cnf"):
             print("Cannot create unique_file, last try was: %s" % fname)
             exit(-1)
 
+
 def run_one_counter(counter, fname):
     curr_time = time.time()
     out, err = run([counter, fname])
@@ -148,18 +150,23 @@ def run_one_counter(counter, fname):
             continue
         if l[0] == 'c':
             continue
-        if l[:4] == "s mc":#
+        if l[:4] == "s mc":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 exit(-1)
             num = int(l.split()[2])
-    if num == None:
+    if num is None:
         print("ERROR, could not find 's mc' in output")
         exit(-1)
 
     return num
 
+
 if __name__ == "__main__":
+    if os.path.exists("out") and  os.path.isfile("out"):
+        print("ERROR: file 'out' exists, but we need a directory named 'out'")
+        exit(-1)
+
     if not os.path.isdir("out"):
         print("Directory for outputs, 'out' not present, creating it.")
         os.mkdir("out")
@@ -173,18 +180,10 @@ if __name__ == "__main__":
 
     if options.rnd_seed is None:
         rnd_seed = random.randint(0, 1000*1000*1000)
-        print("Using seed:" , rnd_seed)
+        print("Using seed:", rnd_seed)
     else:
         rnd_seed = options.rnd_seed
     random.seed(rnd_seed)
-
-    if os.path.exists("out") and  os.path.isfile("out"):
-        print("ERROR: file 'out' exists, but we need a directory named 'out'")
-        exit(-1)
-
-    if not os.path.isdir("out"):
-        print("Creating neccessary directory 'out'")
-        os.mkdir("out")
 
     while True:
         fname = unique_file("fuzzTest")
@@ -209,7 +208,7 @@ if __name__ == "__main__":
                 print("%s counted: %s" %(a[0], a[1]))
                 print("%s counted: %s" %(b[0], b[1]))
             else:
-                print("OK, %s count matches %s count" % (a[0], b[0]))
+                print("OK, count is %s. Solve %s count matches solver %s count" % (a[1], a[0], b[0]))
 
 
 
