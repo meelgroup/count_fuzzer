@@ -53,9 +53,9 @@ main (int argc, char ** argv)
   seed = (argc > 1) ? atoi (argv[1]) : std::abs ((time(NULL)) >> 1);
   printf ("c seed %d\n", seed);
   srand (seed);
-  w = pick (10, 70);
+  w = pick (10, 30);
   printf ("c max width %d\n", w);
-  nlayers = pick (1, 20);
+  nlayers = pick (1, 5);
   printf ("c layers %d\n", nlayers);
   layers = (int**)calloc (nlayers, sizeof *layers);
   width = (int*)calloc (nlayers, sizeof *width);
