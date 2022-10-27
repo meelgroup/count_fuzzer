@@ -89,6 +89,14 @@ def set_up_parser():
     parser.add_option(
       "--sharpsat", dest="sharpsat", type=str, default="../sharpSAT/build/sharpSAT",
       help="Location of approxmc. Default: %default")
+    
+    parser.add_option(
+      "--delta", dest="delta", type=float, default="0.8",
+      help="TODO. Default: %default")
+    
+    parser.add_option(
+      "--epsilon", dest="epsilon", type=float, default="0.8",
+      help="TODO. Default: %default")
 
     return parser
 
@@ -135,9 +143,13 @@ def unique_file(fname_begin, fname_end=".cnf"):
             exit(-1)
 
 
-def run_one_counter(counter, fname):
+def run_one_counter(solver, fname):
     curr_time = time.time()
-    out, err = run([counter, fname])
+    toexec = [solver["exe"], fname]
+    if not solver["exact"]:
+        toexec.extend(["--epsilon", str(options.epsilon),
+                       "--delta", str(options.delta)])
+    out, err = run(toexec)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
         print("Too much time to solve with %s, aborted!" % solver)
@@ -146,6 +158,7 @@ def run_one_counter(counter, fname):
     num = None
     for l in out.split("\n"):
         l = l.strip()
+        print(l)
         if len(l) < 4:
             continue
         if l[0] == 'c':
@@ -153,6 +166,7 @@ def run_one_counter(counter, fname):
         if l[:4] == "s mc":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
+                # TODO: print command that got executed
                 exit(-1)
             num = int(l.split()[2])
     if num is None:
@@ -196,32 +210,38 @@ if __name__ == "__main__":
             exit(-1)
 
         counts = []
-        solvers = [options.ganak, options.sharpsat]
+        solvers = [
+            {"exe":options.ganak, "exact":True},
+            {"exe":options.sharpsat, "exact":True},
+            {"exe":options.appmc, "exact":False},
+        ]
+
+        exact_count = None
         for solver in solvers:
             count = run_one_counter(solver, fname)
+            if count is not None and solver["exact"]:
+                exact_count = {"exe":solver["exe"], "count":count}
             if count is not None:
-                counts.append([solver, count])
+                counts.append({"count":count, "exe":solver, "exact":solver["exact"]})
 
-        for a,b in zip(counts,counts[1:]):
-            if a[1] != b[1]:
+        if exact_count is None:
+            continue
+
+        for a in counts:
+            if a["count"] != exact_count["count"] and a["exact"]:
                 print("ERROR!")
-                print("%s counted: %s" %(a[0], a[1]))
-                print("%s counted: %s" %(b[0], b[1]))
-            else:
-                print("OK, count is %s. Solve %s count matches solver %s count" % (a[1], a[0], b[0]))
+                print("%s counted: %s" %(a["exe"], a["count"]))
+                print("%s counted: %s" %(exact_count["exe"], exact_count["count"]))
+                exit(-1)
 
-
-
-
-
-
-
-
-
-
-
-
-
+            if a["count"] != exact_count["count"] and not a["exact"]:
+                print("TODO: Non-exact is K away :D")
+                if exact_count["count"]*1.5 < a["count"] or \
+                    exact_count["count"]*0.7 > a["count"]:
+                        exit(-1)
+            
+            print("OK, count is %s. Solve %s count matches solver %s count" %
+                      (a["exe"], a["count"], exact_count["count"]))
 
 
 
