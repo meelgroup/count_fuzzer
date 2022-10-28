@@ -156,7 +156,7 @@ def run_one_counter(solver, fname):
     out, err = run(toexec)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
-        print("Too much time to solve with %s, aborted!" % solver)
+        print("Too much time to solve with %s, aborted!" % solver.exe)
         return None
 
     num = None
@@ -239,7 +239,10 @@ if __name__ == "__main__":
                 exit(-1)
 
             if a.count != exact_count.count and not a.exact:
-                print("TODO: Non-exact is K away :D")
+                print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
+                print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
+                print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
+
                 if exact_count.count*1.5 < a.count or \
                     exact_count.count*0.7 > a.count:
                         exit(-1)
