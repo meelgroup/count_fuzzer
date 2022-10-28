@@ -18,6 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+
 import subprocess
 import os
 import sys
@@ -26,9 +27,12 @@ import random
 import resource
 import optparse
 import stat
+from collections import namedtuple
 from random import choice
 from functools import partial
 
+Solver = namedtuple("Solver", "exe exact", defaults=[None, True])
+Count = namedtuple("Count", "exe exact count", defaults=[None, True, -1])
 
 class PlainHelpFormatter(optparse.IndentedHelpFormatter):
 
@@ -145,8 +149,8 @@ def unique_file(fname_begin, fname_end=".cnf"):
 
 def run_one_counter(solver, fname):
     curr_time = time.time()
-    toexec = [solver["exe"], fname]
-    if not solver["exact"]:
+    toexec = [solver.exe, fname]
+    if not solver.exact:
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta)])
     out, err = run(toexec)
@@ -211,37 +215,37 @@ if __name__ == "__main__":
 
         counts = []
         solvers = [
-            {"exe":options.ganak, "exact":True},
-            {"exe":options.sharpsat, "exact":True},
-            {"exe":options.appmc, "exact":False},
+            Solver(options.ganak, True),
+            Solver(options.sharpsat, True),
+            Solver(options.appmc, False)
         ]
 
         exact_count = None
         for solver in solvers:
             count = run_one_counter(solver, fname)
-            if count is not None and solver["exact"]:
-                exact_count = {"exe":solver["exe"], "count":count}
+            if count is not None and solver.exact:
+                exact_count = Count(solver.exe, True, count)
             if count is not None:
-                counts.append({"count":count, "exe":solver, "exact":solver["exact"]})
+                counts.append(Count(solver.exe, solver.exact, count))
 
         if exact_count is None:
             continue
 
         for a in counts:
-            if a["count"] != exact_count["count"] and a["exact"]:
+            if a.count != exact_count.count and a.exact:
                 print("ERROR!")
-                print("%s counted: %s" %(a["exe"], a["count"]))
-                print("%s counted: %s" %(exact_count["exe"], exact_count["count"]))
+                print("%s counted: %s" %(a.exe, a.count))
+                print("%s counted: %s" %(exact_count.exe, exact_count.count))
                 exit(-1)
 
-            if a["count"] != exact_count["count"] and not a["exact"]:
+            if a.count != exact_count.count and not a.exact:
                 print("TODO: Non-exact is K away :D")
-                if exact_count["count"]*1.5 < a["count"] or \
-                    exact_count["count"]*0.7 > a["count"]:
+                if exact_count.count*1.5 < a.count or \
+                    exact_count.count*0.7 > a.count:
                         exit(-1)
             
             print("OK, count is %s. Solve %s count matches solver %s count" %
-                      (a["exe"], a["count"], exact_count["count"]))
+                      (a.exe, a.count, exact_count.count))
 
 
 
