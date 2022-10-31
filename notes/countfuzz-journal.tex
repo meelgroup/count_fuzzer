@@ -1,0 +1,199 @@
+%%% Laboratory	 Notes
+%%% Template by Mikhail Klassen, April 2013
+%%% Contributions from Sarah Mount, May 2014
+\documentclass[a4paper]{tufte-handout}
+
+\newcommand{\workingDate}{Fall $|$ 2022}
+\newcommand{\userName}{Anna Latour}
+\newcommand{\institution}{National University of Singapore}
+
+\usepackage{style/lab_notes}
+
+
+\usepackage{mathtools}		% For \abs{}
+
+\usepackage{hyperref}
+
+\include{preamble.tex}
+
+\bibliographystyle{abbrvnat}
+
+\title{Count Fuzzer labjournal}
+\date{2022}
+\author{Anna Latour}
+
+\begin{document}
+	\maketitle
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\begin{goals}
+		\begin{itemize}
+			\item Develop fuzzer for counting problems, including support for:
+				\begin{itemize}
+					\item Exact model counting.
+					\item PAC counting.
+					\item Projected counting.
+					\item Weighted model counting.
+				\end{itemize}
+			\item Develop delta debugger for counting problems, inlcuding support for the problems mentioned above.
+			\item Identify problems of the following kinds in existing counters:
+				\begin{itemize}
+					\item Errors (unexpected termination without providing a result).
+					\item Incorrect counts (we might have to define that for PAC counters).
+				\end{itemize}
+			\item Fuzz the preprocessor(s).
+			\item Generate instances with known ground truth count, especially for weighed model counting.
+		\end{itemize}
+	\end{goals}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\begin{questions}
+		\begin{itemize}
+			\item How to automatically generate diverse problem instances for the different counting problems?
+			\item How to automatically generate challenging problem instances for the different counting problems?
+			\item How easy/hard should these problems be?
+			\item How do we determine the true count?
+			\item How do we define an incorrect count in the case of PAC counting?
+			\item (How) do we account for differences in interpretation of the contribution to the model count of free variables?
+			\item How to efficiently minimise the instance size of bug triggering instances?
+		\end{itemize}
+	\end{questions}
+
+	\begin{experiments}
+		We have two main experiments to perform.
+		
+		The first measures how many errors and incorrect counts we find for each solver.
+		Following~\citep{BLB10}\cite{BLB10} we should let the fuzzer generate a fixed number of instances (\eg{}, $10\:000$) and see how many of those lead to errors and incorrect counts in the solvers on which we evaluate.
+		Let's call this set of instances $\mathcal{T}$.
+		
+		It is possible that the same bug can lead to an error in one instance, and an incorrect count in another. 
+		It is also possible that multiple instances trigger the same bug. 
+		To gain more insight in this dynamic, we can take a solver and solve the errors and miscounts.
+		Then, we can for each bugfix record how many errors and miscounts are resolved by that bugfix.
+		That way, we'll have some idea of how much overlap there is in the instances that trigger the bugs, and in the outcome of those bugs (errors and miscounts).
+		
+		For example, we could take \approxmc{}~\citep{CMV16,SM19}\cite{CMV16,SM19} as this solver.
+		We would then take the most recent commit from {\em before} we started this project as the baseline version of \approxmc{} (here we would have to take care to also use the appropriate commits for \cryptominisat{}~\citep{SKC09}\cite{SKC09} and \arjun{}~\citep{SM21}\cite{SM21}).
+		While we develop the fuzzer, we will undoubtedly find errors and miscounts in \approxmc{}.
+		We should properly record the instances that triggerd them, and the commits in which the bugfixes were implemented.
+		After we have run the ``pre-project commit'' version of \approxmc{} on the instances in $\mathcal{T}$ for the experimental evaluation, we can run whatever version of \approxmc{} we have by then on $\mathcal{T}$, and fix whichever bugs arise from there, again carefully recording the instances and the commits with the bugfixes.
+		
+		Finally, we can then classify all the bugfixes to determine if they fix an error or a miscount, and link them to the instance(s) from $\mathcal{T}$ that triggered them.
+		From there, we can do some reporting on how many instances trigger the same bug, and if bugfixes tend to repair solely errors or miscounts or both.
+		
+		The second main experiment would evaluate the effectiveness of the delta debugger.
+		Following \citep{BLB10}, we can take the instances from $\mathcal{T}$ that trigger errors or miscounts, minimise them, and record the time it takes to minimise them by a certain 
+	\end{experiments}
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\begin{literature}
+		\begin{itemize}
+			\item \citep{BB09} \textit{Fuzzing and Delta-Debugging SMT Solvers}.
+			\item \citep{BLB10} \textit{Automated Testing and Debugging of SAT and QBF Solvers}.
+		\end{itemize}
+	\end{literature}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\begin{counters}
+		\begin{itemize}
+			\item \dfour{}.\footnote{Available at \href{https://github.com/crillab/d4}{github.com/crillab/d4}.}
+			\item \dpmc{}.\footnote{Available at \href{https://github.com/vardigroup/DPMC}{github.com/vardigroup/DPMC}.}
+			\item \ganak{}~\citep{SSS+19}.
+			\item \gpmc{}.\footnote{Available at \href{https://www.trs.cm.is.nagoya-u.ac.jp/projects/PMC/}{www.trs.cm.is.nagoya-u.ac.jp/projects/PMC}.}
+			\item \exactmc{}~\citep{LNY21}.
+			\item \sharpsat{}~\citep{Thu06}.
+			\item \sharpsattd{}.\footnote{Available at \href{https://github.com/Laakeri/sharpsat-td}{github.com/Laakeri/sharpsat-td}.}
+			\item \approxmc{}~\citep{CMV16,SM19}.
+		\end{itemize}
+		We should also fuzz the \bpluse{}~\citep{LLM16,LLM20} and \arjun{}~\citep{SM21} preprocessors in combination with the different counters.
+	\end{counters}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\section*{READING}
+	%	\hrulefill
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\begin{papersummary}{\citep{BB09}}{Fuzzing and Delta-Debugging SMT Solvers}{2022-10-31}
+		
+		TODO
+		
+		\subsection*{Interesting suggestions for future work}
+		
+		TODO
+		
+		\subsection*{Follow-up reading}
+		
+		TODO
+		
+	\end{papersummary}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\section{JOURNAL}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	
+	\newday{Mon 31 Oct 2022: Anna \& Mate}
+	
+	Brainstorm about scope of the project, instigated by the question of how we should keep track of the bugs that we identify.
+	
+	{\bf Question}: what could be our scientific contribution?
+	
+	\citep{BLB10}'s contribution was in part in the different CNF generators that they built for fuzzing SAT solvers and QBF solvers.
+	We could do something similar for model counting.
+	
+	At first glance, it seems that we should be able to simply reuse the CNF generators that \citep{BLB10} built.
+	However, there are some subtleties in our case.
+	
+	First of all, we need a ground truth.
+	With SAT solving, one can verify the correctness of a returned model.
+	For model counting, the counts are harder to verify.
+	For weighted model counting in particular, we als have to deal with the precision of the floats used in the counter.
+	
+	Hence, we see a possible scientific contribution in finding an intelligent way of generating diverse test instances for (weighted) model counting.
+	
+	One approach could be to encode {\em Bayesian networks (BNs)} into CNF, and use a python package or something to obtain ground truths on the probabilities that we encode.
+	We could add some diversity by encoding them using different encoding schemes.
+	Here are a few:
+	\begin{description}
+		\item[Dar02] Intuitive, straightforward approach proposed in \citep{Dar02}\cite{Dar02}. For each variable, the weights of the positive and the negative literal add up to $1$.
+		\item[SBK05] Proposed by \citep{SBK05}\cite{SBK05} as more compact alternative to ENC1. Less intuitive, but literal weights also add up to $1$.
+		\item[CD05] Proposed by \citep{CD05}\cite{CD05} as an encoding to take advantage of local structure in the BN. It also uses shared variables. The idea is to have a single variable for each weight in the problem, to limit the size of the encoding. Additionally, \citep{CD05} implements an optimisation in which it uses clauses where exactly one literal must be true. The consequence, however, is that this encoding is not compatible with standard DPLL-based counters.
+		\item[CD06] Proposed by \citep{CD06}\cite{CD06} as an encoding that should work particularly well for DPLL-based solvers, since it facilitates the discovery of components. Uses prime implicants to minimise the encoding. Since this encoding is based on the CD05 encoding, it is also not compatible with standard DPLL solvers.
+		\item[BKLM16] This encoding is proposed by \citep{BKL+16}\cite{BKL+16} and is based on the CD06 encoding. However: they made it compatible with standard DPLL-based solvers.
+	\end{description}
+
+	We are currently not aware of any other encodings, but should check the most recent literature.
+	
+	We could generate different Bayesian networks, encode them with different encodings, and make sure that the weights are diverse too (including extremely high and low weights), to challenge the counters.
+	
+	\noindent\hrulefill
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Mon 31 Oct 2022: Anna's afterthoughts}
+	
+	We could try to use a {\em binary decision diagram (BDD)} library to help us construct problem instances.
+	The idea would be to build a CNF by generating (random or somehow structured) clauses, and adding them to the formula one by one.
+	We would construct the BDD while we are doing it.
+	BDD libraries like (the \python{} interface of) \cudd{} provide functionality for retrieving the CNF afterwards.
+	As we are building the BDD incrementally, we can keep track of the model count of the CNF that it represents, by doing upward counting sweeps of the BDD.
+	That way, we can steer towards, \eg{}, CNFs with a very small model count compared to its number of clauses or its number of variables.
+	
+	\noindent\hrulefill
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newpage
+	\bibliography{countfuzz.bib}
+	
+\end{document} 

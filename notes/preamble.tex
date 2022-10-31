@@ -1,0 +1,143 @@
+ 
+\newtheorem{definition}{Definition}
+\newtheorem{problem}{Problem}
+\newtheorem{example}{Example}
+
+
+%%%%%%%%%%% TEXT MACROS %%%%%%%%%%
+
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\etc}{\textit{etc.}}
+\newcommand{\wrt}{\textit{w.r.t.}}
+\newcommand{\etal}{\textit{et al.}}
+
+%%%%%%%%%%% MATHEMATICAL SYMBOLS %%%%%%%%%%
+
+\newcommand{\randquant}[0]{\raisebox{0.75em}{\rotatebox{180}{\text{\sf R}}}}
+\newcommand{\true}{\top}
+\newcommand{\false}{\bot}
+
+% -------------------------------------------------------------------------
+% From https://tex.stackexchange.com/questions/43008/absolute-value-symbols
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
+
+%%%%%%%%%%% SOLVERS AND LANGUAGES %%%%%%%%%%
+
+\newcommand{\approxmc}[0]{\sf{ApproxMC4}}
+\newcommand{\arjun}[0]{\sf{Arjun}}
+\newcommand{\bpluse}[0]{\sf{B+E}}
+\newcommand{\cudd}[0]{\sf{CUDD}}
+\newcommand{\cryptominisat}[0]{\sf{CryptoMiniSAT}}
+\newcommand{\dfour}[0]{\sf{D4}}
+\newcommand{\dpmc}[0]{\sf{DPMC}}
+\newcommand{\gpmc}[0]{\sf{GPMC}}
+\newcommand{\exactmc}[0]{\sf{ExactMC}}
+\newcommand{\ganak}[0]{\sf{GANAK}}
+\newcommand{\python}[0]{\sf{Python}}
+\newcommand{\sharpsat}[0]{\sf{SharpSAT}}
+\newcommand{\sharpsattd}[0]{\sf{SharpSAT-TD}}
+
+
+
+
+
+% Swap the definition of \abs* and \norm*, so that \abs
+% and \norm resizes the size of the brackets, and the 
+% starred version does not.
+\makeatletter
+\let\oldabs\abs
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+%
+\let\oldnorm\norm
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+% -------------------------------------------------------------------------
+
+%\DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off} % DO NOT CHANGE THIS
+%\lstset{%
+	%	basicstyle={\footnotesize\ttfamily},% footnotesize acceptable for monospace
+	%	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,% show line numbers, remove this entire line if you don't want the numbers.
+	%	aboveskip=0pt,belowskip=0pt,%
+	%	showstringspaces=false,tabsize=2,breaklines=true}
+
+\newcommand\hint[1]{\textbf{#1}}
+\newcommand\lnum[1]{\textit{#1}}
+
+%\input{commenting_macros.tex}
+%\input{colours.tex}
+
+
+\hypersetup{
+	pdffitwindow=false,            % window fit to page
+	pdfstartview={Fit},            % fits width of page to window
+	pdftitle={Lab notes 2014},     % document title
+	pdfauthor={Your Name},         % author name
+	pdfsubject={},                 % document topic(s)
+	pdfnewwindow=true,             % links in new window
+	colorlinks=true,               % coloured links, not boxed
+	linkcolor=DarkScarletRed,      % colour of internal links
+	citecolor=DarkChameleon,       % colour of links to bibliography
+	filecolor=DarkPlum,            % colour of file links
+	urlcolor=DarkSkyBlue           % colour of external links
+}
+
+%%% LISTINGS
+\usepackage{listings}
+\lstset{
+	backgroundcolor=\color{tenPercentGrey}, %
+	basicstyle=\color{Black}\ttfamily{}, %
+	keywordstyle=[1]\color{DarkSkyBlue}, %
+	keywordstyle=[2]\color{DarkScarletRed}, %
+	keywordstyle=[3]\bfseries{}, %
+	keywordstyle=[4]\color{DarkPlum}, %
+	keywordstyle=[5]\color{SkyBlue}, %
+	commentstyle=\color{Aluminium4}, %
+	stringstyle=\color{Chocolate}, %
+	identifierstyle=\color{Black}, %
+	emphstyle=\color{Black}, %
+	numbers=left, %
+	stepnumber=1, % 
+	frame=tb, %
+	captionpos=b, %
+	lineskip=\smallskipamount{}, %
+	aboveskip=\bigskipamount{}, %
+	belowskip=\medskipamount{}, %
+	commentstyle=\itshape\small{}, %
+	tabsize=2, %
+	breaklines=false, %
+	rulecolor=\color{Black!30}, %
+	showspaces=false, %
+	showstringspaces=false, %
+	showtabs=false, %
+} % chktex 6
+
+%%%%%%%%%%% MATHEMATICS %%%%%%%%%%%%%%%
+% Code from Research Diary Template by Mikhail Klassen
+\newcommand{\grad}{\nabla}
+\newcommand{\be}{\begin{equation}}
+	\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+	\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\eqnarr}{\begin{eqnarray}}
+	\newcommand{\eqnend}{\end{eqnarray}}
+\newcommand{\deriv}[2]{\frac{d #1}{d #2}}
+\newcommand{\bigO}{\mathcal{O}}
+\DeclareMathSymbol{\umu}{\mathalpha}{operators}{0}
+
+%%%%%%%%%%% HEADER / FOOTER %%%%%%%%%%%
+\pagestyle{fancy}
+\setlength\parindent{0in}
+\setlength\parskip{0.1in}
+\setlength\headheight{15pt}
+
+\lhead{\userName}
+\chead{Lab Notes}
+\rhead{\workingDate}
+\lfoot{\includegraphics[width=0.1\textwidth]{style/nus_logo_full-horizontal.jpg}}
+\cfoot{~~\textit{Last modified: \today}}
+\rfoot{\thepage}
+
+
+
