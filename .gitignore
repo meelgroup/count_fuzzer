@@ -5,3 +5,9 @@ biere-fuzz
 cmake_install.cmake
 compile_commands.json
 out/
+**journal.synctex.gz
+**journal.out
+**journal.log
+**journal.aux
+**journal.blg
+**journal.bbl
