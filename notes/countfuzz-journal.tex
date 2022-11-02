@@ -101,17 +101,46 @@
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	
 	\begin{counters}
+		We may want to focus on counters that are at most 5 years old and/or are still maintained.
+		
+		\subsection*{Exact counters}
 		\begin{itemize}
-			\item \dfour{}.\footnote{Available at \href{https://github.com/crillab/d4}{github.com/crillab/d4}.}
 			\item \dpmc{}.\footnote{Available at \href{https://github.com/vardigroup/DPMC}{github.com/vardigroup/DPMC}.}
+			\item \cachet{}~\citep{SBK05a} and \cachetwmc{}~\citep{SBK05b}.
 			\item \ganak{}~\citep{SSS+19}.
 			\item \gpmc{}.\footnote{Available at \href{https://www.trs.cm.is.nagoya-u.ac.jp/projects/PMC/}{www.trs.cm.is.nagoya-u.ac.jp/projects/PMC}.}
 			\item \exactmc{}~\citep{LNY21}.
 			\item \sharpsat{}~\citep{Thu06}.
 			\item \sharpsattd{}.\footnote{Available at \href{https://github.com/Laakeri/sharpsat-td}{github.com/Laakeri/sharpsat-td}.}
-			\item \approxmc{}~\citep{CMV16,SM19}.
 		\end{itemize}
-		We should also fuzz the \bpluse{}~\citep{LLM16,LLM20} and \arjun{}~\citep{SM21} preprocessors in combination with the different counters.
+	
+		\subsection*{Compilers}
+		\begin{itemize}
+			\item \ctod{}~\citep{Dar04} CNF-to-d-DNNF compiler. {\em Binary only!}\footnote{Available at \href{reasoning.cs.ucla.edu/c2d/}{http://reasoning.cs.ucla.edu/c2d}.}
+			\item \cnftoeadt{}~\citep{KLM+13} CNF-to-EADT compiler. {\em Binary only!}\footnote{Available at \href{http://www.cril.univ-artois.fr/KC/eadt.html}{www.cril.univ-artois.fr/KC/eadt.html}.}
+			\item \cnftoobdd{}~\citep{TT16}. CNF-to-OBDD compiler based on \miniSAT{}.\footnote{Available at \href{http://www.sd.is.uec.ac.jp/toda/code/cnf2obdd.html}{www.sd.is.uec.ac.jp/toda/code/cnf2obdd.html}.}
+			\item \dfour{} CNF-to-Decision-DNNF compiler. {\em Binary only!}.\footnote{Available at \href{https://github.com/crillab/d4}{github.com/crillab/d4}.}
+			\item \dsharp{}~\citep{MMB+12} CNF-to-d-DNFF compiler.\footnote{Available at \href{https://github.com/QuMuLab/dsharp}{github.com/QuMuLab/dsharp}.}
+			\item \minictod{}~\citep{OD15} Compilation-based, DPLL-based CNF-to-SDD compiler.\footnote{Available at \href{http://reasoning.cs.ucla.edu/minic2d/}{reasoning.cs.ucla.edu/minic2d}.}
+			\item \sdd{}~\citep{CD13} CNF-to-SDD compiler.\footnote{Available at \href{http://reasoning.cs.ucla.edu/sdd/}{reasoning.cs.ucla.edu/sdd}.}
+			\item \treeofbdds{}~\citep{SBH07} CNF-to-tree-of-BDDs compiler. {\em Cannot find code or binary.}
+		\end{itemize}
+	
+		\subsection*{Approximate counters}
+		\begin{itemize}
+			\item \approxmc{}~\citep{CMV16,SM19}.
+			\item \focusedflatsat{} (by Stefano Ermon, 2011).\footnote{Available at \href{cs.stanford.edu/~ermon/code/FocusedFlatSAT.zip}{cs.stanford.edu/~ermon/code/FocusedFlatSAT.zip}.}
+			\item \mbound{} (by Ashish Sabharwal, Cornell University, 2007).\footnote{Available at \href{www.cs.cornell.edu/~sabhar/software/xor-scripts/xor-scripts.zip}{www.cs.cornell.edu/~sabhar/software/xor-scripts/xor-scripts.zip}.}
+			\item \samplecount{}~\citep{GHS+07}.\footnote{Available at \href{www.cs.cornell.edu/~sabhar/software/samplecount/samplecount-1.0-04092007.zip}{www.cs.cornell.edu/~sabhar/software/samplecount/samplecount-1.0-04092007.zip}.}
+			\item \searchtreesampler{}~\citep{EGS12}.\footnote{Available at \href{cs.stanford.edu/~ermon/code/STS.zip}{cs.stanford.edu/~ermon/code/STS.zip}.}
+		\end{itemize}
+		
+		\subsection*{Preprocessors}
+		\begin{itemize}
+			\item \arjun{}~\citep{SM21}.
+			\item \bpluse{}~\citep{LLM16,LLM20}.
+		\end{itemize}
+	
 	\end{counters}
 	
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,18 +159,18 @@
 		
 		While the authors had access to a random 3SAT generator ({\sf 3SATGen}), they decided to create {\sf CNFuzz}.
 		This random instance generator incorporates structure in the generated CNFs, which better reflects reality and has a better chance of triggering bugs in the SAT solvers, because they heavily rely on structure for solving the instances.
-		The {\sc FuzzSAT} instance generator is event more structured, translating random DAGs into CNF.
+		The {\sf FuzzSAT} instance generator is event more structured, translating random DAGs into CNF.
 		
-		The authors also implemented {\sc BlocksQBF}, which generates random QBFs based on a model from the literature that they adapted for this purpose. 
+		The authors also implemented {\sf BlocksQBF}, which generates random QBFs based on a model from the literature that they adapted for this purpose. 
 		To increase the diversity of the generated instances, they also implement {\sc QBFuzz}, which has a different approach to selecting literals to incorporate in clauses.
 		
-		The authors present experiments where they take the three different SAT fuzzers, have them each generate $10\:000$ instances, and record the numbers of {\em errors} (early termination with no result), {\em incorrects} (solver reporting that CNF is UNSAT while it is SAT or vice versa), and {\em invalid models} (where the solver correctly identifies a CNF as SAT, but returns an assignment that is not in fact a model), for different solvers.
+		The authors present experiments where they take the three different SAT fuzzers, have them each generate $10\:000$ instances, and record the numbers of {\em errors} (early termination with no result), {\em incorrects} (solver reporting that CNF is UNSAT while it is SAT or vice versa),\remark{The equivalent for counting would be a model count of $0$ if a formula is SAT.} and {\em invalid models} (where the solver correctly identifies a CNF as SAT, but returns an assignment that is not in fact a model),\remark{The equivalent for model counting would be an incorrect count.} for different solvers.
 		
 		They perform similar experiments for the two different QBF fuzzers.
 		
 		Their other contribution is on delta debugging.
 		They implement two delta debuggers for SAT, {\sf cnfdd} and the multithreaded version {\sf mtcnfdd}, and one delta debugger for QBF, {\sf qbfdd}.
-		Then, they took the generated instances that triggered bugs in the solvers, and used the delta debuggers to minimise those instances to the smallest size where they would still trigger the bugs on those solvers.
+		Then, they took the generated instances that triggered bugs in the solvers, and used the delta debuggers to minimise those instances to the smallest size where they would still trigger the bugs on those solvers.\question{What is their minimisation algorithm?}
 		They found that they can often reduce the size by over 85\%, the only exception being a SAT solver that contained bugs that only showed up after many propagations, and hence needed somewhat larger formulae.
 		Instance size was measured in file size.
 		They also report minimisation time.
@@ -187,7 +216,7 @@
 	Here are a few:
 	\begin{description}
 		\item[Dar02] Intuitive, straightforward approach proposed in \citep{Dar02}\cite{Dar02}. For each variable, the weights of the positive and the negative literal add up to $1$.
-		\item[SBK05] Proposed by \citep{SBK05}\cite{SBK05} as more compact alternative to \darohtwo{}. Less intuitive, but literal weights also add up to $1$.
+		\item[SBK05] Proposed by \citep{SBK05b}\cite{SBK05b} as more compact alternative to \darohtwo{}. Less intuitive, but literal weights also add up to $1$.
 		\item[CD05] Proposed by \citep{CD05}\cite{CD05} as an encoding to take advantage of local structure in the BN. It also uses shared variables. The idea is to have a single variable for each weight in the problem, to limit the size of the encoding. Additionally, \citep{CD05} implements an optimisation in which it uses clauses where exactly one literal must be true. The consequence, however, is that this encoding is not compatible with standard DPLL-based counters.
 		\item[CD06] Proposed by \citep{CD06}\cite{CD06} as an encoding that should work particularly well for DPLL-based solvers, since it facilitates the discovery of components. Uses prime implicants to minimise the encoding. Since this encoding is based on the \cdohfive{} encoding, it is also not compatible with standard DPLL solvers.
 		\item[BKLM16] This encoding is proposed by \citep{BKL+16}\cite{BKL+16} and is based on the \cdohsix{} encoding. However: they made it compatible with standard DPLL-based solvers.
@@ -196,6 +225,8 @@
 	We are currently not aware of any other encodings, but should check the most recent literature.
 	
 	We could generate different Bayesian networks, encode them with different encodings, and make sure that the weights are diverse too (including extremely high and low weights), to challenge the counters.
+	
+	We could also think of other ways of generating CNFs with a known model count, or even of new encodings (although that seems a bit out of scope?).
 	
 	\noindent\hrulefill
 	

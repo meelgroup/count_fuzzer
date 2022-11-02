@@ -1,3 +1,5 @@
+\usepackage{manyfoot}
+
 %%%%%%%%%%% HEADER / FOOTER %%%%%%%%%%%
 \pagestyle{fancy}
 \setlength\parindent{0in}
@@ -32,7 +34,27 @@
 {}% before the title body
 []% after the title body
 
+\setcounter{secnumdepth}{2}
+\titleformat{\subsection}%
+{\normalfont\large\bfseries\color{nus-blue}}% format applied to label+text
+{\llap{\colorbox{nus-blue}{\parbox{1.5cm}{\hfill\color{white}\thesection}}}}% label
+{1em}% horizontal separation between label and title body
+{}% before the title body
+[]% after the title body
 
+%%%%%%%%%%% MARGIN NOTES %%%%%%%%%%%
+
+\newcounter{mparcntQ}
+\renewcommand{\themparcntQ}{^{\bf Q\arabic{mparcntQ}}}
+\newcommand\question[1]{\refstepcounter{mparcntQ}$\themparcntQ$ \marginpar{$\themparcntQ$ #1}}
+
+\newcounter{mparcntA}
+\renewcommand{\themparcntA}{^{\bf A}}
+\newcommand\answer[1]{\refstepcounter{mparcntA}$\themparcntA$ \marginpar{$\themparcntA$ #1}}
+
+\newcounter{mparcntR}
+\renewcommand{\themparcntR}{^{\bf R\arabic{mparcntR}}}
+\newcommand\remark[1]{\refstepcounter{mparcntR}$\themparcntR$ \marginpar{$\themparcntR$ #1}}
 
 
 %%%%%%%%%%% NEW ENVIRONMENTS %%%%%%%%%%
@@ -135,5 +157,7 @@
 	%	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,% show line numbers, remove this entire line if you don't want the numbers.
 	%	aboveskip=0pt,belowskip=0pt,%
 	%	showstringspaces=false,tabsize=2,breaklines=true}
+
+
 
 
