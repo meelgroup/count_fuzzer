@@ -69,9 +69,33 @@ series = {{SMT} 2009}
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 
+
+
+@inproceedings{CFM+14,
+  author    = {Supratik Chakraborty and
+               Daniel J. Fremont and
+               Kuldeep S. Meel and
+               Sanjit A. Seshia and
+               Moshe Y. Vardi},
+  editor    = {Carla E. Brodley and
+               Peter Stone},
+  title     = {Distribution-Aware Sampling and Weighted Model Counting for {SAT}},
+  booktitle = {Proceedings of the Twenty-Eighth {AAAI} Conference on Artificial Intelligence,
+               July 27 -31, 2014, Qu{\'{e}}bec City, Qu{\'{e}}bec, Canada},
+  pages     = {1722--1730},
+  publisher = {{AAAI} Press},
+  year      = {2014},
+  url       = {http://www.aaai.org/ocs/index.php/AAAI/AAAI14/paper/view/8364},
+  timestamp = {Tue, 08 Mar 2022 21:45:55 +0100},
+  biburl    = {https://dblp.org/rec/conf/aaai/ChakrabortyFMSV14.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+
 @inproceedings{CMV16,
 author={Chakraborty, Supratik and  Meel, Kuldeep S. and  Vardi, Moshe Y.},
-title={Algorithmic Improvements in Approximate Counting for Probabilistic Inference: From Linear to Logarithmic SAT Calls},
+title={Algorithmic Improvements in Approximate Counting for Probabilistic Inference: From Linear to Logarithmic {SAT} Calls},
 code={https://bitbucket.org/kuldeepmeel/approxmc},
 year={2016},
 month={7},
@@ -87,7 +111,7 @@ abstract={Probabilistic inference via model counting has emerged as a scalable t
                Adnan Darwiche},
   editor    = {Leslie Pack Kaelbling and
                Alessandro Saffiotti},
-  title     = {Compiling Bayesian Networks with Local Structure},
+  title     = {Compiling {Bayesian} Networks with Local Structure},
   booktitle = {IJCAI-05, Proceedings of the Nineteenth International Joint Conference
                on Artificial Intelligence, Edinburgh, Scotland, UK, July 30 - August
                5, 2005},
@@ -106,7 +130,7 @@ abstract={Probabilistic inference via model counting has emerged as a scalable t
                Adnan Darwiche},
   editor    = {Armin Biere and
                Carla P. Gomes},
-  title     = {Encoding CNFs to Empower Component Analysis},
+  title     = {Encoding {CNFs} to Empower Component Analysis},
   booktitle = {Theory and Applications of Satisfiability Testing - {SAT} 2006, 9th
                International Conference, Seattle, WA, USA, August 12-15, 2006, Proceedings},
   series    = {Lecture Notes in Computer Science},
@@ -178,6 +202,55 @@ abstract={Probabilistic inference via model counting has emerged as a scalable t
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 
+
+
+
+@inproceedings{DB21a,
+  author    = {Paulius Dilkas and
+               Vaishak Belle},
+  editor    = {Chu{-}Min Li and
+               Felip Many{\`{a}}},
+  title     = {Weighted Model Counting Without Parameter Variables},
+  booktitle = {Theory and Applications of Satisfiability Testing - {SAT} 2021 - 24th
+               International Conference, Barcelona, Spain, July 5-9, 2021, Proceedings},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {12831},
+  pages     = {134--151},
+  publisher = {Springer},
+  year      = {2021},
+  url       = {https://doi.org/10.1007/978-3-030-80223-3\_10},
+  doi       = {10.1007/978-3-030-80223-3\_10},
+  timestamp = {Sun, 02 Oct 2022 16:14:34 +0200},
+  biburl    = {https://dblp.org/rec/conf/sat/DilkasB21.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+
+@inproceedings{DB21b,
+  author    = {Paulius Dilkas and
+               Vaishak Belle},
+  editor    = {Cassio P. de Campos and
+               Marloes H. Maathuis and
+               Erik Quaeghebeur},
+  title     = {Weighted model counting with conditional weights for {Bayesian} networks},
+  booktitle = {Proceedings of the Thirty-Seventh Conference on Uncertainty in Artificial
+               Intelligence, {UAI} 2021, Virtual Event, 27-30 July 2021},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {161},
+  pages     = {386--396},
+  publisher = {{AUAI} Press},
+  year      = {2021},
+  url       = {https://proceedings.mlr.press/v161/dilkas21a.html},
+  timestamp = {Sun, 02 Oct 2022 16:16:37 +0200},
+  biburl    = {https://dblp.org/rec/conf/uai/DilkasB21.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+
+@article{DPV20, title={ADDMC: Weighted Model Counting with Algebraic Decision Diagrams}, volume={34}, url={https://ojs.aaai.org/index.php/AAAI/article/view/5505}, DOI={10.1609/aaai.v34i02.5505}, abstractNote={&lt;p&gt;We present an algorithm to compute exact literal-weighted model counts of Boolean formulas in Conjunctive Normal Form. Our algorithm employs dynamic programming and uses Algebraic Decision Diagrams as the main data structure. We implement this technique in ADDMC, a new model counter. We empirically evaluate various heuristics that can be used with ADDMC. We then compare ADDMC to four state-of-the-art weighted model counters (Cachet, c2d, d4, and miniC2D) on 1914 standard model counting benchmarks and show that ADDMC significantly improves the virtual best solver.&lt;/p&gt;}, number={02}, journal={Proceedings of the AAAI Conference on Artificial Intelligence}, author={Dudek, Jeffrey and Phan, Vu and Vardi, Moshe}, year={2020}, month={Apr.}, pages={1468-1476} }
+
 @inproceedings{EGS12,
 author = {Ermon, Stefano and Gomes, Carla and Selman, Bart},
 title = {Uniform Solution Sampling Using a Constraint Solver as an Oracle},
@@ -211,6 +284,29 @@ series = {UAI'12}
 }
 
 
+
+
+
+@inproceedings{KWW16,
+  author    = {Vladimir Klebanov and
+               Alexander Weigl and
+               J{\"{o}}rg Weisbarth},
+  editor    = {Mirco Tribastone and
+               Herbert Wiklicky},
+  title     = {Sound Probabilistic {\#SAT} with Projection},
+  booktitle = {Proceedings 14th International Workshop Quantitative Aspects of Programming
+               Languages and Systems, {QAPL} 2016, Eindhoven, The Netherlands, April
+               2-3, 2016},
+  series    = {{EPTCS}},
+  volume    = {227},
+  pages     = {15--29},
+  year      = {2016},
+  url       = {https://doi.org/10.4204/EPTCS.227.2},
+  doi       = {10.4204/EPTCS.227.2},
+  timestamp = {Wed, 09 Oct 2019 16:19:29 +0200},
+  biburl    = {https://dblp.org/rec/journals/corr/KlebanovWW16.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
 
 
 
@@ -315,7 +411,7 @@ series = {UAI'12}
                Henry A. Kautz},
   editor    = {Manuela M. Veloso and
                Subbarao Kambhampati},
-  title     = {Performing Bayesian Inference by Weighted Model Counting},
+  title     = {Performing {Bayesian} Inference by Weighted Model Counting},
   booktitle = {Proceedings, The Twentieth National Conference on Artificial Intelligence
                and the Seventeenth Innovative Applications of Artificial Intelligence
                Conference, July 9-13, 2005, Pittsburgh, Pennsylvania, {USA}},
@@ -354,7 +450,7 @@ series = {UAI'12}
   author    = {Sathiamoorthy Subbarayan and
                Lucas Bordeaux and
                Youssef Hamadi},
-  title     = {Knowledge Compilation Properties of Tree-of-BDDs},
+  title     = {Knowledge Compilation Properties of {Tree-of-BDDs}},
   booktitle = {Proceedings of the Twenty-Second {AAAI} Conference on Artificial Intelligence,
                July 22-26, 2007, Vancouver, British Columbia, Canada},
   pages     = {502--507},
@@ -432,7 +528,7 @@ series = {UAI'12}
 
 @inproceedings{SM19,
 author={Soos, Mate and  Meel, Kuldeep S.},
-title={BIRD: Engineering an Efficient CNF-XOR SAT Solver and its Applications to Approximate Model Counting},
+title={{BIRD}: Engineering an Efficient {CNF-XOR} {SAT} Solver and its Applications to Approximate Model Counting},
 booktitle={Proceedings of AAAI Conference on Artificial Intelligence (AAAI)},
 month={1},
 year={2019},
@@ -463,7 +559,7 @@ keywords = {CNF to DNF conversion, formula caching, AllSAT solvers, model enumer
   author    = {Marc Thurley},
   editor    = {Armin Biere and
                Carla P. Gomes},
-  title     = {sharpSAT - Counting Models with Advanced Component Caching and Implicit
+  title     = {{sharpSAT} --- Counting Models with Advanced Component Caching and Implicit
                {BCP}},
   booktitle = {Theory and Applications of Satisfiability Testing - {SAT} 2006, 9th
                International Conference, Seattle, WA, USA, August 12-15, 2006, Proceedings},
@@ -476,6 +572,28 @@ keywords = {CNF to DNF conversion, formula caching, AllSAT solvers, model enumer
   doi       = {10.1007/11814948\_38},
   timestamp = {Tue, 14 May 2019 10:00:41 +0200},
   biburl    = {https://dblp.org/rec/conf/sat/Thurley06.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+
+@inproceedings{WS05,
+  author    = {Wei Wei and
+               Bart Selman},
+  editor    = {Fahiem Bacchus and
+               Toby Walsh},
+  title     = {A New Approach to Model Counting},
+  booktitle = {Theory and Applications of Satisfiability Testing, 8th International
+               Conference, {SAT} 2005, St. Andrews, UK, June 19-23, 2005, Proceedings},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {3569},
+  pages     = {324--339},
+  publisher = {Springer},
+  year      = {2005},
+  url       = {https://doi.org/10.1007/11499107\_24},
+  doi       = {10.1007/11499107\_24},
+  timestamp = {Tue, 14 May 2019 10:00:41 +0200},
+  biburl    = {https://dblp.org/rec/conf/sat/WeiS05.bib},
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 

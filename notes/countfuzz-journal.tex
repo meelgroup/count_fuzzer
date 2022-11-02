@@ -58,6 +58,7 @@
 			\item How do we define an incorrect count in the case of PAC counting?
 			\item (How) do we account for differences in interpretation of the contribution to the model count of free variables?
 			\item How to efficiently minimise the instance size of bug triggering instances?
+			\item How modular should the resulting tool be? There are many different encodings (projected or not, but also different ways of encoding Bayesian networks into CNF) that are not all compatible with all solvers. Does it make sense to have functionality to create problems of a certain type (\eg{}, Baysian network) and let the user implement their favourite encoding?
 		\end{itemize}
 	\end{questions}
 
@@ -106,7 +107,7 @@
 		\subsection*{Exact counters}
 		\begin{itemize}
 			\item \dpmc{}.\footnote{Available at \href{https://github.com/vardigroup/DPMC}{github.com/vardigroup/DPMC}.}
-			\item \cachet{}~\citep{SBK05a} and \cachetwmc{}~\citep{SBK05b}.
+			\item \cachet{}~\citep{SBK05a}.
 			\item \ganak{}~\citep{SSS+19}.
 			\item \gpmc{}.\footnote{Available at \href{https://www.trs.cm.is.nagoya-u.ac.jp/projects/PMC/}{www.trs.cm.is.nagoya-u.ac.jp/projects/PMC}.}
 			\item \exactmc{}~\citep{LNY21}.
@@ -128,12 +129,24 @@
 	
 		\subsection*{Approximate counters}
 		\begin{itemize}
-			\item \approxmc{}~\citep{CMV16,SM19}.
+			\item \approxcount{} Local search algorithm~\citep{WS05}.
+			\item \approxmc{} Sampling algorithm with PAC-guarantees~\citep{CMV16,SM19}.
 			\item \focusedflatsat{} (by Stefano Ermon, 2011).\footnote{Available at \href{cs.stanford.edu/~ermon/code/FocusedFlatSAT.zip}{cs.stanford.edu/~ermon/code/FocusedFlatSAT.zip}.}
 			\item \mbound{} (by Ashish Sabharwal, Cornell University, 2007).\footnote{Available at \href{www.cs.cornell.edu/~sabhar/software/xor-scripts/xor-scripts.zip}{www.cs.cornell.edu/~sabhar/software/xor-scripts/xor-scripts.zip}.}
 			\item \samplecount{}~\citep{GHS+07}.\footnote{Available at \href{www.cs.cornell.edu/~sabhar/software/samplecount/samplecount-1.0-04092007.zip}{www.cs.cornell.edu/~sabhar/software/samplecount/samplecount-1.0-04092007.zip}.}
 			\item \searchtreesampler{}~\citep{EGS12}.\footnote{Available at \href{cs.stanford.edu/~ermon/code/STS.zip}{cs.stanford.edu/~ermon/code/STS.zip}.}
 		\end{itemize}
+		
+		\subsection*{Weighted counters}
+		\begin{itemize}
+			\item \addmc{}~\citep{DPV20}.\footnote{Available at \href{https://github.com/vardigroup/ADDMC}{github.com/vardigroup/ADDMC}.}
+			\item \approxmcp{} Projected weighted model counting~\citep{KWW16}.\footnote{Available at \href{https://formal.kastel.kit.edu/~weigl/software/approxmc-py}{formal.kastel.kit.edu/~weigl/software/approxmc-py}.}
+			\item \cachetwmc{}~\citep{SBK05b}.
+			\item \ganak{} has projected(?) weighted model counting functionality~\citep{SSS+19}.
+			\item \weightMC{} Approximate weighted model counter~\citep{CFM+14}.\footnote{Available at \href{https://meelgroup.github.io/software/weightmc/}{meelgroup.github.io/software/weightmc}.}
+			\item \weightedsharpsat{}.\footnote{Available at \href{https://bitbucket.org/latower/weighted-sharpsat/src/master/}{bitbucket.org/latower/weighted-sharpsat/src/master}.}
+		\end{itemize}
+		
 		
 		\subsection*{Preprocessors}
 		\begin{itemize}
@@ -224,6 +237,8 @@
 
 	We are currently not aware of any other encodings, but should check the most recent literature.
 	
+	\addendum{2 nov 2022}{I just found that \citep{DB21b}\cite{DB21b} has a nice summary of the properties of these encodings, {\em and} proposes a new one. \citep{DB21a}\cite{DB21a} shows how to remove variables and clauses from existing encodings of Bayesian networks, to make them more compact.}
+	
 	We could generate different Bayesian networks, encode them with different encodings, and make sure that the weights are diverse too (including extremely high and low weights), to challenge the counters.
 	
 	We could also think of other ways of generating CNFs with a known model count, or even of new encodings (although that seems a bit out of scope?).
@@ -240,6 +255,40 @@
 	BDD libraries like (the \python{} interface of) \cudd{} provide functionality for retrieving the CNF afterwards.\footnote{See \href{http://web.mit.edu/sage/export/tmp/y/usr/share/doc/polybori/cudd/cuddIntro.html}{web.mit.edu/sage/export/tmp/y/usr/share/doc/polybori/cudd/cuddIntro.html}.}
 	As we are building the BDD incrementally, we can keep track of the model count of the CNF that it represents, by doing upward counting sweeps of the BDD.
 	That way, we can steer towards, \eg{}, CNFs with a very small model count compared to its number of clauses or its number of variables.
+	
+	Whichever way we choose, the correctness of our count would also depend on the correctness of our encoding.
+	Hence, we may be a snake eating our own tail here?
+	
+	\noindent\hrulefill
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Wed 2 Nov 2022: Feedback from group}
+	
+	I shared some of the ideas that we had with the group (Mahi, Tim, Arijit, Jiong and Pang) and asked them what they thought of the ideas and if they saw a potentially valuable scientific contribution.
+	
+	The concensus was that if we come up with a good definition of `diversity' in the generated instances, and build an instance generator that displays that diversity {\em and} generates instances with a known ground truth, then that would be a valuable scientific contribution.
+	
+	Mahi suggests to use ASP to enumerate subgraphs and Hamiltonian paths in graphs, and use that as a basis for formulas with a ground truth.
+	
+	Nobody seems against the idea of using Bayesian networks or SDDs/BDDs/other DDs to generate instances, {\em on the condition} that the generator is verified.
+	So that'll be fun.
+	
+	Another idea that came up to deal with fuzzing \approxmc{} is the following. 
+	Don't record the number of wrong counts, but only record the errors (early termination without output) and the incorrect answers (model count of 0 while satisfiable, or non-zero model count when unsatisfiable). 
+	Take the `original' version of \approxmc{} (before debugging), and to run it for 10 different random seeds on each instance, and recording the distribution of the counts for all instances that don't result in an error or incorrect answer. 
+	Then, on the debugged version (after debugging such that none of instances generated by the fuzzer triggers a bug), do the same thing.
+	Then compare the distributions.
+	If there were bugs that caused wrong counts, one would expect to see that reflected in the distributions of the counts.
+	
+	Another idea that came up is to define diversity in terms of different features, like:
+	\begin{itemize}
+		\item Number of variables/literals/clauses.
+		\item Ratios of the above.
+		\item Mean/median/max clause length.
+		\item Tree width / diameter / average clustering coefficient of primal graph.
+		\item Max clique size, number of certain motifs etc of primal graph.
+	\end{itemize}
 	
 	\noindent\hrulefill
 	

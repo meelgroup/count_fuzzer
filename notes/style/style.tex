@@ -56,7 +56,6 @@
 \renewcommand{\themparcntR}{^{\bf R\arabic{mparcntR}}}
 \newcommand\remark[1]{\refstepcounter{mparcntR}$\themparcntR$ \marginpar{$\themparcntR$ #1}}
 
-
 %%%%%%%%%%% NEW ENVIRONMENTS %%%%%%%%%%
 \newenvironment{benchmarks}%
 {\section*{Candidate benchmark sets}}%
@@ -94,6 +93,10 @@
 
 \newcommand{\newday}[1]{%
 	\section*{#1}%
+}
+
+\newcommand{\addendum}[2]{
+	{\it {\bf ADDENDUM (#1):} #2}
 }
 
 %%%%%%%%%%% FORMATTING %%%%%%%%%%
