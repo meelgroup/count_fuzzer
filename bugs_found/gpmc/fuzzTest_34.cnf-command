@@ -1,0 +1,1 @@
+./bins/gpmc-mccomp2022/bin/gpmc -mode=0 out/fuzzTest_34.cnf
