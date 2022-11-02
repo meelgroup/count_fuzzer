@@ -21,26 +21,16 @@
 
 import subprocess
 import os
-import sys
 import time
 import random
 import resource
 import optparse
 import stat
 from collections import namedtuple
-from random import choice
 from functools import partial
 
 Solver = namedtuple("Solver", "exe exact", defaults=[None, True])
 Count = namedtuple("Count", "exe exact count", defaults=[None, True, -1])
-
-class PlainHelpFormatter(optparse.IndentedHelpFormatter):
-
-    def format_description(description):
-        if description:
-            return description + "\n"
-        else:
-            return ""
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -48,12 +38,10 @@ def setlimits(t):
     resource.setrlimit(resource.RLIMIT_CPU, (t, t))
 
 
-usage = "usage: %prog [options] "
-desc = """Fuzz model counter
-"""
-
-
 def set_up_parser():
+    usage = "usage: %prog [options] "
+    desc = "Fuzz model counter\n"
+
     parser = optparse.OptionParser(
       usage=usage, description=desc)
 
@@ -149,7 +137,10 @@ def unique_file(fname_begin, fname_end=".cnf"):
 
 def run_one_counter(solver, fname):
     curr_time = time.time()
-    toexec = [solver.exe, fname]
+    toexec = solver.exe.split()
+    print("toexec:", toexec)
+    toexec.append(fname)
+    print("toexec:", toexec)
     if not solver.exact:
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta)])
@@ -165,16 +156,22 @@ def run_one_counter(solver, fname):
         print(l)
         if len(l) < 4:
             continue
-        if l[0] == 'c':
+        if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc":
+        if l[:4] == "s mc" or l[:17] == "c s exact arb int":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
-            num = int(l.split()[2])
+            if l[:4] == "s mc":
+                num = int(l.split()[2])
+            elif l[:17] == "c s exact arb int":
+                num = int(l.split()[5])
+            else:
+                print("ERROR")
+                exit(-1)
     if num is None:
-        print("ERROR, could not find 's mc' in output")
+        print("ERROR, could not find 's mc' or 'c s exact arb int' in output")
         exit(-1)
 
     return num
@@ -217,7 +214,8 @@ if __name__ == "__main__":
         solvers = [
             Solver(options.ganak, True),
             Solver(options.sharpsat, True),
-            Solver(options.appmc, False)
+            Solver(options.appmc, False),
+            Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True)
         ]
 
         exact_count = None
