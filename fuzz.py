@@ -158,14 +158,14 @@ def run_one_counter(solver, fname):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:17] == "c s exact arb int":
+        if l[:4] == "s mc" or l[:9] == "c s exact":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
             if l[:4] == "s mc":
                 num = int(l.split()[2])
-            elif l[:17] == "c s exact arb int":
+            elif l[:9] == "c s exact":
                 num = int(l.split()[5])
             else:
                 print("ERROR")
@@ -215,7 +215,8 @@ if __name__ == "__main__":
             Solver(options.ganak, True),
             Solver(options.sharpsat, True),
             Solver(options.appmc, False),
-            Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True)
+            Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
+            Solver("./bins/d4/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i")
         ]
 
         exact_count = None

@@ -51,12 +51,12 @@ main (int argc, char ** argv)
     }
 
   seed = (argc > 1) ? atoi (argv[1]) : std::abs ((time(NULL)) >> 1);
-  printf ("c seed %d\n", seed);
+  /* printf ("c seed %d\n", seed); */
   srand (seed);
   w = pick (10, 30);
-  printf ("c max width %d\n", w);
+  /* printf ("c max width %d\n", w); */
   nlayers = pick (1, 5);
-  printf ("c layers %d\n", nlayers);
+  /* printf ("c layers %d\n", nlayers); */
   layers = (int**)calloc (nlayers, sizeof *layers);
   width = (int*)calloc (nlayers, sizeof *width);
   low = (int*)calloc (nlayers, sizeof *low);
@@ -73,8 +73,8 @@ main (int argc, char ** argv)
       if (i) m += width[i-1];
       n = (pick (300, 450) * m) / 100;
       clauses[i] = n;
-      printf ("c layer[%d] = [%d..%d] w=%d v=%d c=%d r=%.2f\n",
-              i, low[i], high[i], width[i], m, n, n / (double) m);
+      /* printf ("c layer[%d] = [%d..%d] w=%d v=%d c=%d r=%.2f\n", */
+      /*         i, low[i], high[i], width[i], m, n, n / (double) m); */
 
       nunused[i] = 2 * (high[i] - low[i] + 1);
       unused[i] = (int*)calloc (nunused[i], sizeof *unused[i]);
@@ -89,6 +89,7 @@ main (int argc, char ** argv)
   mark = (char*)calloc (m + 1, 1);
   for (i = 0; i < nlayers; i++)
     n += clauses[i];
+  printf ("c t mc\n");
   printf ("p cnf %d %d\n", m, n);
   for (i = 0; i < nlayers; i++)
     {
