@@ -216,7 +216,7 @@ if __name__ == "__main__":
             Solver(options.sharpsat, True),
             Solver(options.appmc, False),
             Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
-            Solver("./bins/d4/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i")
+            Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i")
         ]
 
         exact_count = None
