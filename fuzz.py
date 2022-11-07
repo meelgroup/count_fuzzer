@@ -94,7 +94,7 @@ def set_up_parser():
 
 
 def run(command):
-    print("Executing: %s" % command)
+    print("Executing: %s" % " ".join(command))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
@@ -138,13 +138,13 @@ def unique_file(fname_begin, fname_end=".cnf"):
 def run_one_counter(solver, fname):
     curr_time = time.time()
     toexec = solver.exe.split()
-    print("toexec:", toexec)
     toexec.append(fname)
-    print("toexec:", toexec)
     if not solver.exact:
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta)])
     out, err = run(toexec)
+    if err != "":
+        print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
         print("Too much time to solve with %s, aborted!" % solver.exe)
@@ -158,14 +158,14 @@ def run_one_counter(solver, fname):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:9] == "c s exact":
+        if l[:4] == "s mc" or l[:13] == "c s exact arb":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
             if l[:4] == "s mc":
                 num = int(l.split()[2])
-            elif l[:9] == "c s exact":
+            elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
             else:
                 print("ERROR")
@@ -217,6 +217,7 @@ if __name__ == "__main__":
             Solver(options.appmc, False),
             Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
             Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i")
+            Solver("./bins/c2d-mccomp2022/c2d -in ", True),
         ]
 
         exact_count = None
