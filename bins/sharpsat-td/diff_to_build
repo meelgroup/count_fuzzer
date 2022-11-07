@@ -1,0 +1,1830 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 730a801..4f84084 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required (VERSION 2.8)
++cmake_minimum_required (VERSION 3.11)
+ project (SHARPSAT) 
+ 
+ option(STATIC "STATIC" OFF)
+@@ -16,14 +16,14 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
+ set(BUILD_SHARED_LIBS OFF)
+ endif(STATIC)
+ 
+-set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -Wall -Wextra -Wshadow -g -Wfatal-errors -Wno-sign-compare -Wno-literal-suffix")
+-
++set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -Wall -g")
+ SET(CMAKE_C_FLAGS "-std=c99 -Wall -msse4.1 -mpclmul")
+ 
+ find_library(GMP_LIB gmp)
+ find_library(GMPXX_LIB gmpxx)
+ find_library(MPFR_LIB mpfr)
+ 
++add_definitions( -DMPFR_USE_NO_MACRO )
+ add_subdirectory(flowcutter)
+ 
+ SET(SOURCES 
+@@ -48,4 +48,4 @@ add_executable (flow_cutter_pace17 flowcutter/pace.cpp)
+ if(STATIC)
+ SET_TARGET_PROPERTIES (flow_cutter_pace17 PROPERTIES LINK_SEARCH_START_STATIC 1)
+ endif(STATIC)
+-target_link_libraries (flow_cutter_pace17 libflowcutter)
+\ No newline at end of file
++target_link_libraries (flow_cutter_pace17 libflowcutter)
+diff --git a/src/main.cpp b/src/main.cpp
+index 81affc3..26a6fc3 100755
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -16,7 +16,7 @@
+ #include <sys/resource.h>
+ #include <gmpxx.h>
+ #include <limits>
+-#include "mpfr/mpreal.h"
++#include "mpreal.h"
+ 
+ #include <random>
+ 
+@@ -251,4 +251,4 @@ int main(int argc, char *argv[]) {
+   } else {
+     assert(0);
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/src/mpfr/README.md b/src/mpfr/README.md
+deleted file mode 100644
+index e02bb84..0000000
+--- a/src/mpfr/README.md
++++ /dev/null
+@@ -1,47 +0,0 @@
+-    MPFR C++ (MPREAL):     Multiple precision floating point arithmetic library for C++.
+-                           Thread-safe, cross-platform (MSVC, GCC, ICC), one-header C++ library.
+-                           Supports C++11 features if available, C++03 compatible otherwise.
+-
+-    Thin wrapper for MPFR: http://mpfr.org
+-
+-    Project homepage:    http://www.holoborodko.com/pavel/mpfr
+-    Contact e-mail:      pavel@holoborodko.com
+-
+-    Copyright (c) 2008-2020 Pavel Holoborodko
+-
+-    Contributors:
+-    Dmitriy Gubanov, Konstantin Holoborodko, Brian Gladman,
+-    Helmut Jarausch, Fokko Beekhof, Ulrich Mutze, Heinz van Saanen,
+-    Pere Constans, Peter van Hoof, Gael Guennebaud, Tsai Chia Cheng,
+-    Alexei Zubanov, Jauhien Piatlicki, Victor Berger, John Westwood,
+-    Petr Aleksandrov, Orion Poplawski, Charles Karney, Arash Partow,
+-    Rodney James, Jorge Leitao.
+-
+-    Licensing:
+-    (A) MPFR C++ is under GNU General Public License ("GPL").
+-
+-    (B) Non-free licenses may also be purchased from the author, for users who
+-        do not want their programs protected by the GPL.
+-
+-        The non-free licenses are for users that wish to use MPFR C++ in
+-        their products but are unwilling to release their software
+-        under the GPL (which would require them to release source code
+-        and allow free redistribution).
+-
+-        Such users can purchase an unlimited-use license from the author.
+-        Contact us for more details.
+-
+-    GNU General Public License ("GPL") copyright permissions statement:
+-    **************************************************************************
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU General Public License as published by
+-    the Free Software Foundation, either version 3 of the License, or
+-    (at your option) any later version.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU General Public License for more details.
+-
+-    You should have received a copy of the GNU General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+diff --git a/src/mpfr/changelog b/src/mpfr/changelog
+deleted file mode 100644
+index eb233d7..0000000
+--- a/src/mpfr/changelog
++++ /dev/null
+@@ -1,794 +0,0 @@
+-2019-01-25  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.6 to changeset 993de1ab3ab2 (from changeset
+-	eb1156e6ce09)
+-	[7dea3b06cace] [tip]
+-
+-	* mpreal.h:
+-	Merged all contributed changes with main
+-	[993de1ab3ab2] [mpfrc++-3.6.6]
+-
+-2017-08-16  Ed Smith-Rowland  <3dw4rd@verizon.net>
+-
+-	* mpreal.h:
+-	Fix ilogb. Return const not needed for friend. Rounding not useable.
+-	[5a1542642bf0]
+-
+-2017-08-07  Ed Smith-Rowland  <3dw4rd@verizon.net>
+-
+-	* mpreal.h:
+-	Add ilogb.
+-	[0c52ebf3b604]
+-
+-2017-06-05  Paul Hentschel  <paul@hpminc.com>
+-
+-	* mpreal.h:
+-	Changed grandom function to work with Brian Gladman's latest dev
+-	version of mpfr.
+-	[9ef1fc459291]
+-
+-2019-01-25  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.6 for changeset eb1156e6ce09
+-	[a1f712755491]
+-
+-	* .hgtags:
+-	Removed tag mpfrc++-3.6.6
+-	[eb1156e6ce09]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.6 for changeset c0c3024fe811
+-	[33d2503a3d25]
+-
+-	* .hgtags:
+-	Added tag 3.6.6 for changeset c0c3024fe811
+-	[4f5a23a11962]
+-
+-	* mpreal.h:
+-	Added support for new functions in MFPR 4.0.0, added negate function
+-	and fixed bug in double/mpreal division operator.
+-	[c0c3024fe811] [3.6.6]
+-
+-2016-12-20  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added another overload for FREXP for better compatibility with
+-	STD::FREXP (provided by Charles Karney).
+-	[5219ee6c0214]
+-
+-2016-12-15  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.5 to changeset 519012baebd7 (from changeset
+-	ca4689c69eaa)
+-	[dd9acba59d27]
+-
+-	* mpreal.h:
+-	Fixed GCC warnings on unknown pragmas.
+-	[519012baebd7] [mpfrc++-3.6.5]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.5 for changeset ca4689c69eaa
+-	[75f1e9602bb3]
+-
+-	* Merged with online branch
+-	[ca4689c69eaa]
+-
+-2016-11-24  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* README.md:
+-	README.md edited online with Bitbucket
+-	[d7f37b26713c]
+-
+-2016-12-15  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Updates to move-operations, small fixes, bumped to 3.6.5 version.
+-	[997653929d38]
+-
+-2016-08-29  Pavel Holoborodko  <pavel@advanpix.com>
+-
+-	* .hgtags:
+-	Removed tag 3.6.4
+-	[f29db8a042ad]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.4 for changeset 667c8874ec46
+-	[397112248c31]
+-
+-	* .hgtags:
+-	Added tag 3.6.4 for changeset c9a66bcd9828
+-	[667c8874ec46] [mpfrc++-3.6.4]
+-
+-	* .hgtags:
+-	Removed tag 3.6.4
+-	[c9a66bcd9828]
+-
+-	* changelog:
+-	Changelog has been updated.
+-	[ad643b2e9fe8]
+-
+-	* .hgtags:
+-	Added tag 3.6.4 for changeset f961c1f3af6c
+-	[1b5a28d2f1f9]
+-
+-	* mpreal.h:
+-	Bumped version to 3.6.4
+-	[f961c1f3af6c]
+-
+-	* mpreal.h:
+-	Added nextpow2, setsignbit and 3-4 argument hypot with protection
+-	agains overflow. Improved compatibility with Intel compilers, fixed
+-	get_exp().
+-	[7b6762157fcd]
+-
+-2016-01-08  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.3 for changeset bed0adf08642
+-	[cbda4ff8f6b2]
+-
+-	* .hgtags:
+-	Removed tag mpfrc++-3.6.3
+-	[bed0adf08642] [mpfrc++-3.6.3]
+-
+-	* changelog:
+-	Updated the changelog
+-	[d9a805ac7da5]
+-
+-	* mpreal.h:
+-	Updated list of contributors.
+-	[c247cf9d59a0]
+-
+-	* mpreal.h:
+-	Updated copyright notice
+-	[82c2ecd78875]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.3 for changeset 89bef2abf54b
+-	[025578cf1a20]
+-
+-	* .hgtags:
+-	Removed tag 3.6.3
+-	[84c53970adaa]
+-
+-	* .hgtags:
+-	Added tag 3.6.3 for changeset 7ffcad32c02b
+-	[89bef2abf54b]
+-
+-	* changelog:
+-	All set for the new release
+-	[7ffcad32c02b]
+-
+-	* mpreal.h:
+-	Updated the version number to 3.6.3
+-	[89279de50ec6]
+-
+-	* changelog:
+-	Updated the changelog
+-	[71d9c011d909]
+-
+-	* mpreal.h:
+-	Switched to stdint.h for C++03 compatibility, added guard brackets
+-	for mpfr_get_default_prec
+-	[e8204db924a8]
+-
+-2015-09-26  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Updated frexp, code clean-up.
+-	[a396b360259d]
+-
+-2015-07-24  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Included <algorithm> for std::min/max.
+-	[eac86fd487c8]
+-
+-2015-05-28  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* README.md:
+-	Updated the readme
+-	[248da9fd5d83]
+-
+-	* mpreal.h:
+-	Fixed incompatibility with MSVC in array sum function. Thanks to
+-	Brian Gladman for reporting the issue.
+-	[a25d66dbb157]
+-
+-2015-04-16  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Increased number of digits in string conversion to guarantee
+-	accurate recovery
+-	[5207228dbf21]
+-
+-2015-04-13  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* README.md:
+-	Minor edits to README.md
+-	[2ad0118738df]
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.2 to changeset 729ef0273599 (from changeset
+-	7b05afee0747)
+-	[b1c40b105095]
+-
+-	* changelog:
+-	Changelog update to match the current version
+-	[729ef0273599] [mpfrc++-3.6.2]
+-
+-	* FOSSLicenseException.txt, mpreal.h:
+-	Version number has been fixed.
+-	[c3344cebf10a]
+-
+-2015-04-02  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixe to avoid a ton of signed/unsigned comparison warnings
+-	[bc195293ab38]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.2 for changeset 7b05afee0747
+-	[fdaee78b0b66]
+-
+-	* changelog:
+-	Updated changelog before new version release
+-	[7b05afee0747]
+-
+-	* mpreal.h:
+-	Added warning to stress out the required IEEE compliance, bumped
+-	version.
+-	[d1d8630400d7]
+-
+-2015-04-01  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* Merged to have README.md
+-	[f64dc82740e3]
+-
+-	* README.md:
+-	README.md edited online with Bitbucket
+-	[c2c4fc23e7ff]
+-
+-	* mpreal.h:
+-	Fixed and extended relational operators.
+-	[4a1308912e53]
+-
+-2015-03-20  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added fast zero, logb, scalbn. Fixed sum and other minor changes.
+-	[a3680b1e7035]
+-
+-2015-01-06  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added converter from std::complex scalars
+-	[04bb2944d39f]
+-
+-2014-12-09  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added "tgamma" for conformance with C++11
+-	[cd7d3a58ec04]
+-
+-2014-10-21  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixed detection of "explicit converters" support by GCC.
+-	[747851110144]
+-
+-2014-10-10  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.1 to changeset e1be08860b61 (from changeset
+-	b96247a1ab1b)
+-	[6e38941f1a02]
+-
+-	* FOSS License Exception.txt, FOSSLicenseException.txt:
+-	FOSS license file is renamed
+-	[e1be08860b61] [mpfrc++-3.6.1]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.1 for changeset b96247a1ab1b
+-	[eea219d51f89]
+-
+-	* mpreal.h:
+-	Fixed micro-version number
+-	[b96247a1ab1b]
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.0 to changeset f7c491ba598d (from changeset
+-	4bd12a575301)
+-	[ec93a0c33cfb]
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.6.0 to changeset 4bd12a575301 (from changeset
+-	2d60dbf27e9d)
+-	[a466a3ad8e3f]
+-
+-	* changelog:
+-	Updated changelog
+-	[4bd12a575301]
+-
+-	* FOSS License Exception.txt, example/example.cpp, mpreal.h:
+-	Fixed error in signum (sgn) function.
+-	[39b74057b225]
+-
+-2014-10-05  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.6.0 for changeset 2d60dbf27e9d
+-	[f7c491ba598d] [mpfrc++-3.6.0]
+-
+-	* mpreal.h:
+-	Updated version signature
+-	[2d60dbf27e9d]
+-
+-	* .hgtags:
+-	Removed tag mpfrc++-3.5.9
+-	[b6558a00425c]
+-
+-	* changelog:
+-	Updated changelog
+-	[1bdf7affbbc7]
+-
+-2014-08-24  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added copysign and signbit functions
+-	[634c24e851fc]
+-
+-2014-07-19  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added proper MPFR version detection for grandom
+-	[7cc45167ef74]
+-
+-2014-07-15  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixed "unused argument" warning
+-	[4d2f08db7f3d]
+-
+-	* FOSS License Exception.txt:
+-	Added FOSS license exception (suggested by Jorge Tiago Vila)
+-	[bbb52e09d0db]
+-
+-	* mpreal.h:
+-	Greatly simplified support for 64-bit integers (suggested by Charles
+-	Karney)
+-	[70aa80a90f41]
+-
+-2014-07-04  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.5.9 to changeset 3b59fb37d8d0 (from changeset
+-	c82eb0b36ed8)
+-	[f0a55e6c6510]
+-
+-	* mpreal.h:
+-	Enhancements in output and toString functions
+-	[3b59fb37d8d0]
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.9 for changeset c82eb0b36ed8
+-	[b5c655632af0]
+-
+-	* changelog:
+-	Updated changelog
+-	[c82eb0b36ed8]
+-
+-	* mpreal.h:
+-	Added explicit conversion operators and more features to output
+-	operator. Contributed by Charles Karney.
+-	[43f5240bc55e]
+-
+-2014-06-12  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.8 for changeset 848cb7ee9601
+-	[5a9d3981da25]
+-
+-	* changelog:
+-	Updated changelog
+-	[848cb7ee9601] [mpfrc++-3.5.8]
+-
+-	* mpreal.h:
+-	Fixed improper handling of std::setprecision(0), some warnings.
+-	Cosmetic changes.
+-	[fd8603d00edb]
+-
+-2014-06-03  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.5.7 to changeset 7787c0058cb1 (from changeset
+-	b1ed2b2430aa)
+-	[535ed9c45088]
+-
+-	* changelog:
+-	Updated changelog
+-	[7787c0058cb1] [mpfrc++-3.5.7]
+-
+-	* .hgtags:
+-	Moved tag mpfrc++-3.5.7 to changeset b1ed2b2430aa (from changeset
+-	115897b3f5ce)
+-	[97d36c0c4eb4]
+-
+-	* mpreal.h:
+-	Added option to control the numeric_limits<mpreal> specialization.
+-	[b1ed2b2430aa]
+-
+-2014-05-27  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.7 for changeset 115897b3f5ce
+-	[e7fa22557232]
+-
+-	* changelog:
+-	Updated changelog for the release
+-	[115897b3f5ce]
+-
+-2014-05-08  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Removed unused parameter from const_infinity
+-	[36e7d3597dbe]
+-
+-2014-02-15  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added support for PPC64. Contributed by Orion Poplawski.
+-	[d8d1f40e8dca]
+-
+-2014-01-14  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* example/example.cpp, mpreal.h:
+-	Changed friend functions declaration/definition with default
+-	arguments according to §8.3.6.4 of C++11 Contributed by Petr
+-	Alexandrov.
+-	[54486cf52e71]
+-
+-2014-01-10  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added protection for std::max, fixed formatting and typo
+-	[1d7620bc1b7a]
+-
+-2013-11-10  zubanov  <azubanov@gmail.com>
+-
+-	* Merged in zubanov/mpfr_grandom-in-
+-	mpfr-31-httpwwwmpfrorgmp-1384088199493 (pull request #1)
+-
+-	mpfr_grandom in MPFR 3.1 (http://www.mpfr.org/mpfr-
+-	current/mpfr.html)
+-	[0b012108d455]
+-
+-	* mpreal.h:
+-	mpfr_grandom in MPFR 3.1 (http://www.mpfr.org/mpfr-
+-	current/mpfr.html)
+-	[8b3f10f6aea8] <zubanov/mpfr_grandom-in-mpfr-31-httpwwwmpfrorgmp-1384088199493>
+-
+-2013-10-13  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.6 for changeset b49cd8eccd61
+-	[3d7cc9e761ff]
+-
+-	* .hgtags:
+-	Removed hgtags file
+-	[b49cd8eccd61] [mpfrc++-3.5.6]
+-
+-2013-10-12  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.6 for changeset 5f2f3bade4dd
+-	[793ea9e059cc]
+-
+-	* .hgtags:
+-	Removed tag mpfrc++-3.5.6
+-	[5f2f3bade4dd]
+-
+-	* changelog:
+-	Changelog updated
+-	[d9d09206969d]
+-
+-2013-10-11  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.6 for changeset 212d3bddf30c
+-	[e15c90a30ce6]
+-
+-	* .hgtags, mpreal.h:
+-	Added support for GCC 7.1 and above
+-	[212d3bddf30c]
+-
+-2013-10-10  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag mpfrc++-3.5.5 for changeset 101440e2b33d
+-	[462681c3110d]
+-
+-	* changelog:
+-	Added changelog
+-	[101440e2b33d]
+-
+-	* copying.txt:
+-	Added GPL text as separate file
+-	[d2450011629e]
+-
+-	* copying.txt, example/example.cpp, mpreal.h:
+-	License terms clarification
+-	[fe3b241512bb]
+-
+-2013-10-09  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* .hgtags:
+-	Added tag 3.5.5 for changeset 26663a149dfc
+-	[2efce445849a]
+-
+-2013-10-08  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* example/example.cpp:
+-	Added copyright notice to example
+-	[26663a149dfc]
+-
+-	* copying.txt, mpreal.h:
+-	Added "dual-licensing" terms
+-	[13837c895076]
+-
+-	* mpreal.h:
+-	Added wrappers for low-level initializations check
+-	[bd04a7f7b521]
+-
+-2013-09-02  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added move ctor / assignment, RVO optimization, compatibility with
+-	older MPFR.
+-	[72eac755d15c]
+-
+-2013-02-19  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added macro-logic for int64_t support on Mac OS X
+-	[1b0d6fdcf92f]
+-
+-2013-02-11  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Initialization overhead minimization in mathematical functions
+-	[5c67b57960bd]
+-
+-2013-02-10  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Arithmetic operations speed up by RVO and overhead minimization
+-	[c524bcccda1d]
+-
+-2013-01-24  Gael Guennebaud  <g.gael@free.fr>
+-
+-	* mpreal.h:
+-	Enable compiler RVO in c = a + b;
+-	[863750c996ff]
+-
+-	* mpreal.h:
+-	Enable compiler RVO in c = a * b;
+-	[4c502eded329]
+-
+-	* mpreal.h:
+-	add a const version of mpfr_ptr
+-	[fb4da131c3e6]
+-
+-	* mpreal.h:
+-	Workaround "error: floating-point literal cannot appear in a
+-	constant-expression" when compiling with gcc -pedantic
+-	[e79dc5492ce5]
+-
+-2012-12-04  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixed 'long int' and 'int64_t' clash on IA64 platforms
+-	[340d58c79215]
+-
+-2012-10-26  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Added work-around to avoid clash with min, max macroses in MSVC
+-	[75a3a3a2bafd]
+-
+-2012-10-23  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Speed-up in assignment and conversion from double
+-	[d40a2e23c6d7]
+-
+-2012-10-22  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Improved speciliazation for std::numeric_limits
+-	[4ee2d33724d2]
+-
+-2012-10-21  Pavel Holoborodko  <Pavel Holoborodko@Advanpix>
+-
+-	* mpreal.h:
+-	Fixed formatting, TAB to spaces
+-	[f6db242a57d5]
+-
+-2012-10-19  Pavel Holoborodko  <Pavel Holoborodko@Advanpix>
+-
+-	* example/example.cpp, mpreal.h:
+-	Changed round_style to function Fixed minor warnings Fixed
+-	contributor list
+-	[27b2cac5f626]
+-
+-2012-10-19  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Enhancement of std::numeric_limts<mpreal>, to be more compatible
+-	with LAPACK Template LIbrary
+-	[4e80c52d2bf4]
+-
+-	* mpreal.h:
+-	Fixed messed up blank spaces
+-	[bb97d60dc279]
+-
+-	* mpreal.h:
+-	New one-header MPREAL library
+-	[633ecbf6b601]
+-
+-	* AUTHORS, COPYING, ChangeLog, INSTALL, MPRealSupport, Makefile.am,
+-	Makefile.in, NEWS, README, aclocal.m4, config.guess, config.sub,
+-	configure, configure.ac, copying.lib, depcomp, example.cpp,
+-	example.makefile, example/example.cpp, example/makefile, install-sh,
+-	ltmain.sh, missing, mpreal.cpp, mpreal.h:
+-	Complete update, old files clean up
+-	[54439186de7b]
+-
+-2012-08-17  Jauhien Piatlicki  <piatlicki@gmail.com>
+-
+-	* Makefile.am, Makefile.in, configure, configure.ac:
+-	correct so-version
+-	[365e3a6bb539]
+-
+-	* autom4te.cache/output.0, autom4te.cache/output.1,
+-	autom4te.cache/requests, autom4te.cache/traces.0,
+-	autom4te.cache/traces.1:
+-	rm autom4te.cache
+-	[cfeb628317ea]
+-
+-	* AUTHORS, COPYING, ChangeLog, INSTALL, Makefile.am, Makefile.in,
+-	NEWS, README, aclocal.m4, autom4te.cache/output.0,
+-	autom4te.cache/output.1, autom4te.cache/requests,
+-	autom4te.cache/traces.0, autom4te.cache/traces.1, config.guess,
+-	config.sub, configure, configure.ac, copying, depcomp,
+-	example.makefile, install-sh, ltmain.sh, makefile, missing:
+-	building with autotools added
+-	[210888972b8b]
+-
+-2012-06-22  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.cpp:
+-	Replaced MPFR_RNDN to GMP_RNDN for compatibility
+-	[7b9efa6bd2c0]
+-
+-	* mpreal.cpp, mpreal.h:
+-	Extended machine_epsilon() Restored compatibility with MPFR 2.3.1
+-	Code clean-up and simplifications by Gael Guennebaud Added comments
+-	& explanations
+-	[452b3e42ef1e]
+-
+-	* MPRealSupport:
+-	Code clean up and simplification by Gael Guennebaud Added constants
+-	and other features
+-	[c054b3966fa6]
+-
+-	* dlmalloc.c, dlmalloc.h, makefile:
+-	Removed dlmalloc library since it is optional
+-	[9e88546ed3ba]
+-
+-2012-05-23  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* copying, copying.lib, example.cpp, makefile:
+-	Added makefile, example.cpp and license
+-	[d04cff7a41be]
+-
+-	* mpreal.h:
+-	Added x64 support for MinGW64. Added "fuzzy" comparison
+-	[da1927a4c53a]
+-
+-2012-01-16  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixed bug which in conversion to mpfr_srcptr
+-	[88fa1ed2a7a5]
+-
+-2012-01-12  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.cpp, mpreal.h:
+-	Fixed implicit conversion to mpfr_ptr/mpfr_srcptr and std::string
+-	[a87b193a75ab]
+-
+-	* mpreal.h:
+-	- removed unneeded templated comparison operators
+-	 - code re-formatting
+-	[d2167e612f81]
+-
+-2012-01-11  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.cpp, mpreal.h:
+-	- fix many minor bugs, including DebugView update in unary
+-	operations
+-	- refactor binary operations as templated functions
+-	- remove implicit conversion operators to raw pointers
+-	- custom memory allocation is optional now.
+-	[7b310de78559]
+-
+-2011-09-30  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.cpp, mpreal.h:
+-	Fixed bug x-x = -0. Signed zeros are perfectly supported now.
+-	toString() has been cleaned up. Fixed static members initialization
+-	hell. Added Debug Preview for MSVC - Alexei Zubanov.
+-	[4f8d7043bf92]
+-
+-2011-09-09  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.cpp, mpreal.h:
+-	Disabled int64_t support for VC++ less than 2010 Added setZero().
+-	Changed syntax of set_inf & set_nan.
+-	[2ee44062b841]
+-
+-2011-09-05  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	Fixed few warnings on unused parameter ‘rnd_mode’. Added conversion
+-	operator mpfr_srcptr() Include <cstdlib> for compatibility with MPFR
+-	< 3.0.0
+-	[2faff5e271af]
+-
+-2011-08-26  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* mpreal.h:
+-	fix typo in comment
+-	[bd4bd7c0070f]
+-
+-	* mpreal.h:
+-	disable MPFR_USE_INTMAX_T on x64 GCC builds
+-	[4d311588a233]
+-
+-	* mpreal.h:
+-	detect x64 GCC builds and disable uint64_t since long int is already
+-	has 64-bits.
+-	[446bb69c5e42]
+-
+-	* mpreal.cpp:
+-	clean up size_t & int types usage
+-	[2fdac1dc28fa]
+-
+-	* mpreal.cpp, mpreal.h:
+-	- fixed urandom & sprintf_s - GCC compatibility
+-	[9de48e3cfb9c]
+-
+-2011-08-25  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* inttypes.h, stdint.h:
+-	removed unnecessary headers, needed for old MSVC
+-	[53846e0ba5d9]
+-
+-	* mpreal.h:
+-	cleaning up of x64 support, needs testing on GCC
+-	[7711c5332b26]
+-
+-2011-08-24  Pavel Holoborodko  <pavel@holoborodko.com>
+-
+-	* MPRealSupport:
+-	added NumTraits<mpreal> for smooth integration with Eigen
+-	[860d3e3234a8]
+-
+-	* dlmalloc.c, dlmalloc.h, inttypes.h, mpreal.cpp, mpreal.h, stdint.h:
+-	initial commit
+-	[9123b6b7751e]
+-
+diff --git a/src/mpfr/copying.txt b/src/mpfr/copying.txt
+deleted file mode 100644
+index 42d4133..0000000
+--- a/src/mpfr/copying.txt
++++ /dev/null
+@@ -1,674 +0,0 @@
+-                   GNU GENERAL PUBLIC LICENSE
+-                       Version 3, 29 June 2007
+-
+- Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+- Everyone is permitted to copy and distribute verbatim copies
+- of this license document, but changing it is not allowed.
+-
+-                            Preamble
+-
+-  The GNU General Public License is a free, copyleft license for
+-software and other kinds of works.
+-
+-  The licenses for most software and other practical works are designed
+-to take away your freedom to share and change the works.  By contrast,
+-the GNU General Public License is intended to guarantee your freedom to
+-share and change all versions of a program--to make sure it remains free
+-software for all its users.  We, the Free Software Foundation, use the
+-GNU General Public License for most of our software; it applies also to
+-any other work released this way by its authors.  You can apply it to
+-your programs, too.
+-
+-  When we speak of free software, we are referring to freedom, not
+-price.  Our General Public Licenses are designed to make sure that you
+-have the freedom to distribute copies of free software (and charge for
+-them if you wish), that you receive source code or can get it if you
+-want it, that you can change the software or use pieces of it in new
+-free programs, and that you know you can do these things.
+-
+-  To protect your rights, we need to prevent others from denying you
+-these rights or asking you to surrender the rights.  Therefore, you have
+-certain responsibilities if you distribute copies of the software, or if
+-you modify it: responsibilities to respect the freedom of others.
+-
+-  For example, if you distribute copies of such a program, whether
+-gratis or for a fee, you must pass on to the recipients the same
+-freedoms that you received.  You must make sure that they, too, receive
+-or can get the source code.  And you must show them these terms so they
+-know their rights.
+-
+-  Developers that use the GNU GPL protect your rights with two steps:
+-(1) assert copyright on the software, and (2) offer you this License
+-giving you legal permission to copy, distribute and/or modify it.
+-
+-  For the developers' and authors' protection, the GPL clearly explains
+-that there is no warranty for this free software.  For both users' and
+-authors' sake, the GPL requires that modified versions be marked as
+-changed, so that their problems will not be attributed erroneously to
+-authors of previous versions.
+-
+-  Some devices are designed to deny users access to install or run
+-modified versions of the software inside them, although the manufacturer
+-can do so.  This is fundamentally incompatible with the aim of
+-protecting users' freedom to change the software.  The systematic
+-pattern of such abuse occurs in the area of products for individuals to
+-use, which is precisely where it is most unacceptable.  Therefore, we
+-have designed this version of the GPL to prohibit the practice for those
+-products.  If such problems arise substantially in other domains, we
+-stand ready to extend this provision to those domains in future versions
+-of the GPL, as needed to protect the freedom of users.
+-
+-  Finally, every program is threatened constantly by software patents.
+-States should not allow patents to restrict development and use of
+-software on general-purpose computers, but in those that do, we wish to
+-avoid the special danger that patents applied to a free program could
+-make it effectively proprietary.  To prevent this, the GPL assures that
+-patents cannot be used to render the program non-free.
+-
+-  The precise terms and conditions for copying, distribution and
+-modification follow.
+-
+-                       TERMS AND CONDITIONS
+-
+-  0. Definitions.
+-
+-  "This License" refers to version 3 of the GNU General Public License.
+-
+-  "Copyright" also means copyright-like laws that apply to other kinds of
+-works, such as semiconductor masks.
+-
+-  "The Program" refers to any copyrightable work licensed under this
+-License.  Each licensee is addressed as "you".  "Licensees" and
+-"recipients" may be individuals or organizations.
+-
+-  To "modify" a work means to copy from or adapt all or part of the work
+-in a fashion requiring copyright permission, other than the making of an
+-exact copy.  The resulting work is called a "modified version" of the
+-earlier work or a work "based on" the earlier work.
+-
+-  A "covered work" means either the unmodified Program or a work based
+-on the Program.
+-
+-  To "propagate" a work means to do anything with it that, without
+-permission, would make you directly or secondarily liable for
+-infringement under applicable copyright law, except executing it on a
+-computer or modifying a private copy.  Propagation includes copying,
+-distribution (with or without modification), making available to the
+-public, and in some countries other activities as well.
+-
+-  To "convey" a work means any kind of propagation that enables other
+-parties to make or receive copies.  Mere interaction with a user through
+-a computer network, with no transfer of a copy, is not conveying.
+-
+-  An interactive user interface displays "Appropriate Legal Notices"
+-to the extent that it includes a convenient and prominently visible
+-feature that (1) displays an appropriate copyright notice, and (2)
+-tells the user that there is no warranty for the work (except to the
+-extent that warranties are provided), that licensees may convey the
+-work under this License, and how to view a copy of this License.  If
+-the interface presents a list of user commands or options, such as a
+-menu, a prominent item in the list meets this criterion.
+-
+-  1. Source Code.
+-
+-  The "source code" for a work means the preferred form of the work
+-for making modifications to it.  "Object code" means any non-source
+-form of a work.
+-
+-  A "Standard Interface" means an interface that either is an official
+-standard defined by a recognized standards body, or, in the case of
+-interfaces specified for a particular programming language, one that
+-is widely used among developers working in that language.
+-
+-  The "System Libraries" of an executable work include anything, other
+-than the work as a whole, that (a) is included in the normal form of
+-packaging a Major Component, but which is not part of that Major
+-Component, and (b) serves only to enable use of the work with that
+-Major Component, or to implement a Standard Interface for which an
+-implementation is available to the public in source code form.  A
+-"Major Component", in this context, means a major essential component
+-(kernel, window system, and so on) of the specific operating system
+-(if any) on which the executable work runs, or a compiler used to
+-produce the work, or an object code interpreter used to run it.
+-
+-  The "Corresponding Source" for a work in object code form means all
+-the source code needed to generate, install, and (for an executable
+-work) run the object code and to modify the work, including scripts to
+-control those activities.  However, it does not include the work's
+-System Libraries, or general-purpose tools or generally available free
+-programs which are used unmodified in performing those activities but
+-which are not part of the work.  For example, Corresponding Source
+-includes interface definition files associated with source files for
+-the work, and the source code for shared libraries and dynamically
+-linked subprograms that the work is specifically designed to require,
+-such as by intimate data communication or control flow between those
+-subprograms and other parts of the work.
+-
+-  The Corresponding Source need not include anything that users
+-can regenerate automatically from other parts of the Corresponding
+-Source.
+-
+-  The Corresponding Source for a work in source code form is that
+-same work.
+-
+-  2. Basic Permissions.
+-
+-  All rights granted under this License are granted for the term of
+-copyright on the Program, and are irrevocable provided the stated
+-conditions are met.  This License explicitly affirms your unlimited
+-permission to run the unmodified Program.  The output from running a
+-covered work is covered by this License only if the output, given its
+-content, constitutes a covered work.  This License acknowledges your
+-rights of fair use or other equivalent, as provided by copyright law.
+-
+-  You may make, run and propagate covered works that you do not
+-convey, without conditions so long as your license otherwise remains
+-in force.  You may convey covered works to others for the sole purpose
+-of having them make modifications exclusively for you, or provide you
+-with facilities for running those works, provided that you comply with
+-the terms of this License in conveying all material for which you do
+-not control copyright.  Those thus making or running the covered works
+-for you must do so exclusively on your behalf, under your direction
+-and control, on terms that prohibit them from making any copies of
+-your copyrighted material outside their relationship with you.
+-
+-  Conveying under any other circumstances is permitted solely under
+-the conditions stated below.  Sublicensing is not allowed; section 10
+-makes it unnecessary.
+-
+-  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+-
+-  No covered work shall be deemed part of an effective technological
+-measure under any applicable law fulfilling obligations under article
+-11 of the WIPO copyright treaty adopted on 20 December 1996, or
+-similar laws prohibiting or restricting circumvention of such
+-measures.
+-
+-  When you convey a covered work, you waive any legal power to forbid
+-circumvention of technological measures to the extent such circumvention
+-is effected by exercising rights under this License with respect to
+-the covered work, and you disclaim any intention to limit operation or
+-modification of the work as a means of enforcing, against the work's
+-users, your or third parties' legal rights to forbid circumvention of
+-technological measures.
+-
+-  4. Conveying Verbatim Copies.
+-
+-  You may convey verbatim copies of the Program's source code as you
+-receive it, in any medium, provided that you conspicuously and
+-appropriately publish on each copy an appropriate copyright notice;
+-keep intact all notices stating that this License and any
+-non-permissive terms added in accord with section 7 apply to the code;
+-keep intact all notices of the absence of any warranty; and give all
+-recipients a copy of this License along with the Program.
+-
+-  You may charge any price or no price for each copy that you convey,
+-and you may offer support or warranty protection for a fee.
+-
+-  5. Conveying Modified Source Versions.
+-
+-  You may convey a work based on the Program, or the modifications to
+-produce it from the Program, in the form of source code under the
+-terms of section 4, provided that you also meet all of these conditions:
+-
+-    a) The work must carry prominent notices stating that you modified
+-    it, and giving a relevant date.
+-
+-    b) The work must carry prominent notices stating that it is
+-    released under this License and any conditions added under section
+-    7.  This requirement modifies the requirement in section 4 to
+-    "keep intact all notices".
+-
+-    c) You must license the entire work, as a whole, under this
+-    License to anyone who comes into possession of a copy.  This
+-    License will therefore apply, along with any applicable section 7
+-    additional terms, to the whole of the work, and all its parts,
+-    regardless of how they are packaged.  This License gives no
+-    permission to license the work in any other way, but it does not
+-    invalidate such permission if you have separately received it.
+-
+-    d) If the work has interactive user interfaces, each must display
+-    Appropriate Legal Notices; however, if the Program has interactive
+-    interfaces that do not display Appropriate Legal Notices, your
+-    work need not make them do so.
+-
+-  A compilation of a covered work with other separate and independent
+-works, which are not by their nature extensions of the covered work,
+-and which are not combined with it such as to form a larger program,
+-in or on a volume of a storage or distribution medium, is called an
+-"aggregate" if the compilation and its resulting copyright are not
+-used to limit the access or legal rights of the compilation's users
+-beyond what the individual works permit.  Inclusion of a covered work
+-in an aggregate does not cause this License to apply to the other
+-parts of the aggregate.
+-
+-  6. Conveying Non-Source Forms.
+-
+-  You may convey a covered work in object code form under the terms
+-of sections 4 and 5, provided that you also convey the
+-machine-readable Corresponding Source under the terms of this License,
+-in one of these ways:
+-
+-    a) Convey the object code in, or embodied in, a physical product
+-    (including a physical distribution medium), accompanied by the
+-    Corresponding Source fixed on a durable physical medium
+-    customarily used for software interchange.
+-
+-    b) Convey the object code in, or embodied in, a physical product
+-    (including a physical distribution medium), accompanied by a
+-    written offer, valid for at least three years and valid for as
+-    long as you offer spare parts or customer support for that product
+-    model, to give anyone who possesses the object code either (1) a
+-    copy of the Corresponding Source for all the software in the
+-    product that is covered by this License, on a durable physical
+-    medium customarily used for software interchange, for a price no
+-    more than your reasonable cost of physically performing this
+-    conveying of source, or (2) access to copy the
+-    Corresponding Source from a network server at no charge.
+-
+-    c) Convey individual copies of the object code with a copy of the
+-    written offer to provide the Corresponding Source.  This
+-    alternative is allowed only occasionally and noncommercially, and
+-    only if you received the object code with such an offer, in accord
+-    with subsection 6b.
+-
+-    d) Convey the object code by offering access from a designated
+-    place (gratis or for a charge), and offer equivalent access to the
+-    Corresponding Source in the same way through the same place at no
+-    further charge.  You need not require recipients to copy the
+-    Corresponding Source along with the object code.  If the place to
+-    copy the object code is a network server, the Corresponding Source
+-    may be on a different server (operated by you or a third party)
+-    that supports equivalent copying facilities, provided you maintain
+-    clear directions next to the object code saying where to find the
+-    Corresponding Source.  Regardless of what server hosts the
+-    Corresponding Source, you remain obligated to ensure that it is
+-    available for as long as needed to satisfy these requirements.
+-
+-    e) Convey the object code using peer-to-peer transmission, provided
+-    you inform other peers where the object code and Corresponding
+-    Source of the work are being offered to the general public at no
+-    charge under subsection 6d.
+-
+-  A separable portion of the object code, whose source code is excluded
+-from the Corresponding Source as a System Library, need not be
+-included in conveying the object code work.
+-
+-  A "User Product" is either (1) a "consumer product", which means any
+-tangible personal property which is normally used for personal, family,
+-or household purposes, or (2) anything designed or sold for incorporation
+-into a dwelling.  In determining whether a product is a consumer product,
+-doubtful cases shall be resolved in favor of coverage.  For a particular
+-product received by a particular user, "normally used" refers to a
+-typical or common use of that class of product, regardless of the status
+-of the particular user or of the way in which the particular user
+-actually uses, or expects or is expected to use, the product.  A product
+-is a consumer product regardless of whether the product has substantial
+-commercial, industrial or non-consumer uses, unless such uses represent
+-the only significant mode of use of the product.
+-
+-  "Installation Information" for a User Product means any methods,
+-procedures, authorization keys, or other information required to install
+-and execute modified versions of a covered work in that User Product from
+-a modified version of its Corresponding Source.  The information must
+-suffice to ensure that the continued functioning of the modified object
+-code is in no case prevented or interfered with solely because
+-modification has been made.
+-
+-  If you convey an object code work under this section in, or with, or
+-specifically for use in, a User Product, and the conveying occurs as
+-part of a transaction in which the right of possession and use of the
+-User Product is transferred to the recipient in perpetuity or for a
+-fixed term (regardless of how the transaction is characterized), the
+-Corresponding Source conveyed under this section must be accompanied
+-by the Installation Information.  But this requirement does not apply
+-if neither you nor any third party retains the ability to install
+-modified object code on the User Product (for example, the work has
+-been installed in ROM).
+-
+-  The requirement to provide Installation Information does not include a
+-requirement to continue to provide support service, warranty, or updates
+-for a work that has been modified or installed by the recipient, or for
+-the User Product in which it has been modified or installed.  Access to a
+-network may be denied when the modification itself materially and
+-adversely affects the operation of the network or violates the rules and
+-protocols for communication across the network.
+-
+-  Corresponding Source conveyed, and Installation Information provided,
+-in accord with this section must be in a format that is publicly
+-documented (and with an implementation available to the public in
+-source code form), and must require no special password or key for
+-unpacking, reading or copying.
+-
+-  7. Additional Terms.
+-
+-  "Additional permissions" are terms that supplement the terms of this
+-License by making exceptions from one or more of its conditions.
+-Additional permissions that are applicable to the entire Program shall
+-be treated as though they were included in this License, to the extent
+-that they are valid under applicable law.  If additional permissions
+-apply only to part of the Program, that part may be used separately
+-under those permissions, but the entire Program remains governed by
+-this License without regard to the additional permissions.
+-
+-  When you convey a copy of a covered work, you may at your option
+-remove any additional permissions from that copy, or from any part of
+-it.  (Additional permissions may be written to require their own
+-removal in certain cases when you modify the work.)  You may place
+-additional permissions on material, added by you to a covered work,
+-for which you have or can give appropriate copyright permission.
+-
+-  Notwithstanding any other provision of this License, for material you
+-add to a covered work, you may (if authorized by the copyright holders of
+-that material) supplement the terms of this License with terms:
+-
+-    a) Disclaiming warranty or limiting liability differently from the
+-    terms of sections 15 and 16 of this License; or
+-
+-    b) Requiring preservation of specified reasonable legal notices or
+-    author attributions in that material or in the Appropriate Legal
+-    Notices displayed by works containing it; or
+-
+-    c) Prohibiting misrepresentation of the origin of that material, or
+-    requiring that modified versions of such material be marked in
+-    reasonable ways as different from the original version; or
+-
+-    d) Limiting the use for publicity purposes of names of licensors or
+-    authors of the material; or
+-
+-    e) Declining to grant rights under trademark law for use of some
+-    trade names, trademarks, or service marks; or
+-
+-    f) Requiring indemnification of licensors and authors of that
+-    material by anyone who conveys the material (or modified versions of
+-    it) with contractual assumptions of liability to the recipient, for
+-    any liability that these contractual assumptions directly impose on
+-    those licensors and authors.
+-
+-  All other non-permissive additional terms are considered "further
+-restrictions" within the meaning of section 10.  If the Program as you
+-received it, or any part of it, contains a notice stating that it is
+-governed by this License along with a term that is a further
+-restriction, you may remove that term.  If a license document contains
+-a further restriction but permits relicensing or conveying under this
+-License, you may add to a covered work material governed by the terms
+-of that license document, provided that the further restriction does
+-not survive such relicensing or conveying.
+-
+-  If you add terms to a covered work in accord with this section, you
+-must place, in the relevant source files, a statement of the
+-additional terms that apply to those files, or a notice indicating
+-where to find the applicable terms.
+-
+-  Additional terms, permissive or non-permissive, may be stated in the
+-form of a separately written license, or stated as exceptions;
+-the above requirements apply either way.
+-
+-  8. Termination.
+-
+-  You may not propagate or modify a covered work except as expressly
+-provided under this License.  Any attempt otherwise to propagate or
+-modify it is void, and will automatically terminate your rights under
+-this License (including any patent licenses granted under the third
+-paragraph of section 11).
+-
+-  However, if you cease all violation of this License, then your
+-license from a particular copyright holder is reinstated (a)
+-provisionally, unless and until the copyright holder explicitly and
+-finally terminates your license, and (b) permanently, if the copyright
+-holder fails to notify you of the violation by some reasonable means
+-prior to 60 days after the cessation.
+-
+-  Moreover, your license from a particular copyright holder is
+-reinstated permanently if the copyright holder notifies you of the
+-violation by some reasonable means, this is the first time you have
+-received notice of violation of this License (for any work) from that
+-copyright holder, and you cure the violation prior to 30 days after
+-your receipt of the notice.
+-
+-  Termination of your rights under this section does not terminate the
+-licenses of parties who have received copies or rights from you under
+-this License.  If your rights have been terminated and not permanently
+-reinstated, you do not qualify to receive new licenses for the same
+-material under section 10.
+-
+-  9. Acceptance Not Required for Having Copies.
+-
+-  You are not required to accept this License in order to receive or
+-run a copy of the Program.  Ancillary propagation of a covered work
+-occurring solely as a consequence of using peer-to-peer transmission
+-to receive a copy likewise does not require acceptance.  However,
+-nothing other than this License grants you permission to propagate or
+-modify any covered work.  These actions infringe copyright if you do
+-not accept this License.  Therefore, by modifying or propagating a
+-covered work, you indicate your acceptance of this License to do so.
+-
+-  10. Automatic Licensing of Downstream Recipients.
+-
+-  Each time you convey a covered work, the recipient automatically
+-receives a license from the original licensors, to run, modify and
+-propagate that work, subject to this License.  You are not responsible
+-for enforcing compliance by third parties with this License.
+-
+-  An "entity transaction" is a transaction transferring control of an
+-organization, or substantially all assets of one, or subdividing an
+-organization, or merging organizations.  If propagation of a covered
+-work results from an entity transaction, each party to that
+-transaction who receives a copy of the work also receives whatever
+-licenses to the work the party's predecessor in interest had or could
+-give under the previous paragraph, plus a right to possession of the
+-Corresponding Source of the work from the predecessor in interest, if
+-the predecessor has it or can get it with reasonable efforts.
+-
+-  You may not impose any further restrictions on the exercise of the
+-rights granted or affirmed under this License.  For example, you may
+-not impose a license fee, royalty, or other charge for exercise of
+-rights granted under this License, and you may not initiate litigation
+-(including a cross-claim or counterclaim in a lawsuit) alleging that
+-any patent claim is infringed by making, using, selling, offering for
+-sale, or importing the Program or any portion of it.
+-
+-  11. Patents.
+-
+-  A "contributor" is a copyright holder who authorizes use under this
+-License of the Program or a work on which the Program is based.  The
+-work thus licensed is called the contributor's "contributor version".
+-
+-  A contributor's "essential patent claims" are all patent claims
+-owned or controlled by the contributor, whether already acquired or
+-hereafter acquired, that would be infringed by some manner, permitted
+-by this License, of making, using, or selling its contributor version,
+-but do not include claims that would be infringed only as a
+-consequence of further modification of the contributor version.  For
+-purposes of this definition, "control" includes the right to grant
+-patent sublicenses in a manner consistent with the requirements of
+-this License.
+-
+-  Each contributor grants you a non-exclusive, worldwide, royalty-free
+-patent license under the contributor's essential patent claims, to
+-make, use, sell, offer for sale, import and otherwise run, modify and
+-propagate the contents of its contributor version.
+-
+-  In the following three paragraphs, a "patent license" is any express
+-agreement or commitment, however denominated, not to enforce a patent
+-(such as an express permission to practice a patent or covenant not to
+-sue for patent infringement).  To "grant" such a patent license to a
+-party means to make such an agreement or commitment not to enforce a
+-patent against the party.
+-
+-  If you convey a covered work, knowingly relying on a patent license,
+-and the Corresponding Source of the work is not available for anyone
+-to copy, free of charge and under the terms of this License, through a
+-publicly available network server or other readily accessible means,
+-then you must either (1) cause the Corresponding Source to be so
+-available, or (2) arrange to deprive yourself of the benefit of the
+-patent license for this particular work, or (3) arrange, in a manner
+-consistent with the requirements of this License, to extend the patent
+-license to downstream recipients.  "Knowingly relying" means you have
+-actual knowledge that, but for the patent license, your conveying the
+-covered work in a country, or your recipient's use of the covered work
+-in a country, would infringe one or more identifiable patents in that
+-country that you have reason to believe are valid.
+-
+-  If, pursuant to or in connection with a single transaction or
+-arrangement, you convey, or propagate by procuring conveyance of, a
+-covered work, and grant a patent license to some of the parties
+-receiving the covered work authorizing them to use, propagate, modify
+-or convey a specific copy of the covered work, then the patent license
+-you grant is automatically extended to all recipients of the covered
+-work and works based on it.
+-
+-  A patent license is "discriminatory" if it does not include within
+-the scope of its coverage, prohibits the exercise of, or is
+-conditioned on the non-exercise of one or more of the rights that are
+-specifically granted under this License.  You may not convey a covered
+-work if you are a party to an arrangement with a third party that is
+-in the business of distributing software, under which you make payment
+-to the third party based on the extent of your activity of conveying
+-the work, and under which the third party grants, to any of the
+-parties who would receive the covered work from you, a discriminatory
+-patent license (a) in connection with copies of the covered work
+-conveyed by you (or copies made from those copies), or (b) primarily
+-for and in connection with specific products or compilations that
+-contain the covered work, unless you entered into that arrangement,
+-or that patent license was granted, prior to 28 March 2007.
+-
+-  Nothing in this License shall be construed as excluding or limiting
+-any implied license or other defenses to infringement that may
+-otherwise be available to you under applicable patent law.
+-
+-  12. No Surrender of Others' Freedom.
+-
+-  If conditions are imposed on you (whether by court order, agreement or
+-otherwise) that contradict the conditions of this License, they do not
+-excuse you from the conditions of this License.  If you cannot convey a
+-covered work so as to satisfy simultaneously your obligations under this
+-License and any other pertinent obligations, then as a consequence you may
+-not convey it at all.  For example, if you agree to terms that obligate you
+-to collect a royalty for further conveying from those to whom you convey
+-the Program, the only way you could satisfy both those terms and this
+-License would be to refrain entirely from conveying the Program.
+-
+-  13. Use with the GNU Affero General Public License.
+-
+-  Notwithstanding any other provision of this License, you have
+-permission to link or combine any covered work with a work licensed
+-under version 3 of the GNU Affero General Public License into a single
+-combined work, and to convey the resulting work.  The terms of this
+-License will continue to apply to the part which is the covered work,
+-but the special requirements of the GNU Affero General Public License,
+-section 13, concerning interaction through a network will apply to the
+-combination as such.
+-
+-  14. Revised Versions of this License.
+-
+-  The Free Software Foundation may publish revised and/or new versions of
+-the GNU General Public License from time to time.  Such new versions will
+-be similar in spirit to the present version, but may differ in detail to
+-address new problems or concerns.
+-
+-  Each version is given a distinguishing version number.  If the
+-Program specifies that a certain numbered version of the GNU General
+-Public License "or any later version" applies to it, you have the
+-option of following the terms and conditions either of that numbered
+-version or of any later version published by the Free Software
+-Foundation.  If the Program does not specify a version number of the
+-GNU General Public License, you may choose any version ever published
+-by the Free Software Foundation.
+-
+-  If the Program specifies that a proxy can decide which future
+-versions of the GNU General Public License can be used, that proxy's
+-public statement of acceptance of a version permanently authorizes you
+-to choose that version for the Program.
+-
+-  Later license versions may give you additional or different
+-permissions.  However, no additional obligations are imposed on any
+-author or copyright holder as a result of your choosing to follow a
+-later version.
+-
+-  15. Disclaimer of Warranty.
+-
+-  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+-APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+-HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+-OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+-PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+-IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+-ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+-
+-  16. Limitation of Liability.
+-
+-  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+-WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+-THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+-GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+-USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+-DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+-PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+-EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+-SUCH DAMAGES.
+-
+-  17. Interpretation of Sections 15 and 16.
+-
+-  If the disclaimer of warranty and limitation of liability provided
+-above cannot be given local legal effect according to their terms,
+-reviewing courts shall apply local law that most closely approximates
+-an absolute waiver of all civil liability in connection with the
+-Program, unless a warranty or assumption of liability accompanies a
+-copy of the Program in return for a fee.
+-
+-                     END OF TERMS AND CONDITIONS
+-
+-            How to Apply These Terms to Your New Programs
+-
+-  If you develop a new program, and you want it to be of the greatest
+-possible use to the public, the best way to achieve this is to make it
+-free software which everyone can redistribute and change under these terms.
+-
+-  To do so, attach the following notices to the program.  It is safest
+-to attach them to the start of each source file to most effectively
+-state the exclusion of warranty; and each file should have at least
+-the "copyright" line and a pointer to where the full notice is found.
+-
+-    <one line to give the program's name and a brief idea of what it does.>
+-    Copyright (C) <year>  <name of author>
+-
+-    This program is free software: you can redistribute it and/or modify
+-    it under the terms of the GNU General Public License as published by
+-    the Free Software Foundation, either version 3 of the License, or
+-    (at your option) any later version.
+-
+-    This program is distributed in the hope that it will be useful,
+-    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-    GNU General Public License for more details.
+-
+-    You should have received a copy of the GNU General Public License
+-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-Also add information on how to contact you by electronic and paper mail.
+-
+-  If the program does terminal interaction, make it output a short
+-notice like this when it starts in an interactive mode:
+-
+-    <program>  Copyright (C) <year>  <name of author>
+-    This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+-    This is free software, and you are welcome to redistribute it
+-    under certain conditions; type `show c' for details.
+-
+-The hypothetical commands `show w' and `show c' should show the appropriate
+-parts of the General Public License.  Of course, your program's commands
+-might be different; for a GUI interface, you would use an "about box".
+-
+-  You should also get your employer (if you work as a programmer) or school,
+-if any, to sign a "copyright disclaimer" for the program, if necessary.
+-For more information on this, and how to apply and follow the GNU GPL, see
+-<http://www.gnu.org/licenses/>.
+-
+-  The GNU General Public License does not permit incorporating your program
+-into proprietary programs.  If your program is a subroutine library, you
+-may consider it more useful to permit linking proprietary applications with
+-the library.  If this is what you want to do, use the GNU Lesser General
+-Public License instead of this License.  But first, please read
+-<http://www.gnu.org/philosophy/why-not-lgpl.html>.
+diff --git a/src/mpfr/mpreal.h b/src/mpreal.h
+similarity index 95%
+rename from src/mpfr/mpreal.h
+rename to src/mpreal.h
+index 1c97629..426da2f 100644
+--- a/src/mpfr/mpreal.h
++++ b/src/mpreal.h
+@@ -5,7 +5,7 @@
+     Project homepage:    http://www.holoborodko.com/pavel/mpfr
+     Contact e-mail:      pavel@holoborodko.com
+ 
+-    Copyright (c) 2008-2020 Pavel Holoborodko
++    Copyright (c) 2008-2022 Pavel Holoborodko
+ 
+     Contributors:
+     Dmitriy Gubanov, Konstantin Holoborodko, Brian Gladman,
+@@ -69,8 +69,8 @@
+ // Library version
+ #define MPREAL_VERSION_MAJOR 3
+ #define MPREAL_VERSION_MINOR 6
+-#define MPREAL_VERSION_PATCHLEVEL 8
+-#define MPREAL_VERSION_STRING "3.6.8"
++#define MPREAL_VERSION_PATCHLEVEL 9
++#define MPREAL_VERSION_STRING "3.6.9"
+ 
+ // Detect compiler using signatures from http://predef.sourceforge.net/
+ #if defined(__GNUC__) && defined(__INTEL_COMPILER)
+@@ -122,6 +122,7 @@
+     #define MPREAL_MSVC_DEBUGVIEW_DATA
+ #endif
+ 
++#define MPFR_USE_NO_MACRO
+ #include <mpfr.h>
+ 
+ #if (MPFR_VERSION < MPFR_VERSION_NUM(3,0,0))
+@@ -2189,11 +2190,19 @@ inline mp_exp_t mpreal::get_emax_max (void)
+ //////////////////////////////////////////////////////////////////////////
+ // Mathematical Functions
+ //////////////////////////////////////////////////////////////////////////
++
++// Unary function template with single 'mpreal' argument
+ #define MPREAL_UNARY_MATH_FUNCTION_BODY(f)                    \
+         mpreal y(0, mpfr_get_prec(x.mpfr_srcptr()));          \
+         mpfr_##f(y.mpfr_ptr(), x.mpfr_srcptr(), r);           \
+         return y;
+ 
++// Binary function template with 'mpreal' and 'unsigned long' arguments
++#define MPREAL_BINARY_MATH_FUNCTION_UI_BODY(f, u)             \
++        mpreal y(0, mpfr_get_prec(x.mpfr_srcptr()));          \
++        mpfr_##f(y.mpfr_ptr(), x.mpfr_srcptr(), u, r);        \
++        return y;
++
+ inline const mpreal sqr  (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd())
+ {   MPREAL_UNARY_MATH_FUNCTION_BODY(sqr );    }
+ 
+@@ -2308,6 +2317,103 @@ inline const mpreal besselj1(const mpreal& x, mp_rnd_t r = mpreal::get_default_r
+ inline const mpreal bessely0(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) {   MPREAL_UNARY_MATH_FUNCTION_BODY(y0     );    }
+ inline const mpreal bessely1(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) {   MPREAL_UNARY_MATH_FUNCTION_BODY(y1     );    }
+ 
++#if (MPFR_VERSION >= MPFR_VERSION_NUM(4,0,0))
++inline const mpreal gammainc (const mpreal& a, const mpreal& x, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /*
++       The non-normalized (upper) incomplete gamma function of a and x:
++       gammainc(a,x) := Gamma(a,x) = int(t^(a-1) * exp(-t), t=x..infinity)
++    */
++    mpreal y(0,(std::max)(a.getPrecision(), x.getPrecision()));
++    mpfr_gamma_inc(y.mpfr_ptr(), a.mpfr_srcptr(), x.mpfr_srcptr(), rnd_mode);
++    return y;
++}
++
++inline const mpreal beta (const mpreal& z, const mpreal& w, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /*
++       Beta function, uses formula (6.2.2) from Abramowitz & Stegun:
++       beta(z,w) = gamma(z)*gamma(w)/gamma(z+w)
++    */
++    mpreal y(0,(std::max)(z.getPrecision(), w.getPrecision()));
++    mpfr_beta(y.mpfr_ptr(), z.mpfr_srcptr(), w.mpfr_srcptr(), rnd_mode);
++    return y;
++}
++
++inline const mpreal log_ui (unsigned long int n, mp_prec_t prec = mpreal::get_default_prec(), mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /* Computes natural logarithm of an unsigned long  */
++    mpreal y(0, prec);
++    mpfr_log_ui(y.mpfr_ptr(),n,rnd_mode);
++    return y;
++}
++#endif
++
++#if (MPFR_VERSION >= MPFR_VERSION_NUM(4,2,0))
++
++/* f(x,u) = f(2*pi*x/u) */
++inline const mpreal cosu   (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(cosu,  u); }
++inline const mpreal sinu   (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(sinu,  u); }
++inline const mpreal tanu   (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(tanu,  u); }
++inline const mpreal acosu  (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(acosu, u); }
++inline const mpreal asinu  (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(asinu, u); }
++inline const mpreal atanu  (const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_BINARY_MATH_FUNCTION_UI_BODY(atanu, u); }
++
++/* f(x) = f(pi*x) */
++inline const mpreal cospi  (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(cospi ); }
++inline const mpreal sinpi  (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(sinpi ); }
++inline const mpreal tanpi  (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(tanpi ); }
++inline const mpreal acospi (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(acospi); }
++inline const mpreal asinpi (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(asinpi); }
++inline const mpreal atanpi (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(atanpi); }
++
++inline const mpreal log2p1 (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(log2p1 ); }  /* log2 (1+x) */
++inline const mpreal log10p1(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(log10p1); }  /* log10(1+x) */
++inline const mpreal exp2m1 (const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(exp2m1 ); }  /* 2^x-1      */
++inline const mpreal exp10m1(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd()) { MPREAL_UNARY_MATH_FUNCTION_BODY(exp10m1); }  /* 10^x-1     */
++
++inline const mpreal atan2u(const mpreal& y, const mpreal& x, unsigned long u, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /*
++        atan2u(y,x,u) = atan(|y/x|)*u/(2*pi)   for x > 0
++        atan2u(y,x,u) = 1-atan(|y/x|)*u/(2*pi) for x < 0
++    */
++    mpreal a(0, (std::max)(y.getPrecision(), x.getPrecision()));
++    mpfr_atan2u(a.mpfr_ptr(), y.mpfr_srcptr(), x.mpfr_srcptr(), u, rnd_mode);
++    return a;
++}
++
++inline const mpreal atan2pi(const mpreal& y, const mpreal& x, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /* atan2pi(x) = atan2u(u=2) */
++    mpreal a(0, (std::max)(y.getPrecision(), x.getPrecision()));
++    mpfr_atan2pi(a.mpfr_ptr(), y.mpfr_srcptr(), x.mpfr_srcptr(), rnd_mode);
++    return a;
++}
++
++inline const mpreal powr(const mpreal& x, const mpreal& y, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /* powr(x,y) = exp(y*log(x)) */
++    mpreal a(0, (std::max)(x.getPrecision(), y.getPrecision()));
++    mpfr_powr(a.mpfr_ptr(), x.mpfr_srcptr(), y.mpfr_srcptr(), rnd_mode);
++    return a;
++}
++
++inline const mpreal compound(const mpreal& x, long n, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
++{
++    /* compound(x,n) = (1+x)^n */
++    mpreal y(0, x.getPrecision());
++    mpfr_compound_si(y.mpfr_ptr(),x.mpfr_srcptr(),n,rnd_mode);
++    return y;
++}
++
++inline const mpreal fmod(const mpreal& x, unsigned long u, mp_rnd_t r = mpreal::get_default_rnd())
++{
++    /* x modulo a machine integer u */
++    MPREAL_BINARY_MATH_FUNCTION_UI_BODY(fmod_ui, u);
++}
++#endif
++
+ inline const mpreal nextpow2(const mpreal& x, mp_rnd_t r = mpreal::get_default_rnd())
+ {
+     mpreal y(0, x.getPrecision());
+@@ -2657,8 +2763,8 @@ inline int sgn(const mpreal& op)
+ //////////////////////////////////////////////////////////////////////////
+ // Miscellaneous Functions
+ inline void         swap (mpreal& a, mpreal& b)            {    mpfr_swap(a.mpfr_ptr(),b.mpfr_ptr());   }
+-inline const mpreal (max)(const mpreal& x, const mpreal& y){    return (x>y?x:y);       }
+-inline const mpreal (min)(const mpreal& x, const mpreal& y){    return (x<y?x:y);       }
++inline const mpreal (max)(const mpreal& x, const mpreal& y){    return (x<y?y:x);       }
++inline const mpreal (min)(const mpreal& x, const mpreal& y){    return (y<x?y:x);       }
+ 
+ inline const mpreal fmax(const mpreal& x, const mpreal& y, mp_rnd_t rnd_mode = mpreal::get_default_rnd())
+ {
+@@ -3108,38 +3214,6 @@ inline const mpreal pow(const double a, const int b, mp_rnd_t rnd_mode)
+ // Non-throwing swap C++ idiom: http://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Non-throwing_swap
+ namespace std
+ {
+-    inline const mpfr::mpreal& min(const mpfr::mpreal& a, const mpfr::mpreal& b, bool omitnan = false)
+-    {
+-        if(omitnan)
+-        {
+-                 if(isnan(a)) return b;
+-            else if(isnan(b)) return a;
+-        }
+-        else
+-        {
+-                 if(isnan(a)) return a;
+-            else if(isnan(b)) return b;
+-        }
+-
+-        return a <= b ? a : b;
+-    }
+-
+-    inline const mpfr::mpreal& max(const mpfr::mpreal& a, const mpfr::mpreal& b, bool omitnan = false)
+-    {
+-        if(omitnan)
+-        {
+-                 if(isnan(a)) return b;
+-            else if(isnan(b)) return a;
+-        }
+-        else
+-        {
+-                 if(isnan(a)) return a;
+-            else if(isnan(b)) return b;
+-        }
+-
+-        return a >= b ? a : b;
+-    }
+-
+ 
+     template <>
+     inline void swap(mpfr::mpreal& x, mpfr::mpreal& y)
+diff --git a/src/preprocessor/instance.hpp b/src/preprocessor/instance.hpp
+index e1329e7..caf6b7c 100644
+--- a/src/preprocessor/instance.hpp
++++ b/src/preprocessor/instance.hpp
+@@ -5,7 +5,8 @@
+ 
+ #include "utils.hpp"
+ #include "graph.hpp"
+-#include "../mpfr/mpreal.h"
++#include "mpfr.h"
++#include "../mpreal.h"
+ 
+ namespace sspp {
+ struct Instance {
+@@ -40,4 +41,4 @@ struct Instance {
+  	int unit_clauses = 0;
+ 	int binary_clauses = 0;
+ };
+-} // namespace sspp
+\ No newline at end of file
++} // namespace sspp
+diff --git a/src/structures.h b/src/structures.h
+index 78e02c5..0e15c3f 100644
+--- a/src/structures.h
++++ b/src/structures.h
+@@ -15,7 +15,7 @@
+ #include <cassert>
+ #include "primitive_types.h"
+ #include <gmpxx.h>
+-#include "mpfr/mpreal.h"
++#include "mpreal.h"
+ using namespace std;
+ 
+ struct SDouble {
