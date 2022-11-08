@@ -29,8 +29,8 @@ import stat
 from collections import namedtuple
 from functools import partial
 
-Solver = namedtuple("Solver", "exe exact", defaults=[None, True])
-Count = namedtuple("Count", "exe exact count", defaults=[None, True, -1])
+Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
+Count = namedtuple("Count", "solver count", defaults=[None, -1])
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -93,13 +93,13 @@ def set_up_parser():
     return parser
 
 
-def run(command):
+def run(command, dir):
     print("Executing: %s" % " ".join(command))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
     p = subprocess.Popen(command, stderr=subprocess.STDOUT,
-          stdout=subprocess.PIPE, universal_newlines=True,
+          stdout=subprocess.PIPE, universal_newlines=True, cwd=dir,
           preexec_fn=partial(setlimits, options.maxtime))
 
     consoleOutput, err = p.communicate()
@@ -138,11 +138,11 @@ def unique_file(fname_begin, fname_end=".cnf"):
 def run_one_counter(solver, fname):
     curr_time = time.time()
     toexec = solver.exe.split()
-    toexec.append(fname)
+    toexec.append(os.getcwd() + "/" + fname)
     if not solver.exact:
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta)])
-    out, err = run(toexec)
+    out, err = run(toexec, solver.dir)
     if err != "":
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
@@ -204,6 +204,11 @@ if __name__ == "__main__":
         fname = unique_file("fuzzTest")
         print("Checking fname: ", fname)
 
+        # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
+        # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
+        # Majority vote + if count is small, we can count 1-by-1.
+        # Mate TODO: add other binaries from competition, add CNF checker
+        # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace 
         call = gen_fuzz_call("./biere-fuzz", fname)
         status = subprocess.call(call, shell=True)
         if status != 0:
@@ -216,17 +221,18 @@ if __name__ == "__main__":
             Solver(options.sharpsat, True),
             Solver(options.appmc, False),
             Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
-            Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i")
+            Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             Solver("./bins/c2d-mccomp2022/c2d -in ", True),
+            Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
         ]
 
         exact_count = None
         for solver in solvers:
             count = run_one_counter(solver, fname)
             if count is not None and solver.exact:
-                exact_count = Count(solver.exe, True, count)
+                exact_count = Count(solver, count)
             if count is not None:
-                counts.append(Count(solver.exe, solver.exact, count))
+                counts.append(Count(solver, count))
 
         if exact_count is None:
             continue
@@ -248,7 +254,7 @@ if __name__ == "__main__":
                         exit(-1)
             
             print("OK, count is %s. Solve %s count matches solver %s count" %
-                      (a.exe, a.count, exact_count.count))
+                      (a.solver.exe, a.count, exact_count.count))
 
 
 
