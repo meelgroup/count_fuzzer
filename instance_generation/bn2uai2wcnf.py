@@ -264,7 +264,7 @@ class Net2UAI2WCNF:
         self._vmap_filename = out_dir + '/' + basename.replace('.net', '.vmap')
 
         if bn2cnf_dir is None:
-            bn2cnf_dir = '/home/anna/NUS/projects/count-fuzzer/'
+            bn2cnf_dir = '../bins/'
 
         cmd = [bn2cnf_dir + 'bn2cnf_linux',
                '-i', self._uai_file,
