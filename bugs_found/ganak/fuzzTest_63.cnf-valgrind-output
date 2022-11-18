@@ -1,0 +1,40 @@
+ ~/de/sat_solvers/count_fuzzer  main !1 ?4  valgrind ../old_ganak/build/ganak /home/soos/development/sat_solvers/count_fuzzer/out/fuzzTest_63.cnf                                                 
+==152519== Memcheck, a memory error detector
+==152519== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==152519== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info
+==152519== Command: ../old_ganak/build/ganak /home/soos/development/sat_solvers/count_fuzzer/out/fuzzTest_63.cnf
+==152519== 
+c Setting the timout to: 100000
+c Outputting solution to console
+c GANAK version 1.0.0
+c ganak GIT revision: 024a2e8c7988c15f28cf447f4241ca3def3d3627
+c ganak build env: CMAKE_CXX_COMPILER = /usr/lib/ccache/bin/c++ | CMAKE_CXX_FLAGS =  -mtune=native -Wall -Wextra -Wunused -Wsign-compare -fno-omit-frame-pointer -Wtype-limits -Wuninitialized -Wno-deprecated -Wstrict-aliasing -Wpointer-arith -Wpointer-arith -Wformat-nonliteral -Winit-self -Wparentheses -Wunreachable-code -ggdb3 | COMPILE_DEFINES =  | STATICCOMPILE = OFF | ONLY_SIMPLE =  | Boost_FOUND =  | ZLIB_FOUND =  | ENABLE_TESTING =  | ENABLE_ASSERTIONS = ON | MY_TARGETS =  | compilation date time = Nov  9 2022 02:16:12
+c Setting the timout to: 100000
+ganak: /home/soos/development/sat_solvers/old_ganak/src/instance.cpp:424: bool Instance::createfromFile(const std::string&): Assertion `!literals.empty()' failed.
+==152519== 
+==152519== Process terminating with default action of signal 6 (SIGABRT): dumping core
+==152519==    at 0x4D0F64C: __pthread_kill_implementation (pthread_kill.c:44)
+==152519==    by 0x4CBF957: raise (raise.c:26)
+==152519==    by 0x4CA953C: abort (abort.c:79)
+==152519==    by 0x4CA945B: __assert_fail_base.cold (assert.c:92)
+==152519==    by 0x4CB8485: __assert_fail (assert.c:101)
+==152519==    by 0x4865E4D: Instance::createfromFile(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (instance.cpp:424)
+==152519==    by 0x486F332: Solver::solve(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (solver.cpp:163)
+==152519==    by 0x10A43E: main (main.cpp:173)
+==152519== 
+==152519== HEAP SUMMARY:
+==152519==     in use at exit: 122,992 bytes in 21 blocks
+==152519==   total heap usage: 26 allocs, 5 frees, 123,572 bytes allocated
+==152519== 
+==152519== LEAK SUMMARY:
+==152519==    definitely lost: 0 bytes in 0 blocks
+==152519==    indirectly lost: 0 bytes in 0 blocks
+==152519==      possibly lost: 0 bytes in 0 blocks
+==152519==    still reachable: 122,992 bytes in 21 blocks
+==152519==         suppressed: 0 bytes in 0 blocks
+==152519== Rerun with --leak-check=full to see details of leaked memory
+==152519== 
+==152519== For lists of detected and suppressed errors, rerun with: -s
+==152519== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+[1]    152519 IOT instruction (core dumped)  valgrind ../old_ganak/build/ganak 
+
