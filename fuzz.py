@@ -121,13 +121,13 @@ def gen_fuzz_call(fuzzer, fname):
 
 def unique_file(fname_begin, fname_end=".cnf"):
     counter = 1
-    while 1:
+    while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
         try:
             fd = os.open(
                 fname, os.O_CREAT | os.O_EXCL, stat.S_IREAD | stat.S_IWRITE)
             os.fdopen(fd).close()
-            return fname
+            return str(fname)
         except OSError:
             pass
 
