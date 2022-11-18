@@ -26,11 +26,13 @@ import random
 import resource
 import optparse
 import stat
+import shutil
 from collections import namedtuple
 from functools import partial
 
 Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
-Count = namedtuple("Count", "solver count", defaults=[None, -1])
+Presimp = namedtuple("Presimp", "exe dir", defaults=[None, None])
+Count = namedtuple("Count", "solver presimp count", defaults=[None, None, -1])
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -62,11 +64,11 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=10,
+      "--tout", "-t", dest="maxtime", type=int, default=3,
       help="Max time to run. Default: %default")
 
     parser.add_option(
-        "--textra", dest="maxtimediff", type=int, default=5,
+        "--textra", dest="maxtimediff", type=int, default=2,
         help="Extra time on top of timeout for processing."
         " Default: %default")
 
@@ -81,13 +83,13 @@ def set_up_parser():
     parser.add_option(
       "--sharpsat", dest="sharpsat", type=str, default="../sharpSAT/build/sharpSAT",
       help="Location of approxmc. Default: %default")
-    
+
     parser.add_option(
-      "--delta", dest="delta", type=float, default="0.8",
+      "--delta", dest="delta", type=float, default="0.2",
       help="TODO. Default: %default")
-    
+
     parser.add_option(
-      "--epsilon", dest="epsilon", type=float, default="0.8",
+      "--epsilon", dest="epsilon", type=float, default="0.2",
       help="TODO. Default: %default")
 
     return parser
@@ -176,6 +178,60 @@ def run_one_counter(solver, fname):
 
     return num
 
+def check_header(fname):
+    with open(fname, "r") as f:
+        num_cls = 0
+        max_vars = 0
+        header_cls = 0;
+        header_vars = 0;
+        for line in f:
+            line = line.strip()
+            if len(line) == 0:
+                print("Empty line is NOT part of DIMACS, error\n");
+                return False
+            if line[0] == "p":
+                header = line.split()
+                if len(header) != 4:
+                    print("Header is not 4 pieces?!")
+                    return False
+                assert header[0] == "p"
+                assert header[1] == "cnf"
+                header_vars = int(header[2])
+                header_cls = int(header[3])
+                continue
+            if line[0] == "c":
+                continue
+
+            num_cls += 1
+            line = line.split()
+            for l in line:
+                l = abs(int(l))
+                if l > max_vars:
+                    max_vars = l
+
+
+        if num_cls != header_cls:
+            print("cls in CNF: %d but header said: %d" % (num_cls, header_cls))
+            return False
+
+        if max_vars > header_vars:
+            print("max vars was: %d but header said: %d" % (max_vars, header_vars))
+            return False
+    return True
+
+def run_one_presimp(presimp, fname, fname2):
+    curr_time = time.time()
+    toexec = presimp.exe.split()
+    toexec.append(os.getcwd() + "/" + fname)
+    toexec.append(os.getcwd() + "/" + fname2)
+    out, err = run(toexec, presimp.dir)
+    if err != "":
+        print("Error string is: ", err)
+    diff_time = time.time() - curr_time
+    if diff_time > options.maxtime - options.maxtimediff:
+        print("Too much time to presimp with %s, aborted!" % solver.exe)
+        return False
+    assert check_header(fname2)
 
 if __name__ == "__main__":
     if os.path.exists("out") and  os.path.isfile("out"):
@@ -208,7 +264,7 @@ if __name__ == "__main__":
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
         # Majority vote + if count is small, we can count 1-by-1.
         # Mate TODO: add other binaries from competition, add CNF checker
-        # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace 
+        # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = gen_fuzz_call("./biere-fuzz", fname)
         status = subprocess.call(call, shell=True)
         if status != 0:
@@ -218,33 +274,47 @@ if __name__ == "__main__":
         counts = []
         solvers = [
             Solver(options.ganak, True),
-            Solver(options.sharpsat, True),
+            # Solver(options.sharpsat, True),
             Solver(options.appmc, False),
-            Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
-            Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
-            Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-            Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
+            # Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
+            # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
+            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
+            # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
+        ]
+
+        presimps = [
+            Presimp("./run.sh", "./bins/bpe-april2016/"),
+            Presimp(None, None)
+            #Presimp(options.arjun)
         ]
 
         exact_count = None
         for solver in solvers:
-            count = run_one_counter(solver, fname)
-            if count is not None and solver.exact:
-                exact_count = Count(solver, count)
-            if count is not None:
-                counts.append(Count(solver, count))
+            for presimp in presimps:
+                fname2 = unique_file("fuzzTest")
+                if presimp.exe == None:
+                    shutil.copyfile(fname, fname2)
+                else:
+                    run_one_presimp(presimp, fname, fname2)
+
+                count = run_one_counter(solver, fname2)
+                if count is not None and solver.exact and presimp.exe is None:
+                    exact_count = Count(solver, presimp, count)
+                if count is not None:
+                    counts.append(Count(solver, presimp, count))
 
         if exact_count is None:
+            os.unlink(fname)
             continue
 
         for a in counts:
-            if a.count != exact_count.count and a.exact:
+            if a.count != exact_count.count and a.solver.exact:
                 print("ERROR!")
-                print("%s counted: %s" %(a.exe, a.count))
-                print("%s counted: %s" %(exact_count.exe, exact_count.count))
+                print("%s with presimp %s counted: %s" %(a.exe, a.presimp, a.count))
+                print("%s with presimp %s counted: %s" %(exact_count.solver, exact_count.presimp, exact_count.count))
                 exit(-1)
 
-            if a.count != exact_count.count and not a.exact:
+            if a.count != exact_count.count and not a.solver.exact:
                 print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
                 print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
                 print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
@@ -252,9 +322,13 @@ if __name__ == "__main__":
                 if exact_count.count*1.5 < a.count or \
                     exact_count.count*0.7 > a.count:
                         exit(-1)
-            
+
             print("OK, count is %s. Solve %s count matches solver %s count" %
                       (a.solver.exe, a.count, exact_count.count))
+
+        print("Checking with file %s finished" % fname)
+        os.unlink(fname)
+        os.unlink(fname2)
 
 
 
