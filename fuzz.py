@@ -31,8 +31,8 @@ from collections import namedtuple
 from functools import partial
 
 Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
-Presimp = namedtuple("Presimp", "exe dir", defaults=[None, None])
-Count = namedtuple("Count", "solver presimp count", defaults=[None, None, -1])
+Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
+Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -219,17 +219,17 @@ def check_header(fname):
             return False
     return True
 
-def run_one_presimp(presimp, fname, fname2):
+def run_one_preproc(preproc, fname, fname2):
     curr_time = time.time()
-    toexec = presimp.exe.split()
+    toexec = preproc.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
     toexec.append(os.getcwd() + "/" + fname2)
-    out, err = run(toexec, presimp.dir)
+    out, err = run(toexec, preproc.dir)
     if err != "":
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
-        print("Too much time to presimp with %s, aborted!" % solver.exe)
+        print("Too much time to preproc with %s, aborted!" % solver.exe)
         return False
     assert check_header(fname2)
 
@@ -282,30 +282,29 @@ if __name__ == "__main__":
             # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
         ]
 
-        presimps = [
-            Presimp("./run.sh", "./bins/bpe-april2016/"),
-            Presimp("./run.sh", "./bins/arjun/"),
-            Presimp(None, None)
-            #Presimp(options.arjun)
+        preprocs = [
+            Preproc("./run.sh", "./bins/bpe-april2016/"),
+            Preproc("./run.sh", "./bins/arjun/"),
+            Preproc(None, None)
         ]
 
         simplified = []
-        for presimp in presimps:
+        for preproc in preprocs:
             fname2 = unique_file("fuzzTest")
-            if presimp.exe == None:
+            if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
             else:
-                run_one_presimp(presimp, fname, fname2)
-            simplified.append((presimp, fname2))
+                run_one_preproc(preproc, fname, fname2)
+            simplified.append((preproc, fname2))
 
         exact_count = None
         for solver in solvers:
-            for presimp, fname2 in simplified:
+            for preproc, fname2 in simplified:
                 count = run_one_counter(solver, fname2)
-                if count is not None and solver.exact and presimp.exe is None:
-                    exact_count = Count(solver, presimp, count)
+                if count is not None and solver.exact and preproc.exe is None:
+                    exact_count = Count(solver, preproc, count)
                 if count is not None:
-                    counts.append(Count(solver, presimp, count))
+                    counts.append(Count(solver, preproc, count))
 
         if exact_count is None:
             os.unlink(fname)
@@ -315,8 +314,8 @@ if __name__ == "__main__":
         for a in counts:
             if a.count != exact_count.count and a.solver.exact:
                 print("ERROR!")
-                print("%s with presimp %s counted: %s" %(a.exe, a.presimp, a.count))
-                print("%s with presimp %s counted: %s" %(exact_count.solver, exact_count.presimp, exact_count.count))
+                print("%s with preproc %s counted: %s" %(a.exe, a.preproc, a.count))
+                print("%s with preproc %s counted: %s" %(exact_count.solver, exact_count.preproc, exact_count.count))
                 exit(-1)
 
             if a.count != exact_count.count and not a.solver.exact:
@@ -328,8 +327,8 @@ if __name__ == "__main__":
                     exact_count.count*0.7 > a.count:
                         exit(-1)
 
-            print("OK, count is %s. Solve %s with presimp %s matches solver %s count with presimp %s" %
-                      (a.count, a.solver.exe, a.presimp, exact_count.solver, exact_count.presimp))
+            print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
+                      (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
 
         print("Checking with file %s finished" % fname)
         os.unlink(fname)
