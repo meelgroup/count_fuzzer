@@ -96,7 +96,7 @@ def set_up_parser():
 
 
 def run(command, dir):
-    print("Executing: %s" % " ".join(command))
+    print("Executing: %s in dir %s" % (" ".join(command), dir))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
@@ -145,7 +145,7 @@ def run_one_counter(solver, fname):
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta)])
     out, err = run(toexec, solver.dir)
-    if err != "":
+    if err is not None and err.strip() != "":
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
@@ -284,19 +284,23 @@ if __name__ == "__main__":
 
         presimps = [
             Presimp("./run.sh", "./bins/bpe-april2016/"),
+            Presimp("./run.sh", "./bins/arjun/"),
             Presimp(None, None)
             #Presimp(options.arjun)
         ]
 
+        simplified = []
+        for presimp in presimps:
+            fname2 = unique_file("fuzzTest")
+            if presimp.exe == None:
+                shutil.copyfile(fname, fname2)
+            else:
+                run_one_presimp(presimp, fname, fname2)
+            simplified.append((presimp, fname2))
+
         exact_count = None
         for solver in solvers:
-            for presimp in presimps:
-                fname2 = unique_file("fuzzTest")
-                if presimp.exe == None:
-                    shutil.copyfile(fname, fname2)
-                else:
-                    run_one_presimp(presimp, fname, fname2)
-
+            for presimp, fname2 in simplified:
                 count = run_one_counter(solver, fname2)
                 if count is not None and solver.exact and presimp.exe is None:
                     exact_count = Count(solver, presimp, count)
@@ -305,6 +309,7 @@ if __name__ == "__main__":
 
         if exact_count is None:
             os.unlink(fname)
+            for _, fname2 in simplified: os.unlink(fname2)
             continue
 
         for a in counts:
@@ -323,12 +328,12 @@ if __name__ == "__main__":
                     exact_count.count*0.7 > a.count:
                         exit(-1)
 
-            print("OK, count is %s. Solve %s count matches solver %s count" %
-                      (a.solver.exe, a.count, exact_count.count))
+            print("OK, count is %s. Solve %s with presimp %s matches solver %s count with presimp %s" %
+                      (a.count, a.solver.exe, a.presimp, exact_count.solver, exact_count.presimp))
 
         print("Checking with file %s finished" % fname)
         os.unlink(fname)
-        os.unlink(fname2)
+        for _, fname2 in simplified: os.unlink(fname2)
 
 
 
