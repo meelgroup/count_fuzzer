@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-
+import json
 import subprocess
 import os
 import time
@@ -92,6 +92,23 @@ def set_up_parser():
       "--epsilon", dest="epsilon", type=float, default="0.2",
       help="TODO. Default: %default")
 
+    parser.add_option(
+      "--keep-bugs-only", dest="keep_bugs_only", default=False,
+        action="store_true",
+        help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
+
+    parser.add_option(
+        "--max-num-files", dest="max_num_files", type=int, default=300,
+        help="Maximum number of files to generate. Default: %default")
+
+    parser.add_option(
+      "--sample-approxmc", dest="sample_approxmc", default=False,
+        action="store_true",
+        help="Query ApproxMC for different seeds and store the counts. Default: %default")
+
+    parser.add_option(
+        "--num-samples", dest="num_samples", type=int, default=100,
+        help="How many samples to take for approximate counters. Default: %default")
     return parser
 
 
@@ -119,7 +136,7 @@ def gen_fuzz_call(fuzzer, fname):
     return call
 
 
-def unique_file(fname_begin, fname_end=".cnf"):
+def unique_file(fname_begin, fname_end=".cnf", max_num_files=300):
     counter = 1
     while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
@@ -132,18 +149,19 @@ def unique_file(fname_begin, fname_end=".cnf"):
             pass
 
         counter += 1
-        if counter > 300:
+        if counter > max_num_files:
             print("Cannot create unique_file, last try was: %s" % fname)
             exit(-1)
 
 
-def run_one_counter(solver, fname):
+def run_one_counter(solver, fname, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
     if not solver.exact:
         toexec.extend(["--epsilon", str(options.epsilon),
-                       "--delta", str(options.delta)])
+                       "--delta", str(options.delta),
+                       "-s", str(seed)])
     out, err = run(toexec, solver.dir)
     if err is not None and err.strip() != "":
         print("Error string is: ", err)
@@ -257,7 +275,7 @@ if __name__ == "__main__":
     random.seed(rnd_seed)
 
     while True:
-        fname = unique_file("fuzzTest")
+        fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
@@ -273,9 +291,9 @@ if __name__ == "__main__":
 
         counts = []
         solvers = [
+            Solver(options.appmc, False),
             Solver(options.ganak, True),
             # Solver(options.sharpsat, True),
-            Solver(options.appmc, False),
             # Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
@@ -283,14 +301,14 @@ if __name__ == "__main__":
         ]
 
         preprocs = [
-            Preproc("./run.sh", "./bins/bpe-april2016/"),
-            Preproc("./run.sh", "./bins/arjun/"),
+            # Preproc("./run.sh", "./bins/bpe-april2016/"),
+            # Preproc("./run.sh", "./bins/arjun/"),
             Preproc(None, None)
         ]
 
         simplified = []
         for preproc in preprocs:
-            fname2 = unique_file("fuzzTest")
+            fname2 = unique_file("fuzzTest", max_num_files=options.max_num_files)
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
             else:
@@ -305,6 +323,29 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
+                    if 'approxmc' in solver.exe:
+                        samples = []
+                        preproc_name = "nopreproc"
+                        if preproc.exe is not None:
+                            preproc_name = 'arjun' if 'arjun' in preproc.exe else 'bpe'
+                        new_fname = fname.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
+                        new_fname2 = fname2.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
+                        shutil.copyfile(fname, new_fname)
+                        shutil.copyfile(fname2, new_fname2)
+                        data = {
+                            'samples': samples,
+                            'epsilon': options.epsilon,
+                            'delta': options.delta,
+                            'fname': new_fname,
+                            'fname2': new_fname2,
+                            'preproc': preproc_name,
+                        }
+                        for i in range(options.num_samples):
+                            count = run_one_counter(solver, new_fname2, seed=i)
+                            print("COUNT:", count)
+                            data['samples'].append((i, int(count)))
+                            with open(f'{new_fname2}.json', 'w') as fp:
+                                json.dump(data, fp)
 
         if exact_count is None:
             os.unlink(fname)
@@ -331,8 +372,9 @@ if __name__ == "__main__":
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
 
         print("Checking with file %s finished" % fname)
-        os.unlink(fname)
-        for _, fname2 in simplified: os.unlink(fname2)
+        if options.keep_bugs_only:
+            os.unlink(fname)
+            for _, fname2 in simplified: os.unlink(fname2)
 
 
 
