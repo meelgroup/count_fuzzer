@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2022 Mate Soos
+# Copyright (C) 2022  Anna Latour
+#                     Mate Soos
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -342,10 +343,11 @@ if __name__ == "__main__":
                         }
                         for i in range(options.num_samples):
                             count = run_one_counter(solver, new_fname2, seed=i)
-                            print("COUNT:", count)
-                            data['samples'].append((i, int(count)))
-                            with open(f'{new_fname2}.json', 'w') as fp:
-                                json.dump(data, fp)
+                            if count is not None:
+                                 print("COUNT:", count)
+                                 data['samples'].append((i, int(count)))
+                                 with open(f'{new_fname2}.json', 'w') as fp:
+                                     json.dump(data, fp)
 
         if exact_count is None:
             os.unlink(fname)
