@@ -285,6 +285,10 @@ if __name__ == "__main__":
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = gen_fuzz_call("./biere-fuzz", fname)
+        print("TODO: ./biere_fuzz > out.dnf");
+        print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
+        print("TODO: ./cnftranslate out.dnf out.cnf");
+
         status = subprocess.call(call, shell=True)
         if status != 0:
             print("Failed call: ", call)
