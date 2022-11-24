@@ -443,6 +443,18 @@
 	After all, we probably would not expect every run of \approxmc{} to return a `wrong' count, but only a few.
 	So maybe, we have to visualise this using box plots, and come up with a way to define outliers?
 	That's probably something to discuss for next time.
+		
+	\noindent\hrulefill
+	
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Thu 24 Nov 2022: Anna}
+	
+	Mate suggested to maybe not focus on figuring out when \approxmc{} returns a wrong count, but to try to identify CNFs for which \approxmc{} has a count distribution that is way off: either skewed and not Gaussian at all, or centered far away from the true count.
+	
+	The \python{} packages that we use surely have some measure that we can use to quantify how skewed the distribution is.
+	We can then use delta debugging to construct a CNF that skews the distribution as much as possible.
 	
 	\noindent\hrulefill
 	
