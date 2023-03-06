@@ -94,7 +94,7 @@ def set_up_parser():
       help="TODO. Default: %default")
 
     parser.add_option(
-      "--keep-bugs-only", dest="keep_bugs_only", default=False,
+      "--keep-bugs-only", dest="keep_bugs_only", default=True,
         action="store_true",
         help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
 
