@@ -316,7 +316,7 @@ if __name__ == "__main__":
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
-            # Preproc("./run.sh", "./bins/arjun/"),
+            Preproc("./run.sh", "./bins/arjun/"),
             Preproc(None, None)
         ]
 
