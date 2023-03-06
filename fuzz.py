@@ -164,7 +164,9 @@ def run_one_counter(solver, fname, seed=42):
                        "--delta", str(options.delta),
                        "-s", str(seed)])
     out, err = run(toexec, solver.dir)
-    if err is not None and err.strip() != "":
+    if err is None:
+        print("No error.")
+    else:
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
