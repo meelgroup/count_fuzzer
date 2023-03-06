@@ -263,6 +263,13 @@ if __name__ == "__main__":
         print("Directory for outputs, 'out' not present, creating it.")
         os.mkdir("out")
 
+    # Create directories needed to run fuzzer
+    os.makedirs("sandbox/approxmc-results/arjun", exist_ok=True)
+    os.makedirs("sandbox/approxmc-results/nopreproc", exist_ok=True)
+    os.makedirs("sandbox/approxmc-results/bpe", exist_ok=True)
+    os.makedirs("tmpdir", exist_ok=True)
+    os.makedirs("out", exist_ok=True)
+
     # parse options
     parser = set_up_parser()
     (options, args) = parser.parse_args()
