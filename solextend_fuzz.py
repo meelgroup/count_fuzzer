@@ -93,13 +93,11 @@ def run(command, dir):
 
 def gen_fuzz_call_biere(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    print("Fuzzer individual seed:", seed)
     call = "{0} {1} > {2}".format(fuzzer, seed, fname)
     return call
 
 def gen_fuzz_call_brummayer(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    print("Fuzzer individual seed:", seed)
     call = "{0} -s {1} > {2}".format(fuzzer, seed, fname)
     return call
 
