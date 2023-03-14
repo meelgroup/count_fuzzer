@@ -133,7 +133,6 @@ def gen_fuzz_call(fuzzer, fname):
     seed = random.randint(0, 1000000)
     print("Fuzzer individual seed:", seed)
     call = "{0} {1} > {2}".format(fuzzer, seed, fname)
-
     return call
 
 
@@ -245,9 +244,13 @@ def run_one_preproc(preproc, fname, fname2):
     toexec = preproc.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
     toexec.append(os.getcwd() + "/" + fname2)
+    print("Executing preproc ", preproc)
     out, err = run(toexec, preproc.dir)
-    if err != "":
+    if err is None:
+        pass
+    else:
         print("Error string is: ", err)
+        print("output was: ", out)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
         print("Too much time to preproc with %s, aborted!" % solver.exe)
@@ -294,14 +297,15 @@ if __name__ == "__main__":
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = gen_fuzz_call("./biere-fuzz", fname)
-        print("TODO: ./biere_fuzz > out.dnf");
         print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         print("TODO: ./cnftranslate out.dnf out.cnf");
 
         status = subprocess.call(call, shell=True)
         if status != 0:
-            print("Failed call: ", call)
+            print("Failed fuzzer file generator call: ", call)
             exit(-1)
+        else:
+            print("Generated fuzz file %s with call: %s" % (fname, call));
 
         counts = []
         solvers = [
@@ -325,8 +329,10 @@ if __name__ == "__main__":
             fname2 = unique_file("fuzzTest", max_num_files=options.max_num_files)
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
+                print("Copied file %s to %s for the empty preproc")
             else:
                 run_one_preproc(preproc, fname, fname2)
+                print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
             simplified.append((preproc, fname2))
 
         exact_count = None
@@ -335,13 +341,14 @@ if __name__ == "__main__":
                 count = run_one_counter(solver, fname2)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
-                if count is not None:
+                if count is not None and count > 10000:
                     counts.append(Count(solver, preproc, count))
                     if 'approxmc' in solver.exe:
                         samples = []
                         preproc_name = "nopreproc"
                         if preproc.exe is not None:
                             preproc_name = 'arjun' if 'arjun' in preproc.exe else 'bpe'
+                        print("fname is: ", fname)
                         new_fname = fname.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
                         new_fname2 = fname2.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
                         shutil.copyfile(fname, new_fname)

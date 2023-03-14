@@ -4,6 +4,14 @@ Makefile
 biere-fuzz
 cmake_install.cmake
 compile_commands.json
+perf*
+sandbox/approxmc-results/nopreproc/*.cnf
+sandbox/approxmc-results/nopreproc/*.json
+sandbox/approxmc-results/nopreproc/*.pdf
+sandbox/approxmc-results/nopreproc/*.ip*
+sandbox/.ipynb_checkpoints/
+sandbox/approxmc-results/bpe/
+__pycache__/
 out/
 **journal.synctex.gz
 **journal.out
