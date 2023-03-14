@@ -256,6 +256,7 @@ def run_one_preproc(preproc, fname, fname2):
         print("Too much time to preproc with %s, aborted!" % solver.exe)
         return False
     assert check_header(fname2)
+    return True
 
 if __name__ == "__main__":
     if os.path.exists("out") and  os.path.isfile("out"):
@@ -327,14 +328,16 @@ if __name__ == "__main__":
         simplified = []
         for preproc in preprocs:
             fname2 = unique_file("fuzzTest", max_num_files=options.max_num_files)
+            OK = False
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
+                OK = True
                 print("Copied file %s to %s for the empty preproc")
             else:
-                run_one_preproc(preproc, fname, fname2)
+                OK = run_one_preproc(preproc, fname, fname2)
                 print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
-            simplified.append((preproc, fname2))
-
+            if OK: simplified.append((preproc, fname2))
+            else: os.unlink(fname2)
         exact_count = None
         for solver in solvers:
             for preproc, fname2 in simplified:

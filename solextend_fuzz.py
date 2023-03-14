@@ -367,6 +367,7 @@ def run_one_preproc(preproc, fname : str, fname2 : str, reconstruct : str):
         print("Too much time to preproc with %s, aborted!" % solver.exe)
         return False
     assert check_header(fname2)
+    return True
 
 if __name__ == "__main__":
     if os.path.exists("out") and  os.path.isfile("out"):
@@ -419,10 +420,13 @@ if __name__ == "__main__":
             fname2 = unique_file("fuzzTest")
             reconstruct = unique_file("fuzzTest")
             shutil.copyfile(fname, fname2)
-            run_one_preproc(preproc, fname, fname2, reconstruct)
-            print("Generated CNF file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
-            print("Generated reconstruction %s by preproc %s which preprocessed %s" % (reconstruct, preproc.exe, fname))
-            simplified.append((preproc, fname2, reconstruct))
+            OK = run_one_preproc(preproc, fname, fname2, reconstruct)
+            if OK:
+                print("Generated CNF file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
+                print("Generated reconstruction %s by preproc %s which preprocessed %s" % (reconstruct, preproc.exe, fname))
+                simplified.append((preproc, fname2, reconstruct))
+            else:
+                os.unlink(fname2)
 
         for solver in solvers:
             for preproc, fname2, reconstruct in simplified:
