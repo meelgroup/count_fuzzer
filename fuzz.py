@@ -129,10 +129,15 @@ def run(command, dir):
     return consoleOutput, err
 
 
-def gen_fuzz_call(fuzzer, fname):
+def gen_fuzz_call_biere(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    print("Fuzzer individual seed:", seed)
     call = "{0} {1} > {2}".format(fuzzer, seed, fname)
+    return call
+
+
+def gen_fuzz_call_brummayer(fuzzer, fname):
+    seed = random.randint(0, 1000000)
+    call = "{0} -I 25 -s {1} > {2}".format(fuzzer, seed, fname)
     return call
 
 
@@ -297,9 +302,10 @@ if __name__ == "__main__":
         # Majority vote + if count is small, we can count 1-by-1.
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
-        call = gen_fuzz_call("./biere-fuzz", fname)
-        print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
-        print("TODO: ./cnftranslate out.dnf out.cnf");
+        call = random.choice([gen_fuzz_call_biere("./biere-fuzz", fname)
+                               , gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
+        # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
+        # print("TODO: ./cnftranslate out.dnf out.cnf");
 
         status = subprocess.call(call, shell=True)
         if status != 0:
@@ -332,7 +338,7 @@ if __name__ == "__main__":
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
                 OK = True
-                print("Copied file %s to %s for the empty preproc")
+                print("Copied file %s to %s for the empty preproc" % (fname, fname2))
             else:
                 OK = run_one_preproc(preproc, fname, fname2)
                 print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
@@ -380,7 +386,7 @@ if __name__ == "__main__":
         for a in counts:
             if a.count != exact_count.count and a.solver.exact:
                 print("ERROR!")
-                print("%s with preproc %s counted: %s" %(a.exe, a.preproc, a.count))
+                print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
                 print("%s with preproc %s counted: %s" %(exact_count.solver, exact_count.preproc, exact_count.count))
                 exit(-1)
 
