@@ -74,7 +74,11 @@ def set_up_parser():
         " Default: %default")
 
     parser.add_option(
-      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak",
+      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --probe 1",
+      help="Location of ganak. Default: %default")
+
+    parser.add_option(
+      "--ganak2", dest="ganak2", type=str, default="../old_ganak/build/ganak",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
@@ -185,12 +189,12 @@ def run_one_counter(solver, fname, seed=42):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:13] == "c s exact arb":
+        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc":
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
-            if l[:4] == "s mc":
+            if l[:4] == "s mc" or l[:5] == "s pmc":
                 num = int(l.split()[2])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
@@ -317,6 +321,7 @@ if __name__ == "__main__":
         counts = []
         solvers = [
             Solver(options.appmc, False),
+            Solver(options.ganak2, True),
             Solver(options.ganak, True),
             # Solver(options.sharpsat, True),
             # Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
@@ -328,6 +333,8 @@ if __name__ == "__main__":
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
             Preproc("./run.sh", "./bins/arjun/"),
+            Preproc("./run.sh", "./bins/arjun-withind/"),
+            Preproc("./run.sh", "./bins/arjun-withind-extend/"),
             Preproc(None, None)
         ]
 
@@ -347,6 +354,10 @@ if __name__ == "__main__":
         exact_count = None
         for solver in solvers:
             for preproc, fname2 in simplified:
+                if (preproc.exe is not None and "arjun" in preproc.exe) and \
+                        ("ganak" not in solver.exe and "approx" not in solver.exe):
+                    # only GANAK and AppMC understand "MUST MULTIPLY BY"
+                    continue
                 count = run_one_counter(solver, fname2)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
