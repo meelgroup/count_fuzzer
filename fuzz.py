@@ -87,7 +87,7 @@ def set_up_parser():
 
     parser.add_option(
       "--sharpsat", dest="sharpsat", type=str, default="../sharpSAT/build/sharpSAT",
-      help="Location of approxmc. Default: %default")
+      help="Location of sharpsat. Default: %default")
 
     parser.add_option(
       "--delta", dest="delta", type=float, default="0.2",
@@ -112,7 +112,7 @@ def set_up_parser():
         help="Query ApproxMC for different seeds and store the counts. Default: %default")
 
     parser.add_option(
-        "--num-samples", dest="num_samples", type=int, default=100,
+        "--num-samples", dest="num_samples", type=int, default=3,
         help="How many samples to take for approximate counters. Default: %default")
     return parser
 
@@ -132,6 +132,37 @@ def run(command, dir):
             resource.getrlimit(resource.RLIMIT_CPU))
     return consoleOutput, err
 
+def add_projection(fname) :
+    vars = 0
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if len(line) < 3:continue
+            if line[0] == "p":
+                line = line.split(" ")
+                assert line[1].strip() == "cnf"
+                vars = int(line[2])
+
+    all_vars = []
+    for i in range(vars): all_vars.append(i+1)
+    proj = []
+    if vars == 0:
+        print("ERROR: Can't find 'p cnf' in file %s" % fname)
+        exit(-1)
+
+    num : int = random.randint(1, len(all_vars))
+    for i in range(num):
+        # index = random.randint(0, len(all_vars)-1)
+        index = 0
+        v = all_vars[index]
+        proj.append(v)
+        del all_vars[index]
+
+    with open(fname, "a") as f:
+        f.write("c p show ")
+        for a in proj:
+            f.write("%d " % a)
+        f.write("0\n")
 
 def gen_fuzz_call_biere(fuzzer, fname):
     seed = random.randint(0, 1000000)
@@ -297,7 +328,9 @@ if __name__ == "__main__":
         rnd_seed = options.rnd_seed
     random.seed(rnd_seed)
 
+    proj = False
     while True:
+        proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Checking fname: ", fname)
 
@@ -307,7 +340,7 @@ if __name__ == "__main__":
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = random.choice([gen_fuzz_call_biere("./biere-fuzz", fname)
-                               , gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
+                              , gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
@@ -318,25 +351,32 @@ if __name__ == "__main__":
         else:
             print("Generated fuzz file %s with call: %s" % (fname, call));
 
+        if proj: add_projection(fname)
         counts = []
         solvers = [
             Solver(options.appmc, False),
-            Solver(options.ganak2, True),
+            Solver(options.appmc+" --withe 0", False),
+            Solver(options.appmc+" --arjun 0", False),
+            # Solver(options.ganak2, True), # BUGGY
             Solver(options.ganak, True),
             # Solver(options.sharpsat, True),
-            # Solver("./bins/gpmc-mccomp2022/bin/gpmc -mode=0", True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
         ]
+        # if proj:
+        #     solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
+        # else:
+        #     solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
+
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
-            Preproc("./run.sh", "./bins/arjun/"),
             Preproc("./run.sh", "./bins/arjun-withind/"),
             Preproc("./run.sh", "./bins/arjun-withind-extend/"),
             Preproc(None, None)
         ]
+        if not proj: preprocs.append(Preproc("./run.sh", "./bins/arjun/"))
 
         simplified = []
         for preproc in preprocs:
