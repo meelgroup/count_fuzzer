@@ -61,6 +61,10 @@ def set_up_parser():
       action="store_false", help="Use valgrind")
 
     parser.add_option(
+      "--sandbox", dest="sandbox", default=False,
+      action="store_true", help="Do experiments in the sandbox")
+
+    parser.add_option(
       "--valgrindfreq", dest="valgrind_freq", type=int,
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
@@ -403,7 +407,7 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None and count > 10000:
                     counts.append(Count(solver, preproc, count))
-                    if 'approxmc' in solver.exe:
+                    if 'approxmc' in solver.exe and options.sandbox:
                         samples = []
                         preproc_name = "nopreproc"
                         if preproc.exe is not None:
