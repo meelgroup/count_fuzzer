@@ -73,20 +73,20 @@ def set_up_parser():
       help="Max time to run. Default: %default")
 
     parser.add_option(
-        "--textra", dest="maxtimediff", type=int, default=2,
+        "--textra", dest="maxtimediff", type=int, default=1,
         help="Extra time on top of timeout for processing."
         " Default: %default")
 
     parser.add_option(
-      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --probe 1",
+      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --ignore 1 --vivif 1 --vivifevery 100",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
-      "--ganak2", dest="ganak2", type=str, default="../old_ganak/build/ganak",
+      "--ganakold", dest="ganakold", type=str, default="../old_ganak/build/old_ganak",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
-      "--appmc", dest="appmc", type=str, default="../approxmc/build/approxmc",
+      "--appmc", dest="approxmc", type=str, default="../approxmc/build/approxmc",
       help="Location of approxmc. Default: %default")
 
     parser.add_option(
@@ -107,7 +107,7 @@ def set_up_parser():
         help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
 
     parser.add_option(
-        "--max-num-files", dest="max_num_files", type=int, default=300,
+        "--max-num-files", dest="max_num_files", type=int, default=700,
         help="Maximum number of files to generate. Default: %default")
 
     parser.add_option(
@@ -176,11 +176,11 @@ def gen_fuzz_call_biere(fuzzer, fname):
 
 def gen_fuzz_call_brummayer(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    call = "{0} -I 25 -s {1} > {2}".format(fuzzer, seed, fname)
+    call = "{0} -I 20 -s {1} > {2}".format(fuzzer, seed, fname)
     return call
 
 
-def unique_file(fname_begin, fname_end=".cnf", max_num_files=300):
+def unique_file(fname_begin, fname_end=".cnf", max_num_files=700):
     counter = 1
     while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
@@ -334,7 +334,7 @@ if __name__ == "__main__":
 
     proj = False
     while True:
-        proj = not proj
+        # proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Checking fname: ", fname)
 
@@ -358,10 +358,10 @@ if __name__ == "__main__":
         if proj: add_projection(fname)
         counts = []
         solvers = [
-            Solver(options.appmc, False),
-            Solver(options.appmc+" --withe 0", False),
-            Solver(options.appmc+" --arjun 0", False),
-            # Solver(options.ganak2, True), # BUGGY
+            Solver(options.approxmc, False),
+            Solver(options.approxmc+" --withe 0", False),
+            Solver(options.approxmc+" --arjun 0", False),
+            Solver(options.ganakold, True),
             Solver(options.ganak, True),
             # Solver(options.sharpsat, True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
@@ -376,11 +376,11 @@ if __name__ == "__main__":
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
-            Preproc("./run.sh", "./bins/arjun-withind/"),
-            Preproc("./run.sh", "./bins/arjun-withind-extend/"),
+            # Preproc("./run.sh", "./bins/arjun-withind/"),
+            # Preproc("./run.sh", "./bins/arjun-withind-extend/"),
             Preproc(None, None)
         ]
-        if not proj: preprocs.append(Preproc("./run.sh", "./bins/arjun/"))
+        # if not proj: preprocs.append(Preproc("./run.sh", "./bins/arjun/"))
 
         simplified = []
         for preproc in preprocs:
@@ -400,7 +400,7 @@ if __name__ == "__main__":
             for preproc, fname2 in simplified:
                 if (preproc.exe is not None and "arjun" in preproc.exe) and \
                         ("ganak" not in solver.exe and "approx" not in solver.exe):
-                    # only GANAK and AppMC understand "MUST MULTIPLY BY"
+                    # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
                     continue
                 count = run_one_counter(solver, fname2)
                 if count is not None and solver.exact and preproc.exe is None:
@@ -442,7 +442,8 @@ if __name__ == "__main__":
             if a.count != exact_count.count and a.solver.exact:
                 print("ERROR!")
                 print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
-                print("%s with preproc %s counted: %s" %(exact_count.solver, exact_count.preproc, exact_count.count))
+                print("%s with preproc %s counted: %s" %(
+                    exact_count.solver, exact_count.preproc, exact_count.count))
                 exit(-1)
 
             if a.count != exact_count.count and not a.solver.exact:
