@@ -73,16 +73,20 @@ def set_up_parser():
       help="Max time to run. Default: %default")
 
     parser.add_option(
+      "--proj", dest="proj", default=False,
+      action="store_true", help="Also fuzz projected MC. Default: %default")
+
+    parser.add_option(
         "--textra", dest="maxtimediff", type=int, default=1,
         help="Extra time on top of timeout for processing."
         " Default: %default")
 
     parser.add_option(
-      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --ignore 1 --vivif 1 --vivifevery 100",
+      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --arjun 0 --vivif 1 --vivifevery 100 --restart 1 --rsttype 6 --rstnext 100",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
-      "--ganakold", dest="ganakold", type=str, default="../old_ganak/build/old_ganak",
+      "--ganakold", dest="ganakold", type=str, default="../old_ganak/build/ganak",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
@@ -176,7 +180,7 @@ def gen_fuzz_call_biere(fuzzer, fname):
 
 def gen_fuzz_call_brummayer(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    call = "{0} -I 20 -s {1} > {2}".format(fuzzer, seed, fname)
+    call = "{0} -I 30 -s {1} > {2}".format(fuzzer, seed, fname)
     return call
 
 
@@ -334,7 +338,7 @@ if __name__ == "__main__":
 
     proj = False
     while True:
-        # proj = not proj
+        if options.proj: proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Checking fname: ", fname)
 
