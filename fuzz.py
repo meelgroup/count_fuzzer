@@ -126,7 +126,7 @@ def set_up_parser():
 
 
 def run(command, dir):
-    print("Executing: %s in dir %s" % (" ".join(command), dir))
+    print("--> Executing: %s in dir %s" % (" ".join(command), dir))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
@@ -212,7 +212,8 @@ def run_one_counter(solver, fname, seed=42):
                        "-s", str(seed)])
     out, err = run(toexec, solver.dir)
     if err is None:
-        print("No error.")
+        if options.verbose:
+            print("No error.")
     else:
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
@@ -223,7 +224,8 @@ def run_one_counter(solver, fname, seed=42):
     num = None
     for l in out.split("\n"):
         l = l.strip()
-        print(l)
+        if options.verbose:
+            print(l)
         if len(l) < 4:
             continue
         if l[0] == 'c' and l[:3] != "c s":
@@ -359,7 +361,8 @@ if __name__ == "__main__":
         else:
             print("Generated fuzz file %s with call: %s" % (fname, call));
 
-        if proj: add_projection(fname)
+        if proj:
+            add_projection(fname)
         counts = []
         solvers = [
             # Solver(options.approxmc, False),
@@ -372,10 +375,12 @@ if __name__ == "__main__":
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
         ]
+
         if proj:
             solvers.append(Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"))
-            solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
-        # else:
+            # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
+        else:
+            solvers.append(Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"))
             # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
 
 
@@ -394,13 +399,21 @@ if __name__ == "__main__":
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
                 OK = True
-                print("Copied file %s to %s for the empty preproc" % (fname, fname2))
+                if options.verbose:
+                    print("Copied file %s to %s for the empty preproc" % (fname, fname2))
             else:
                 OK = run_one_preproc(preproc, fname, fname2)
-                print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
+                if options.verbose:
+                    print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
             if OK: simplified.append((preproc, fname2))
             else: os.unlink(fname2)
+
         exact_count = None
+        print("Set of solvers is: ", solvers)
+        if len(solvers) == 1:
+            print("ERROR, it makes no sense to run a single solver, exiting")
+            exit(-1)
+
         for solver in solvers:
             for preproc, fname2 in simplified:
                 if (preproc.exe is not None and "arjun" in preproc.exe) and \
@@ -440,7 +453,8 @@ if __name__ == "__main__":
 
         if exact_count is None:
             os.unlink(fname)
-            for _, fname2 in simplified: os.unlink(fname2)
+            for _, fname2 in simplified:
+                os.unlink(fname2)
             continue
 
         for a in counts:
@@ -462,6 +476,7 @@ if __name__ == "__main__":
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
+            print(" --------------------------- \n")
 
         print("Checking with file %s finished" % fname)
         if options.keep_bugs_only:
