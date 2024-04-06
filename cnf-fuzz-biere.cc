@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <cstdlib>
 
-#define MAX 20
+#define MAX 50
 static int clause[MAX + 1];
 
 static int
@@ -53,7 +53,7 @@ main (int argc, char ** argv)
   seed = (argc > 1) ? atoi (argv[1]) : std::abs ((time(NULL)) >> 1);
   /* printf ("c seed %d\n", seed); */
   srand (seed);
-  w = pick (10, 30);
+  w = pick (30, 70);
   /* printf ("c max width %d\n", w); */
   nlayers = pick (1, 5);
   /* printf ("c layers %d\n", nlayers); */
