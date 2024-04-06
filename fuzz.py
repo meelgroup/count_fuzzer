@@ -69,7 +69,7 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=3,
+      "--tout", "-t", dest="maxtime", type=int, default=2,
       help="Max time to run. Default: %default")
 
     parser.add_option(
@@ -82,7 +82,7 @@ def set_up_parser():
         " Default: %default")
 
     parser.add_option(
-      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --arjun 0 --vivif 1 --vivifevery 100 --restart 1 --rsttype 6 --rstnext 100",
+      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --td 0 --arjun 1 --vivif 1 --vivifevery 30 --restart 0 --rsttype 6 --rstnext 100",
       help="Location of ganak. Default: %default")
 
     parser.add_option(
@@ -180,7 +180,7 @@ def gen_fuzz_call_biere(fuzzer, fname):
 
 def gen_fuzz_call_brummayer(fuzzer, fname):
     seed = random.randint(0, 1000000)
-    call = "{0} -I 30 -s {1} > {2}".format(fuzzer, seed, fname)
+    call = "{0} -I 21 -s {1} > {2}".format(fuzzer, seed, fname)
     return call
 
 
@@ -362,20 +362,21 @@ if __name__ == "__main__":
         if proj: add_projection(fname)
         counts = []
         solvers = [
-            Solver(options.approxmc, False),
-            Solver(options.approxmc+" --withe 0", False),
-            Solver(options.approxmc+" --arjun 0", False),
-            Solver(options.ganakold, True),
+            # Solver(options.approxmc, False),
+            # Solver(options.approxmc+" --withe 0", False),
+            # Solver(options.approxmc+" --arjun 0", False),
+            # Solver(options.ganakold, True),
             Solver(options.ganak, True),
             # Solver(options.sharpsat, True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
         ]
-        # if proj:
-        #     solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
+        if proj:
+            solvers.append(Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"))
+            solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
         # else:
-        #     solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
+            # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
 
 
         preprocs = [
