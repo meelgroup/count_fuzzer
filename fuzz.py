@@ -469,15 +469,16 @@ if __name__ == "__main__":
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
 
+        print(" --------------------------- \n")
+        if options.rnd_seed is not None:
+            print("Exiting as we only wanted to run one test due to --seed")
+            exit(0)
+
         print("Checking with file %s finished" % fname)
         if options.keep_bugs_only:
             os.unlink(fname)
             for _, fname2 in simplified: os.unlink(fname2)
 
-        print(" --------------------------- \n")
-        if options.rnd_seed is not None:
-            print("Exiting as we only wanted to run one test due to --seed")
-            exit(0)
 
 
 
