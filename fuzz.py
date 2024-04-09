@@ -69,12 +69,8 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=2,
+      "--tout", "-t", dest="maxtime", type=int, default=4,
       help="Max time to run. Default: %default")
-
-    parser.add_option(
-      "--proj", dest="proj", default=False,
-      action="store_true", help="Also fuzz projected MC. Default: %default")
 
     parser.add_option(
         "--textra", dest="maxtimediff", type=int, default=1,
@@ -82,20 +78,8 @@ def set_up_parser():
         " Default: %default")
 
     parser.add_option(
-      "--ganak", dest="ganak", type=str, default="../ganak/build/ganak --td 0 --arjun 1 --vivif 1 --vivifevery 30 --restart 0 --rsttype 6 --rstnext 100",
-      help="Location of ganak. Default: %default")
-
-    parser.add_option(
-      "--ganakold", dest="ganakold", type=str, default="../old_ganak/build/ganak",
-      help="Location of ganak. Default: %default")
-
-    parser.add_option(
       "--appmc", dest="approxmc", type=str, default="../approxmc/build/approxmc",
       help="Location of approxmc. Default: %default")
-
-    parser.add_option(
-      "--sharpsat", dest="sharpsat", type=str, default="../sharpSAT/build/sharpSAT",
-      help="Location of sharpsat. Default: %default")
 
     parser.add_option(
       "--delta", dest="delta", type=float, default="0.2",
@@ -219,7 +203,7 @@ def run_one_counter(solver, fname, seed=42):
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - options.maxtimediff:
         print("Too much time to solve with %s, aborted!" % solver.exe)
-        return None
+        return True, None
 
     num = None
     for l in out.split("\n"):
@@ -244,9 +228,9 @@ def run_one_counter(solver, fname, seed=42):
                 exit(-1)
     if num is None:
         print("ERROR, could not find 's mc' or 'c s exact arb int' in output")
-        exit(-1)
+        return False, None
 
-    return num
+    return True, num
 
 def check_header(fname):
     with open(fname, "r") as f:
@@ -340,7 +324,7 @@ if __name__ == "__main__":
 
     proj = False
     while True:
-        if options.proj: proj = not proj
+        proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Checking fname: ", fname)
 
@@ -365,23 +349,24 @@ if __name__ == "__main__":
             add_projection(fname)
         counts = []
         solvers = [
-            # Solver(options.approxmc, False),
-            # Solver(options.approxmc+" --withe 0", False),
-            # Solver(options.approxmc+" --arjun 0", False),
-            # Solver(options.ganakold, True),
-            Solver(options.ganak, True),
-            # Solver(options.sharpsat, True),
+            # Solver("../approxmc/build/approxmc", False),
+            # Solver("../approxmc/build/approxmc --withe 0", False),
+            # Solver("../approxmc/build/approxmc --arjun 0", False),
+            # Solver("../old_ganak/build/ganak", True),
+            Solver("../ganak/build/ganak --td 0 --arjun 1 --vivif 1 --vivifevery 30 --restart 0 --rsttype 6 --rstnext 100", True),
+            Solver("../ganak/build/ganak --td 0 --arjun 1 --vivif 0 --restart 0", True),
+
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-            # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"),
+            # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/")
         ]
 
         if proj:
-            solvers.append(Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"))
             # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
+            pass
         else:
-            solvers.append(Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/"))
             # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
+            pass
 
 
         preprocs = [
@@ -420,36 +405,40 @@ if __name__ == "__main__":
                         ("ganak" not in solver.exe and "approx" not in solver.exe):
                     # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
                     continue
-                count = run_one_counter(solver, fname2)
+                OK, count = run_one_counter(solver, fname2)
+                if not OK and ("ganak" in solver.exe or "approx" in solver.exe):
+                    print("Error running ", solver)
+                    exit(-1)
+                print("got back: ", OK, " , ", count)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
-                if count is not None and count > 10000:
+                if count is not None:
                     counts.append(Count(solver, preproc, count))
-                    if 'approxmc' in solver.exe and options.sandbox:
-                        samples = []
-                        preproc_name = "nopreproc"
-                        if preproc.exe is not None:
-                            preproc_name = 'arjun' if 'arjun' in preproc.exe else 'bpe'
-                        print("fname is: ", fname)
-                        new_fname = fname.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
-                        new_fname2 = fname2.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
-                        shutil.copyfile(fname, new_fname)
-                        shutil.copyfile(fname2, new_fname2)
-                        data = {
-                            'samples': samples,
-                            'epsilon': options.epsilon,
-                            'delta': options.delta,
-                            'fname': new_fname,
-                            'fname2': new_fname2,
-                            'preproc': preproc_name,
-                        }
-                        for i in range(options.num_samples):
-                            count = run_one_counter(solver, new_fname2, seed=i)
-                            if count is not None:
-                                 print("COUNT:", count)
-                                 data['samples'].append((i, int(count)))
-                                 with open(f'{new_fname2}.json', 'w') as fp:
-                                     json.dump(data, fp)
+                if (count is not None) and count > 10000 and ('approxmc' in solver.exe) and options.sandbox:
+                    samples = []
+                    preproc_name = "nopreproc"
+                    if preproc.exe is not None:
+                        preproc_name = 'arjun' if 'arjun' in preproc.exe else 'bpe'
+                    print("fname is: ", fname)
+                    new_fname = fname.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
+                    new_fname2 = fname2.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
+                    shutil.copyfile(fname, new_fname)
+                    shutil.copyfile(fname2, new_fname2)
+                    data = {
+                        'samples': samples,
+                        'epsilon': options.epsilon,
+                        'delta': options.delta,
+                        'fname': new_fname,
+                        'fname2': new_fname2,
+                        'preproc': preproc_name,
+                    }
+                    for i in range(options.num_samples):
+                        count = run_one_counter(solver, new_fname2, seed=i)
+                        if count is not None:
+                             print("COUNT:", count)
+                             data['samples'].append((i, int(count)))
+                             with open(f'{new_fname2}.json', 'w') as fp:
+                                 json.dump(data, fp)
 
         if exact_count is None:
             os.unlink(fname)
@@ -457,6 +446,7 @@ if __name__ == "__main__":
                 os.unlink(fname2)
             continue
 
+        print("counts is: ", counts)
         for a in counts:
             if a.count != exact_count.count and a.solver.exact:
                 print("ERROR!")
@@ -476,12 +466,13 @@ if __name__ == "__main__":
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
-            print(" --------------------------- \n")
 
         print("Checking with file %s finished" % fname)
         if options.keep_bugs_only:
             os.unlink(fname)
             for _, fname2 in simplified: os.unlink(fname2)
+
+        print(" --------------------------- \n")
 
 
 
