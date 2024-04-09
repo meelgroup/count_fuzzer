@@ -356,7 +356,7 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
             Solver("../ganak/build/ganak --td 0 --arjun 1 --vivif 1 --vivifevery 30 --restart 0 --rsttype 6 --rstnext 100", True),
-            Solver("../ganak/build/ganak --td 0 --arjun 1 --vivif 0 --restart 0", True),
+            Solver("../ganak/build/ganak --td 0 --arjun 0 --vivif 0 --restart 0", True),
 
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
