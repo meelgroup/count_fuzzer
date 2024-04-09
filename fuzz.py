@@ -324,9 +324,11 @@ if __name__ == "__main__":
 
     proj = False
     while True:
+        seed  = random.randint(0, 1000*1000*1000)
+        random.seed(seed)
         proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
-        print("Checking fname: ", fname)
+        print("Seed: ", seed, " checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
@@ -473,6 +475,9 @@ if __name__ == "__main__":
             for _, fname2 in simplified: os.unlink(fname2)
 
         print(" --------------------------- \n")
+        if options.rnd_seed is not None:
+            print("Exiting as we only wanted to run one test due to --seed")
+            exit(0)
 
 
 
