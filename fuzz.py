@@ -138,21 +138,26 @@ def add_projection(fname) :
     all_vars = []
     for i in range(vars): all_vars.append(i+1)
     proj = []
+    optproj = []
     if vars == 0:
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
     num : int = random.randint(1, len(all_vars))
     for i in range(num):
-        # index = random.randint(0, len(all_vars)-1)
-        index = 0
-        v = all_vars[index]
-        proj.append(v)
-        del all_vars[index]
+        proj.append(i+1)
+
+    num : int = random.randint(len(proj), len(all_vars))
+    for i in range(num):
+        optproj.append(i+1)
 
     with open(fname, "a") as f:
         f.write("c p show ")
         for a in proj:
+            f.write("%d " % a)
+        f.write("0\n")
+        f.write("c p optshow ")
+        for a in optproj:
             f.write("%d " % a)
         f.write("0\n")
 
@@ -324,8 +329,11 @@ if __name__ == "__main__":
 
     proj = False
     while True:
-        seed  = random.randint(0, 1000*1000*1000)
-        random.seed(seed)
+        if options.rnd_seed is None:
+            seed  = random.randint(0, 1000*1000*1000)
+            random.seed(seed)
+        else:
+            seed = options.rnd_seed
         proj = not proj
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
         print("Seed: ", seed, " checking fname: ", fname)
@@ -355,8 +363,11 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --withe 0", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
-            Solver("../ganak/build/ganak --td 0 --arjun 1 --vivif 1 --vivifevery 30 --restart 0 --rsttype 6 --rstnext 100", True),
-            Solver("../ganak/build/ganak --td 0 --arjun 0 --vivif 0 --restart 0", True),
+
+            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
+            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
+            # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0 --rdbeveryn 20 --consolidateevery 40 --rdbclstarget 40 --vivif 1 --vivifevery 30", True),
+            # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 30 --rdbclstarget 40 --vivif 1 --vivifevery 40", True),
 
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
