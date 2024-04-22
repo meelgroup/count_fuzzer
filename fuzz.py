@@ -69,7 +69,7 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=4,
+      "--tout", "-t", dest="maxtime", type=int, default=8,
       help="Max time to run. Default: %default")
 
     parser.add_option(
@@ -147,19 +147,19 @@ def add_projection(fname) :
     for i in range(num):
         proj.append(i+1)
 
-    num : int = random.randint(len(proj), len(all_vars))
-    for i in range(num):
-        optproj.append(i+1)
+    # num : int = random.randint(len(proj), len(all_vars))
+    # for i in range(num):
+    #     optproj.append(i+1)
 
     with open(fname, "a") as f:
         f.write("c p show ")
         for a in proj:
             f.write("%d " % a)
         f.write("0\n")
-        f.write("c p optshow ")
-        for a in optproj:
-            f.write("%d " % a)
-        f.write("0\n")
+        # f.write("c p optshow ")
+        # for a in optproj:
+        #     f.write("%d " % a)
+        # f.write("0\n")
 
 def gen_fuzz_call_biere(fuzzer, fname):
     seed = random.randint(0, 1000000)
@@ -343,8 +343,9 @@ if __name__ == "__main__":
         # Majority vote + if count is small, we can count 1-by-1.
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
-        call = random.choice([gen_fuzz_call_biere("./biere-fuzz", fname)
-                              , gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
+        call = random.choice([
+            gen_fuzz_call_biere("./biere-fuzz", fname),
+            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
@@ -365,7 +366,7 @@ if __name__ == "__main__":
             # Solver("../old_ganak/build/ganak", True),
 
             Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
-            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
+            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1", True),
             # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0 --rdbeveryn 20 --consolidateevery 40 --rdbclstarget 40 --vivif 1 --vivifevery 30", True),
             # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 30 --rdbclstarget 40 --vivif 1 --vivifevery 40", True),
 
