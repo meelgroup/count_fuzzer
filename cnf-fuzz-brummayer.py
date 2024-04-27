@@ -29,8 +29,8 @@ IFF = 3
 XOR = 4
 
 g_version = "0.1"
-g_min_num_vars = 10
-g_max_num_vars = 50
+g_min_num_vars = 20
+g_max_num_vars = 40
 g_num_vars = 0
 g_min_rclauses_perc = 10
 g_max_rclauses_perc = 20

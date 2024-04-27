@@ -69,7 +69,7 @@ def set_up_parser():
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
     parser.add_option(
-      "--tout", "-t", dest="maxtime", type=int, default=8,
+      "--tout", "-t", dest="maxtime", type=int, default=4,
       help="Max time to run. Default: %default")
 
     parser.add_option(
@@ -143,13 +143,13 @@ def add_projection(fname) :
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
-    num : int = random.randint(1, len(all_vars))
+    num : int = random.randint(1, int(len(all_vars)/4))
     for i in range(num):
         proj.append(i+1)
 
-    # num : int = random.randint(len(proj), len(all_vars))
-    # for i in range(num):
-    #     optproj.append(i+1)
+    num : int = random.randint(min(len(proj)+20, len(all_vars)), len(all_vars))
+    for i in range(num):
+        optproj.append(i+1)
 
     with open(fname, "a") as f:
         f.write("c p show ")
@@ -327,16 +327,15 @@ if __name__ == "__main__":
         rnd_seed = options.rnd_seed
     random.seed(rnd_seed)
 
-    proj = False
     while True:
         if options.rnd_seed is None:
             seed  = random.randint(0, 1000*1000*1000)
             random.seed(seed)
         else:
             seed = options.rnd_seed
-        proj = not proj
+        proj :bool = random.choice([True, False])
         fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
-        print("Seed: ", seed, " checking fname: ", fname)
+        print("Seed: ", seed, " proj: ", proj, " checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
@@ -365,8 +364,8 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
 
-            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
             Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1", True),
+            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
             # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0 --rdbeveryn 20 --consolidateevery 40 --rdbclstarget 40 --vivif 1 --vivifevery 30", True),
             # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 30 --rdbclstarget 40 --vivif 1 --vivifevery 40", True),
 
