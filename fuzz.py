@@ -215,6 +215,9 @@ def run_one_counter(solver, fname, seed=42):
         l = l.strip()
         if options.verbose:
             print(l)
+        if "ERROR" in l:
+            print("ERROR in output: ", l)
+            return False, None
         if len(l) < 4:
             continue
         if l[0] == 'c' and l[:3] != "c s":
