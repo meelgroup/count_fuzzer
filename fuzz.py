@@ -366,8 +366,7 @@ if __name__ == "__main__":
 
             Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1", True),
             Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
-            # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0 --rdbeveryn 20 --consolidateevery 40 --rdbclstarget 40 --vivif 1 --vivifevery 30", True),
-            # Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 30 --rdbclstarget 40 --vivif 1 --vivifevery 40", True),
+            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
 
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
