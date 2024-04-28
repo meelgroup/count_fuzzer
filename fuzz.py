@@ -143,7 +143,7 @@ def add_projection(fname) :
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
-    num : int = random.randint(1, int(len(all_vars)/4))
+    num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
     for i in range(num):
         proj.append(i+1)
 
@@ -217,6 +217,9 @@ def run_one_counter(solver, fname, seed=42):
             print(l)
         if "ERROR" in l:
             print("ERROR in output: ", l)
+            for l in out.split("\n"):
+                l = l.strip()
+                print(l)
             return False, None
         if len(l) < 4:
             continue
@@ -367,8 +370,9 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
 
-            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 1", True),
-            Solver("../ganak/build/ganak --maxcache 100 --td 0 --arjun 0", True),
+            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --buddymaxcls 30 --buddy 1", True),
+            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0", True),
+            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
             Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
 
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
