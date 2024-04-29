@@ -211,10 +211,13 @@ def run_one_counter(solver, fname, seed=42):
         return True, None
 
     num = None
+    unsat_found = False
     for l in out.split("\n"):
         l = l.strip()
         if options.verbose:
             print(l)
+        if "s UNSATIS" in l:
+            unsat_found = True
         if "ERROR" in l:
             print("ERROR in output: ", l)
             for l in out.split("\n"):
@@ -237,6 +240,9 @@ def run_one_counter(solver, fname, seed=42):
             else:
                 print("ERROR")
                 exit(-1)
+    if unsat_found:
+        return True, 0
+
     if num is None:
         print("ERROR, could not find 's mc' or 'c s exact arb int' in output")
         return False, None
@@ -425,7 +431,7 @@ if __name__ == "__main__":
                     # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
                     continue
                 OK, count = run_one_counter(solver, fname2)
-                if not OK and ("ganak" in solver.exe or "approx" in solver.exe):
+                if not OK:
                     print("Error running ", solver)
                     exit(-1)
                 print("got back: ", OK, " , ", count)
