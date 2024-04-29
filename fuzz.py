@@ -376,10 +376,11 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
 
-            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --buddymaxcls 30 --buddy 1", True),
+            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --buddymaxcls 30 --buddy 1", True),
+            Solver('../d4v2/mccomp2023/d4_static -m counting  --keyword-output-format-solution "s type mc" --output-format competition -p sharp-equiv --preproc-timeout 100 -i ', True),
             Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0", True),
-            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
-            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
+            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
+            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
 
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
