@@ -377,12 +377,13 @@ if __name__ == "__main__":
             # Solver("../old_ganak/build/ganak", True),
 
             # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --buddymaxcls 30 --buddy 1", True),
-            Solver('../d4v2/mccomp2023/d4_static -m counting  --keyword-output-format-solution "s type mc" --output-format competition -p sharp-equiv --preproc-timeout 100 -i ', True),
-            Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0", True),
-            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
-            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 1 --vivifevery 30", True),
-
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
+            # Solver('./bins/d4-mccomp2023/bin/d4_static -m counting  --keyword-output-format-solution "s type mc" --output-format competition -p sharp-equiv --preproc-timeout 100 -i ', True),
+            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 2 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
+
+            # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 800 --td 0 --arjun 1 --consolidateevery 5 --rdbclstarget 50 --vivif 1 --vivifevery 5", True),
+            Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
+
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/")
         ]
