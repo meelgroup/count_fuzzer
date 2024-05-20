@@ -65,6 +65,10 @@ def set_up_parser():
       action="store_true", help="Do experiments in the sandbox")
 
     parser.add_option(
+      "--weighted", dest="weighted", default=False,
+      action="store_true", help="Weighted")
+
+    parser.add_option(
       "--valgrindfreq", dest="valgrind_freq", type=int,
       default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
 
@@ -78,10 +82,6 @@ def set_up_parser():
         " Default: %default")
 
     parser.add_option(
-      "--appmc", dest="approxmc", type=str, default="../approxmc/build/approxmc",
-      help="Location of approxmc. Default: %default")
-
-    parser.add_option(
       "--delta", dest="delta", type=float, default="0.2",
       help="TODO. Default: %default")
 
@@ -93,10 +93,6 @@ def set_up_parser():
       "--keep-bugs-only", dest="keep_bugs_only", default=True,
         action="store_true",
         help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
-
-    parser.add_option(
-        "--max-num-files", dest="max_num_files", type=int, default=700,
-        help="Maximum number of files to generate. Default: %default")
 
     parser.add_option(
       "--sample-approxmc", dest="sample_approxmc", default=False,
@@ -124,6 +120,33 @@ def run(command, dir):
             resource.getrlimit(resource.RLIMIT_CPU))
     return consoleOutput, err
 
+
+def add_weights(fname) :
+    vars = 0
+    with open(fname, "r") as f:
+        for line in f:
+            line = line.strip()
+            if len(line) < 3:continue
+            if line[0] == "p":
+                line = line.split(" ")
+                assert line[1].strip() == "cnf"
+                vars = int(line[2])
+
+    all_vars = []
+    for i in range(vars): all_vars.append(i+1)
+    if vars == 0:
+        print("ERROR: Can't find 'p cnf' in file %s" % fname)
+        exit(-1)
+
+    weights = []
+    for var in all_vars:
+        if random.choice([True, False]):
+            weights.append((var, float(random.randrange(0, 1000))/1000.0))
+
+    with open(fname, "a") as f:
+        for v,w in weights:
+            f.write("c p weight %d %lf 0\n" % (v, w))
+
 def add_projection(fname) :
     vars = 0
     with open(fname, "r") as f:
@@ -138,7 +161,6 @@ def add_projection(fname) :
     all_vars = []
     for i in range(vars): all_vars.append(i+1)
     proj = []
-    optproj = []
     if vars == 0:
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
@@ -147,29 +169,30 @@ def add_projection(fname) :
     for i in range(num):
         proj.append(i+1)
 
-    num : int = random.randint(min(len(proj)+20, len(all_vars)), len(all_vars))
-    for i in range(num):
-        optproj.append(i+1)
-
     with open(fname, "a") as f:
         f.write("c p show ")
         for a in proj:
             f.write("%d " % a)
         f.write("0\n")
-        # f.write("c p optshow ")
-        # for a in optproj:
-        #     f.write("%d " % a)
-        # f.write("0\n")
 
-def gen_fuzz_call_biere(fuzzer, fname):
+def get_type(proj, weighted):
+    ty = "0"
+    if proj and not weighted: ty = "1"
+    if not proj and weighted: ty = "2"
+    if proj and weighted: ty = "3"
+    return ty
+
+def gen_fuzz_call_biere(fuzzer, fname, proj, weighted):
     seed = random.randint(0, 1000000)
-    call = "{0} {1} > {2}".format(fuzzer, seed, fname)
+    ty = get_type(proj, weighted)
+    call = "{0} {1} {2} > {3}".format(fuzzer, seed, ty, fname)
     return call
 
 
-def gen_fuzz_call_brummayer(fuzzer, fname):
+def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
     seed = random.randint(0, 1000000)
-    call = "{0} -I 21 -s {1} > {2}".format(fuzzer, seed, fname)
+    ty = get_type(proj, weighted)
+    call = "{0} -I 21 -s {1} -t {2} > {3}".format(fuzzer, seed, ty, fname)
     return call
 
 
@@ -228,15 +251,19 @@ def run_one_counter(solver, fname, seed=42):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc":
+        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s exact double prec-sci" in l:
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
             if l[:4] == "s mc" or l[:5] == "s pmc":
                 num = int(l.split()[2])
+            elif "c s exact arb float " in l:
+                num = float(l.split()[5])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
+            elif "s exact double prec-sci" in l:
+                num = float(l.split()[5])
             else:
                 print("ERROR")
                 exit(-1)
@@ -346,7 +373,13 @@ if __name__ == "__main__":
         else:
             seed = options.rnd_seed
         proj :bool = random.choice([True, False])
-        fname = unique_file("fuzzTest", max_num_files=options.max_num_files)
+        weighted :bool = random.choice([True, False])
+        if (options.weighted):
+            weighted = True
+            proj = False
+        else:
+            weighted = False
+        fname = unique_file("fuzzTest")
         print("Seed: ", seed, " proj: ", proj, " checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
@@ -355,8 +388,8 @@ if __name__ == "__main__":
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = random.choice([
-            gen_fuzz_call_biere("./biere-fuzz", fname),
-            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname)])
+            gen_fuzz_call_biere("./biere-fuzz", fname, proj, weighted),
+            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname, proj, weighted)])
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
@@ -369,24 +402,32 @@ if __name__ == "__main__":
 
         if proj:
             add_projection(fname)
+        if weighted:
+            add_weights(fname)
         counts = []
         solvers = [
             # Solver("../approxmc/build/approxmc", False),
             # Solver("../approxmc/build/approxmc --withe 0", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
-
-            # Solver("../ganak/build/ganak --maxcache 10 --td 0 --arjun 1 --buddymaxcls 30 --buddy 1", True),
+            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
             # Solver('./bins/d4-mccomp2023/bin/d4_static -m counting  --keyword-output-format-solution "s type mc" --output-format competition -p sharp-equiv --preproc-timeout 100 -i ', True),
-            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 2 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
-
-            # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 800 --td 0 --arjun 1 --consolidateevery 5 --rdbclstarget 50 --vivif 1 --vivifevery 5", True),
-            Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
-
-            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-            # Solver("./sharpSAT -decot 1 -decow 1 -tmpdir tmpdir -cs 5 ", True, "./bins/sharpsat-td-mccomp2022/bin/")
         ]
+
+        if not weighted:
+            solvers = [
+            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 2 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
+            Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
+            ]
+
+        if weighted and not proj:
+            solvers = [
+                Solver("../ganak/build/ganak --arjun 0 --vivif 0", True),
+                # Solver("../gpmc2023/gpmc -mode=1", True),
+                # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
+                Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-mccomp2022/bin/")
+            ]
 
         if proj:
             # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
@@ -394,7 +435,6 @@ if __name__ == "__main__":
         else:
             # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
             pass
-
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
@@ -406,7 +446,7 @@ if __name__ == "__main__":
 
         simplified = []
         for preproc in preprocs:
-            fname2 = unique_file("fuzzTest", max_num_files=options.max_num_files)
+            fname2 = unique_file("fuzzTest")
             OK = False
             if preproc.exe == None:
                 shutil.copyfile(fname, fname2)
@@ -475,21 +515,28 @@ if __name__ == "__main__":
 
         print("counts is: ", counts)
         for a in counts:
-            if a.count != exact_count.count and a.solver.exact:
-                print("ERROR!")
-                print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
-                print("%s with preproc %s counted: %s" %(
-                    exact_count.solver, exact_count.preproc, exact_count.count))
-                exit(-1)
+            if weighted:
+                assert(a.solver.exact)
+                if abs(a.count-exact_count.count)/exact_count.count > 0.1:
+                    print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
+                    exit(-1)
 
-            if a.count != exact_count.count and not a.solver.exact:
-                print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
-                print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
-                print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
+            if weighted is False:
+                if a.count != exact_count.count and a.solver.exact:
+                    print("ERROR!")
+                    print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
+                    print("%s with preproc %s counted: %s" %(
+                        exact_count.solver, exact_count.preproc, exact_count.count))
+                    exit(-1)
 
-                if exact_count.count*1.5 < a.count or \
-                    exact_count.count*0.7 > a.count:
-                        exit(-1)
+                if a.count != exact_count.count and not a.solver.exact:
+                    print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
+                    print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
+                    print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
+
+                    if exact_count.count*1.5 < a.count or \
+                        exact_count.count*0.7 > a.count:
+                            exit(-1)
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))

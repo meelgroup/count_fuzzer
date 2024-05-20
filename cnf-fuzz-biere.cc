@@ -51,6 +51,7 @@ main (int argc, char ** argv)
     }
 
   seed = (argc > 1) ? atoi (argv[1]) : std::abs ((time(NULL)) >> 1);
+  int type = (argc > 2) ? atoi (argv[2]) : 0;
   /* printf ("c seed %d\n", seed); */
   srand (seed);
   w = pick (10, 50);
@@ -89,8 +90,11 @@ main (int argc, char ** argv)
   mark = (char*)calloc (m + 1, 1);
   for (i = 0; i < nlayers; i++)
     n += clauses[i];
-  printf ("c t mc\n");
   printf ("p cnf %d %d\n", m, n);
+  if (type == 0) printf ("c t mc\n");
+  else if (type == 1) printf ("c t pmc\n");
+  else if (type == 2) printf ("c t wmc\n");
+  else if (type == 3) printf ("c t pwmc\n");
   for (i = 0; i < nlayers; i++)
     {
       for (j = 0; j < clauses[i]; j++)
