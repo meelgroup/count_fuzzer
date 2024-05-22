@@ -121,7 +121,7 @@ def run(command, dir):
     return consoleOutput, err
 
 
-def add_weights(fname) :
+def add_weights(fname, projected_vars) :
     vars = 0
     with open(fname, "r") as f:
         for line in f:
@@ -131,17 +131,25 @@ def add_weights(fname) :
                 line = line.split(" ")
                 assert line[1].strip() == "cnf"
                 vars = int(line[2])
-
-    all_vars = []
-    for i in range(vars): all_vars.append(i+1)
     if vars == 0:
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
+    all_vars = []
+    if projected_vars is not None:
+        all_vars = list(projected_vars)
+    else:
+        all_vars = []
+        for i in range(vars):
+            all_vars.append(i+1)
+
     weights = []
     for var in all_vars:
+        w = 0.5
         if random.choice([True, False]):
-            weights.append((var, float(random.randrange(0, 1000))/1000.0))
+            w = float(random.randrange(0, 1000))/1000.0
+        weights.append([var, w])
+        weights.append([-var, 1.0-w])
 
     with open(fname, "a") as f:
         for v,w in weights:
@@ -174,6 +182,7 @@ def add_projection(fname) :
         for a in proj:
             f.write("%d " % a)
         f.write("0\n")
+    return proj
 
 def get_type(proj, weighted):
     ty = "0"
@@ -404,10 +413,11 @@ if __name__ == "__main__":
         else:
             print("Generated fuzz file %s with call: %s" % (fname, call));
 
+        projected_vars = None
         if proj:
-            add_projection(fname)
+            projected_vars = add_projection(fname)
         if weighted:
-            add_weights(fname)
+            add_weights(fname, projected_vars)
         counts = []
         solvers = [
             # Solver("../approxmc/build/approxmc", False),
