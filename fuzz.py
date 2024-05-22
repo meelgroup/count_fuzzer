@@ -272,7 +272,11 @@ def run_one_counter(solver, fname, seed=42):
 
     if num is None:
         print("ERROR, could not find 's mc' or 'c s exact arb int' in output")
-        return False, None
+
+        if ("ganak" in solver.exe or "approx" in solver.exe): return False, None
+        else :
+            print("Not erroring out, it's not our solver")
+            return True, None
 
     return True, num
 
@@ -426,7 +430,7 @@ if __name__ == "__main__":
                 Solver("../ganak/build/ganak --arjun 0 --vivif 0", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
-                Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-mccomp2022/bin/")
+                Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ]
 
         if proj:
@@ -517,7 +521,7 @@ if __name__ == "__main__":
         for a in counts:
             if weighted:
                 assert(a.solver.exact)
-                if abs(a.count-exact_count.count)/exact_count.count > 0.1:
+                if a.count != exact_count.count and abs(a.count-exact_count.count)/exact_count.count > 0.01:
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
