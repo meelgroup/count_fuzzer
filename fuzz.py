@@ -201,7 +201,7 @@ def gen_fuzz_call_biere(fuzzer, fname, proj, weighted):
 def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
     seed = random.randint(0, 1000000)
     ty = get_type(proj, weighted)
-    call = "{0} -I 21 -s {1} -t {2} > {3}".format(fuzzer, seed, ty, fname)
+    call = "{0} -I 21 -s {1} -T {2} > {3}".format(fuzzer, seed, ty, fname)
     return call
 
 
@@ -439,8 +439,8 @@ if __name__ == "__main__":
             solvers = [
                 Solver("../ganak/build/ganak --arjun 0 --vivif 0", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
-                # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
-                Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
+                Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
+                # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ]
 
         if proj:

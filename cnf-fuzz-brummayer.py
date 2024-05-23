@@ -96,7 +96,7 @@ signal.signal (signal.SIGHUP, sighandler)
 gen_type = 0
 
 try:
-  opts, args = getopt.getopt(sys.argv[1:], "hVtmi:I:r:p:P:l:L:s:")
+    opts, args = getopt.getopt(sys.argv[1:], "hVtmi:I:r:p:P:l:L:s:T:")
 except getopt.GetoptError as err:
   print(str(err))
   usage()
