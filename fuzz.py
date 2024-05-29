@@ -269,6 +269,8 @@ def run_one_counter(solver, fname, seed=42):
                 num = int(l.split()[2])
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
+            elif "c s exact arb int" in l:
+                num = float(l.split()[5])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
             elif "s exact double prec-sci" in l:
@@ -389,7 +391,6 @@ if __name__ == "__main__":
         weighted :bool = random.choice([True, False])
         if (options.weighted):
             weighted = True
-            proj = False
         else:
             weighted = False
         fname = unique_file("fuzzTest")
@@ -437,18 +438,20 @@ if __name__ == "__main__":
 
         if weighted and not proj:
             solvers = [
-                Solver("../ganak/build/ganak --arjun 0 --vivif 0", True),
+                Solver("../ganak/build/ganak --td 0 --arjun 0", True),
+                # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
                 Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ]
 
-        if proj:
-            # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=2", True));
-            pass
-        else:
-            # solvers.append(Solver("./bins/gpmc-2023/gpmc -mode=0", True));
-            pass
+        if weighted and proj:
+            solvers = [
+                Solver("../ganak/build/ganak --td 0 --arjun 0", True),
+                # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
+                # Solver("../gpmc2023/gpmc -mode=3", True),
+                Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+            ]
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
