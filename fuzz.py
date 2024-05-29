@@ -375,7 +375,8 @@ if __name__ == "__main__":
         exit(-1)
 
     if options.rnd_seed is None:
-        rnd_seed = random.randint(0, 1000*1000*1000)
+        b = os.urandom(num_bytes)
+        rnd_seed = int.from_bytes(b)
         print("Using seed:", rnd_seed)
     else:
         rnd_seed = options.rnd_seed
