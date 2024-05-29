@@ -7,8 +7,6 @@ Currently requires Ganak and ApproxMC to be built, and available from the follow
 ../approxmc/build/approxmc
 ```
 
-However, you can give them as options to the fuzzer.
-
 Before you run, you must build:
 ```
 cmake .
