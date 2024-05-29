@@ -375,7 +375,7 @@ if __name__ == "__main__":
         exit(-1)
 
     if options.rnd_seed is None:
-        b = os.urandom(num_bytes)
+        b = os.urandom(6)
         rnd_seed = int.from_bytes(b)
         print("Using seed:", rnd_seed)
     else:
