@@ -384,7 +384,7 @@ if __name__ == "__main__":
 
     while True:
         if options.rnd_seed is None:
-            seed  = random.randint(0, 1000*1000*1000)
+            seed  = random.randint(0, 4*1000*1000*1000)
             random.seed(seed)
         else:
             seed = options.rnd_seed
@@ -439,15 +439,18 @@ if __name__ == "__main__":
 
         if weighted and not proj:
             solvers = [
+                Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 Solver("../ganak/build/ganak --td 0 --arjun 0", True),
+                Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
-                Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
+                # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ]
 
         if weighted and proj:
             solvers = [
+                Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 Solver("../ganak/build/ganak --td 0 --arjun 0", True),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=3", True),
