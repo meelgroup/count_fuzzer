@@ -250,6 +250,10 @@ def run_one_counter(solver, fname, seed=42):
             print(l)
         if "s UNSATIS" in l:
             unsat_found = True
+        if "Assertion " in l nd "failed" in l:
+            return False, None
+        if "ERROR Memory out!" in l:
+            return True, None
         if "ERROR" in l:
             print("ERROR in output: ", l)
             for l in out.split("\n"):
