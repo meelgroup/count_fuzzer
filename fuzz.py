@@ -441,7 +441,7 @@ if __name__ == "__main__":
             solvers = [
                 Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 Solver("../ganak/build/ganak --td 0 --arjun 0", True),
-                Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+                # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
@@ -454,7 +454,7 @@ if __name__ == "__main__":
                 Solver("../ganak/build/ganak --td 0 --arjun 0", True),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=3", True),
-                Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+                # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
             ]
 
         preprocs = [
