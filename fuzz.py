@@ -250,8 +250,10 @@ def run_one_counter(solver, fname, seed=42):
             print(l)
         if "s UNSATIS" in l:
             unsat_found = True
-        if "Assertion " in l nd "failed" in l:
+        if "Assertion " in l and "failed" in l:
             return False, None
+        # if "sat call" in l:
+        #     print(l)
         if "ERROR Memory out!" in l:
             return True, None
         if "ERROR" in l:
@@ -379,7 +381,7 @@ if __name__ == "__main__":
         exit(-1)
 
     if options.rnd_seed is None:
-        b = os.urandom(6)
+        b = os.urandom(8)
         rnd_seed = int.from_bytes(b)
         print("Using seed:", rnd_seed)
     else:
@@ -388,7 +390,8 @@ if __name__ == "__main__":
 
     while True:
         if options.rnd_seed is None:
-            seed  = random.randint(0, 4*1000*1000*1000)
+            b = os.urandom(8)
+            seed = int.from_bytes(b)
             random.seed(seed)
         else:
             seed = options.rnd_seed
@@ -412,6 +415,7 @@ if __name__ == "__main__":
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
+        print("Calling: ", call)
         status = subprocess.call(call, shell=True)
         if status != 0:
             print("Failed fuzzer file generator call: ", call)
@@ -426,9 +430,6 @@ if __name__ == "__main__":
             add_weights(fname, projected_vars)
         counts = []
         solvers = [
-            # Solver("../approxmc/build/approxmc", False),
-            # Solver("../approxmc/build/approxmc --withe 0", False),
-            # Solver("../approxmc/build/approxmc --arjun 0", False),
             # Solver("../old_ganak/build/ganak", True),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
@@ -437,8 +438,11 @@ if __name__ == "__main__":
 
         if not weighted:
             solvers = [
-            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 2 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
-            Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 10 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 20 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
+            Solver("../approxmc/build/approxmc", False),
+            Solver("../approxmc/build/approxmc --withe 1", False),
+            Solver("../approxmc/build/approxmc --arjun 0", False),
+            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
+            # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
 
         if weighted and not proj:
