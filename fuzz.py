@@ -228,9 +228,12 @@ def run_one_counter(solver, fname, seed=42):
     toexec = solver.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
     if not solver.exact:
+        last = toexec[len(toexec)-1]
+        toexec = toexec[:len(toexec)-1]
         toexec.extend(["--epsilon", str(options.epsilon),
                        "--delta", str(options.delta),
                        "-s", str(seed)])
+        toexec.extend([last])
     out, err = run(toexec, solver.dir)
     if err is None:
         if options.verbose:
@@ -276,6 +279,8 @@ def run_one_counter(solver, fname, seed=42):
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
             elif "c s exact arb int" in l:
+                num = float(l.split()[5])
+            elif "c s approx arb int" in l:
                 num = float(l.split()[5])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
@@ -439,8 +444,9 @@ if __name__ == "__main__":
         if not weighted:
             solvers = [
             Solver("../approxmc/build/approxmc", False),
-            Solver("../approxmc/build/approxmc --withe 1", False),
-            Solver("../approxmc/build/approxmc --arjun 0", False),
+            # Solver("../approxmc/build/approxmc --withe 1", False),
+            # Solver("../approxmc/build/approxmc --arjun 0", False),
+            Solver("../ganak/build/ganak --appmc 2", True),
             Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
@@ -510,7 +516,7 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
-                if (count is not None) and count > 10000 and ('approxmc' in solver.exe) and options.sandbox:
+                if (count is not None) and count > 10000 and ('approx' in solver.exe) and options.sandbox:
                     samples = []
                     preproc_name = "nopreproc"
                     if preproc.exe is not None:
