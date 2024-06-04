@@ -269,7 +269,7 @@ def run_one_counter(solver, fname, seed=42):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s exact double prec-sci" in l:
+        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s exact double prec-sci" in l or " s approx arb int" in l:
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
@@ -280,7 +280,7 @@ def run_one_counter(solver, fname, seed=42):
                 num = float(l.split()[5])
             elif "c s exact arb int" in l:
                 num = float(l.split()[5])
-            elif "c s approx arb int" in l:
+            elif " s approx arb int" in l:
                 num = float(l.split()[5])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
@@ -293,8 +293,9 @@ def run_one_counter(solver, fname, seed=42):
         return True, 0
 
     if num is None:
-        print("ERROR, could not find 's mc' or 'c s exact arb int' in output")
-
+        print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s approx arb int' in output")
+        for l in out.split("\n"):
+            print(l.strip())
         if ("ganak" in solver.exe or "approx" in solver.exe): return False, None
         else :
             print("Not erroring out, it's not our solver")
@@ -446,7 +447,7 @@ if __name__ == "__main__":
             Solver("../approxmc/build/approxmc", False),
             # Solver("../approxmc/build/approxmc --withe 1", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
-            Solver("../ganak/build/ganak --appmc 2", True),
+            Solver("../ganak/build/ganak --td 0 --appmct 0.1", False),
             Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
