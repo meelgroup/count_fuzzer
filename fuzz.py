@@ -66,7 +66,15 @@ def set_up_parser():
 
     parser.add_option(
       "--weighted", dest="weighted", default=False,
-      action="store_true", help="Weighted")
+      action="store_true", help="Weighted only")
+
+    parser.add_option(
+      "--unweighted", dest="unweighted", default=False,
+      action="store_true", help="UnWeighted only")
+
+    parser.add_option(
+      "--proj", dest="projected", default=False,
+      action="store_true", help="Projected only")
 
     parser.add_option(
       "--valgrindfreq", dest="valgrind_freq", type=int,
@@ -173,7 +181,11 @@ def add_projection(fname) :
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
-    num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
+    # if random.choice([True, False]):
+    if True:
+        num : int = random.randint(int(len(all_vars)/10), int(len(all_vars)/5))
+    else:
+        num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
     for i in range(num):
         proj.append(i+1)
 
@@ -402,11 +414,12 @@ if __name__ == "__main__":
         else:
             seed = options.rnd_seed
         proj :bool = random.choice([True, False])
+        if (options.projected): proj = True
+
         weighted :bool = random.choice([True, False])
-        if (options.weighted):
-            weighted = True
-        else:
-            weighted = False
+        if (options.weighted): weighted = True
+        if (options.unweighted): weighted = False
+
         fname = unique_file("fuzzTest")
         print("Seed: ", seed, " proj: ", proj, " checking fname: ", fname)
 
@@ -444,11 +457,13 @@ if __name__ == "__main__":
 
         if not weighted:
             solvers = [
-            Solver("../approxmc/build/approxmc", False),
+            # Solver("../approxmc/build/approxmc", False),
             # Solver("../approxmc/build/approxmc --withe 1", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
-            Solver("../ganak/build/ganak --td 0 --appmct 0.1", False),
-            Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
+            # Solver("../ganak/build/ganak --td 0 --appmct 0.1", False),
+            Solver("../ganak/build/ganak --satrstmult 1 --arjun 0 --td 0", True),
+            Solver("../ganak/build/ganak --satrstmult 2 --arjun 1 --td 0", True),
+            # Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
 
