@@ -177,17 +177,22 @@ def add_projection(fname) :
     all_vars = []
     for i in range(vars): all_vars.append(i+1)
     proj = []
+    proj_set = {}
     if vars == 0:
         print("ERROR: Can't find 'p cnf' in file %s" % fname)
         exit(-1)
 
-    # if random.choice([True, False]):
-    if True:
-        num : int = random.randint(int(len(all_vars)/10), int(len(all_vars)/5))
+    if random.choice([True, False]):
+        num : int = random.randint(int(len(all_vars)/15), int(len(all_vars)/5))
+        if random.choice([True, False]):
+            num = min(2, len(all_vars))
     else:
         num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
     for i in range(num):
-        proj.append(i+1)
+        proj_set[random.choice(all_vars)] = 1
+
+    for a,_ in proj_set.items():
+        proj.append(a)
 
     with open(fname, "a") as f:
         f.write("c p show ")
@@ -204,14 +209,14 @@ def get_type(proj, weighted):
     return ty
 
 def gen_fuzz_call_biere(fuzzer, fname, proj, weighted):
-    seed = random.randint(0, 1000000)
+    seed = random.randint(0, 1000*1000*1000)
     ty = get_type(proj, weighted)
     call = "{0} {1} {2} > {3}".format(fuzzer, seed, ty, fname)
     return call
 
 
 def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
-    seed = random.randint(0, 1000000)
+    seed = random.randint(0, 1000*1000*1000)
     ty = get_type(proj, weighted)
     call = "{0} -I 21 -s {1} -T {2} > {3}".format(fuzzer, seed, ty, fname)
     return call
@@ -421,7 +426,7 @@ if __name__ == "__main__":
         if (options.unweighted): weighted = False
 
         fname = unique_file("fuzzTest")
-        print("Seed: ", seed, " proj: ", proj, " checking fname: ", fname)
+        print("Seed: ", seed, " proj: ", proj, "weihted: ", weighted, " checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
