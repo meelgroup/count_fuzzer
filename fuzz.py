@@ -472,19 +472,19 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc", False),
             # Solver("../approxmc/build/approxmc --withe 1", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
-            Solver("../ganak/build/ganak --td 0 --appmct 0.2", False),
-            Solver("../ganak/build/ganak --td 0 --backbone 0", True),
-            Solver("../ganak/build/ganak --satrstmult 1 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --arjun 1 --td 0", True),
+            Solver("../ganak/build/ganak  --td 0 --appmct 0.2", False),
+            Solver("../ganak/build/ganak  --td 0 ", True),
+            Solver("../ganak/build/ganak  --satrstmult 1 --arjun 0 --td 0", True),
+            Solver("../ganak/build/ganak  --arjun 1 --td 0", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
 
         if weighted:
             solvers = [
-                Solver("../ganak/build/ganak --td 0 --backbone 0", True),
-                Solver("../ganak/build/ganak --satrstmult 1 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak --arjun 1 --td 0", True),
+                Solver("../ganak/build/ganak  --td 0 ", True),
+                Solver("../ganak/build/ganak  --satrstmult 1 --arjun 0 --td 0", True),
+                Solver("../ganak/build/ganak  --arjun 1 --td 0", True),
                 # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
