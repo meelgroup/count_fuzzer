@@ -153,17 +153,11 @@ def add_weights(fname, projected_vars) :
 
     weights = []
     for var in all_vars:
-        add_to_zero = random.choice([True, False])
-        w = 0.5
         if random.choice([True, False]):
             w = float(random.randrange(-10, 10))/10.0
-            if random.choice([True, False]):
-                w = 1.2
             weights.append([var, w])
         if random.choice([True, False]):
             w2 = float(random.randrange(-10, 10))/10.0
-            if add_to_zero:
-                w2 = -w
             weights.append([-var, w2])
 
     with open(fname, "a") as f:
