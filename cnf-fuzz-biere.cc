@@ -54,9 +54,9 @@ main (int argc, char ** argv)
   int type = (argc > 2) ? atoi (argv[2]) : 0;
   /* printf ("c seed %d\n", seed); */
   srand (seed);
-  w = pick (10, 50);
+  w = pick (30, 70);
   /* printf ("c max width %d\n", w); */
-  nlayers = pick (1, 2);
+  nlayers = pick (1, 3);
   /* printf ("c layers %d\n", nlayers); */
   layers = (int**)calloc (nlayers, sizeof *layers);
   width = (int*)calloc (nlayers, sizeof *width);

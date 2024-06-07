@@ -153,11 +153,18 @@ def add_weights(fname, projected_vars) :
 
     weights = []
     for var in all_vars:
+        add_to_zero = random.choice([True, False])
         w = 0.5
         if random.choice([True, False]):
-            w = float(random.randrange(0, 1000))/1000.0
-        weights.append([var, w])
-        weights.append([-var, 1.0-w])
+            w = float(random.randrange(-1000, 1000))/1000.0
+            if random.choice([True, False]):
+                w = 1.2
+            weights.append([var, w])
+        if random.choice([True, False]):
+            w2 = float(random.randrange(-1000, 1000))/1000.0
+            if add_to_zero:
+                w2 = -w
+            weights.append([-var, w2])
 
     with open(fname, "a") as f:
         for v,w in weights:
@@ -466,17 +473,18 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc --withe 1", False),
             # Solver("../approxmc/build/approxmc --arjun 0", False),
             Solver("../ganak/build/ganak --td 0 --appmct 0.2", False),
-            Solver("../ganak/build/ganak --satrstmult 4 --arjun 0 --td 0", True),
+            Solver("../ganak/build/ganak --td 0 --backbone 0", True),
             Solver("../ganak/build/ganak --satrstmult 1 --arjun 0 --td 0", True),
             Solver("../ganak/build/ganak --arjun 1 --td 0", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
             # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
             ]
 
-        if weighted and not proj:
+        if weighted:
             solvers = [
-                Solver("../ganak/build/ganak --td 0 --arjun 1", True),
-                Solver("../ganak/build/ganak --td 0 --arjun 0", True),
+                Solver("../ganak/build/ganak --td 0 --backbone 0", True),
+                Solver("../ganak/build/ganak --satrstmult 1 --arjun 0 --td 0", True),
+                Solver("../ganak/build/ganak --arjun 1 --td 0", True),
                 # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
@@ -485,13 +493,11 @@ if __name__ == "__main__":
             ]
 
         if weighted and proj:
-            solvers = [
-                Solver("../ganak/build/ganak --satrstmult 4 --td 0 --arjun 1", True),
-                Solver("../ganak/build/ganak --td 0 --arjun 0", True),
+            solvers.extend([
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=3", True),
                 # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
-            ]
+            ])
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
