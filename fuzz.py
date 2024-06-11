@@ -154,10 +154,10 @@ def add_weights(fname, projected_vars) :
     weights = []
     for var in all_vars:
         if random.choice([True, False]):
-            w = float(random.randrange(-10, 10))/10.0
+            w = float(random.randrange(0, 10))/10.0
             weights.append([var, w])
         if random.choice([True, False]):
-            w2 = float(random.randrange(-10, 10))/10.0
+            w2 = float(random.randrange(0, 10))/10.0
             weights.append([-var, w2])
 
     with open(fname, "a") as f:
@@ -478,7 +478,7 @@ if __name__ == "__main__":
             solvers = [
                 Solver("../ganak/build/ganak  --td 0 ", True),
                 Solver("../ganak/build/ganak  --satrstmult 1 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak  --arjun 1 --td 0", True),
+                Solver("../ganak/build/ganak  --arjun 1 --td 0 --precise 1", True),
                 # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
                 # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=1", True),
