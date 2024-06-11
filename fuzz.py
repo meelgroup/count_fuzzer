@@ -429,7 +429,7 @@ if __name__ == "__main__":
         if (options.unweighted): weighted = False
 
         fname = unique_file("fuzzTest")
-        print("Seed: ", seed, " proj: ", proj, "weighted: ", weighted, " checking fname: ", fname)
+        print("Seed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking fname: ", fname)
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
