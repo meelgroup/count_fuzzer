@@ -22,6 +22,7 @@
 import json
 import subprocess
 import os
+from sys import set_coroutine_origin_tracking_depth
 import time
 import random
 import resource
@@ -34,6 +35,7 @@ from functools import partial
 Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
+maxtimediff = 1
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -57,14 +59,6 @@ def set_up_parser():
       help="Fuzz test start seed. Otherwise, random seed is picked", type=int)
 
     parser.add_option(
-      "--novalgrind", dest="dovalgrind", default=True,
-      action="store_false", help="Use valgrind")
-
-    parser.add_option(
-      "--sandbox", dest="sandbox", default=False,
-      action="store_true", help="Do experiments in the sandbox")
-
-    parser.add_option(
       "--weighted", dest="weighted", default=False,
       action="store_true", help="Weighted only")
 
@@ -77,17 +71,16 @@ def set_up_parser():
       action="store_true", help="Projected only")
 
     parser.add_option(
-      "--valgrindfreq", dest="valgrind_freq", type=int,
-      default=10, help="1 out of X times valgrind will be used. Default: %default in 1")
+      "--unproj", dest="unprojected", default=False,
+      action="store_true", help="UNProjected only")
 
     parser.add_option(
       "--tout", "-t", dest="maxtime", type=int, default=4,
       help="Max time to run. Default: %default")
 
     parser.add_option(
-        "--textra", dest="maxtimediff", type=int, default=1,
-        help="Extra time on top of timeout for processing."
-        " Default: %default")
+      "--messyweight", dest="messy_weights", default=False,
+      action="store_true", help="With this, weights are NOT fully given, and can contain negative values")
 
     parser.add_option(
       "--delta", dest="delta", type=float, default="0.2",
@@ -101,6 +94,11 @@ def set_up_parser():
       "--keep-bugs-only", dest="keep_bugs_only", default=True,
         action="store_true",
         help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
+
+    # sandbox, sampling ,etc
+    parser.add_option(
+      "--sandbox", dest="sandbox", default=False,
+      action="store_true", help="Do experiments in the sandbox")
 
     parser.add_option(
       "--sample-approxmc", dest="sample_approxmc", default=False,
@@ -152,13 +150,19 @@ def add_weights(fname, projected_vars) :
             all_vars.append(i+1)
 
     weights = []
-    for var in all_vars:
-        if random.choice([True, False]):
+    if options.messy_weights:
+        for var in all_vars:
+            if random.choice([True, False]):
+                w = float(random.randrange(0, 10))/10.0
+                weights.append([var, w])
+            if random.choice([True, False]):
+                w2 = float(random.randrange(0, 10))/10.0
+                weights.append([-var, w2])
+    else:
+        for var in all_vars:
             w = float(random.randrange(0, 10))/10.0
             weights.append([var, w])
-        if random.choice([True, False]):
-            w2 = float(random.randrange(0, 10))/10.0
-            weights.append([-var, w2])
+            weights.append([-var, 1.0-w])
 
     with open(fname, "a") as f:
         for v,w in weights:
@@ -259,7 +263,7 @@ def run_one_counter(solver, fname, seed=42):
     else:
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
-    if diff_time > options.maxtime - options.maxtimediff:
+    if diff_time > options.maxtime - maxtimediff:
         print("Too much time to solve with %s, aborted!" % solver.exe)
         return True, None
 
@@ -375,7 +379,7 @@ def run_one_preproc(preproc, fname, fname2):
         print("Error string is: ", err)
         print("output was: ", out)
     diff_time = time.time() - curr_time
-    if diff_time > options.maxtime - options.maxtimediff:
+    if diff_time > options.maxtime - maxtimediff:
         print("Too much time to preproc with %s, aborted!" % solver.exe)
         return False
     assert check_header(fname2)
@@ -400,9 +404,6 @@ if __name__ == "__main__":
     # parse options
     parser = set_up_parser()
     (options, args) = parser.parse_args()
-    if options.valgrind_freq <= 0:
-        print("Valgrind Frequency must be at least 1")
-        exit(-1)
 
     if options.rnd_seed is None:
         b = os.urandom(8)
@@ -421,6 +422,7 @@ if __name__ == "__main__":
             seed = options.rnd_seed
         proj :bool = random.choice([True, False])
         if (options.projected): proj = True
+        if (options.unprojected): proj = False
 
         weighted :bool = random.choice([True, False])
         if (options.weighted): weighted = True
@@ -455,42 +457,34 @@ if __name__ == "__main__":
             add_weights(fname, projected_vars)
         counts = []
         solvers = [
-            # Solver("../old_ganak/build/ganak", True),
+            Solver("bins/ganak-2024/ganak  --td 0 ", True),
+            Solver("bins/ganak-2024/ganak  --satrstmult 1 --arjun 0 --td 0", True),
+            Solver("bins/ganak-2024/ganak  --arjun 1 --td 0", True),
+            Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-            # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -p sharp-equiv -i"),
-            # Solver('./bins/d4-mccomp2023/bin/d4_static -m counting  --keyword-output-format-solution "s type mc" --output-format competition -p sharp-equiv --preproc-timeout 100 -i ', True),
         ]
 
         if not weighted:
             solvers = [
-            # Solver("../approxmc/build/approxmc", False),
-            # Solver("../approxmc/build/approxmc --withe 1", False),
-            # Solver("../approxmc/build/approxmc --arjun 0", False),
-            Solver("../ganak/build/ganak  --td 0 --appmct 0.2", False),
-            Solver("../ganak/build/ganak  --td 0 ", True),
-            Solver("../ganak/build/ganak  --satrstmult 1 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak  --arjun 1 --td 0", True),
-            # Solver("../ganak/build/ganak --restart 1 --rstfirst 2 --maxcache 10 --td 0 --arjun 1 --rdbeveryn 20 --consolidateevery 1 --rdbclstarget 10 --vivif 0 --vivifevery 8", True),
-            # Solver("../ganak/build/ganak --restart 1 --rstfirst 5 --maxcache 7 --td 0 --arjun 0 --rdbeveryn 10 --consolidateevery 5 --rdbclstarget 20 --vivif 0 --vivifevery 30", True),
+            Solver("bins/appmc-2024/approxmc", False),
+            # Solver("bins/appmc-2024/approxmc --arjun 0", False),
+            Solver("bins/ganak-2024/ganak --td 0 --appmct 0.2", False),
             ]
 
         if weighted:
-            solvers = [
-                Solver("../ganak/build/ganak  --td 0 ", True),
-                Solver("../ganak/build/ganak  --satrstmult 1 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak  --arjun 1 --td 0 --precise 1", True),
-                # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
-                # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
-                # Solver("../gpmc2023/gpmc -mode=1", True),
+            solvers.extend([
+                Solver("bins/ganak-2024/ganak  --arjun 1 --td 0 --precise 1", True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
-            ]
+            ])
 
         if weighted and proj:
             solvers.extend([
-                # Solver("../ganak/build/ganak --td 0 --arjun 1", True),
                 # Solver("../gpmc2023/gpmc -mode=3", True),
-                # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+            ])
+        if weighted and not proj:
+            solvers.extend([
+                # Solver("../gpmc2023/gpmc -mode=1", True),
             ])
 
         preprocs = [
@@ -499,7 +493,6 @@ if __name__ == "__main__":
             # Preproc("./run.sh", "./bins/arjun-withind-extend/"),
             Preproc(None, None)
         ]
-        # if not proj: preprocs.append(Preproc("./run.sh", "./bins/arjun/"))
 
         simplified = []
         for preproc in preprocs:
