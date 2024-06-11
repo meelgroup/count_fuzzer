@@ -153,10 +153,10 @@ def add_weights(fname, projected_vars) :
     if options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
-                w = float(random.randrange(0, 10))/10.0
+                w = float(random.randrange(-10, 10))/10.0
                 weights.append([var, w])
             if random.choice([True, False]):
-                w2 = float(random.randrange(0, 10))/10.0
+                w2 = float(random.randrange(-10, 10))/10.0
                 weights.append([-var, w2])
     else:
         for var in all_vars:
