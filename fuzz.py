@@ -480,11 +480,11 @@ if __name__ == "__main__":
 
         if weighted and proj:
             solvers.extend([
-                # Solver("../gpmc2023/gpmc -mode=3", True),
+                Solver("../gpmc2023/gpmc -mode=3", True),
             ])
         if weighted and not proj:
             solvers.extend([
-                # Solver("../gpmc2023/gpmc -mode=1", True),
+                Solver("../gpmc2023/gpmc -mode=1", True),
             ])
 
         preprocs = [
