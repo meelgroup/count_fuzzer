@@ -89,12 +89,14 @@ class CountFuzzer():
                  weighted=False,
                  verbosity=2,
                  max_time=4,
+                 max_mem=32000,
                  seed=None):
 
         self._projected = projected
         self._weighted = weighted
         self._verbosity = verbosity
         self._max_time = max_time
+        self._max_mem = max_mem
         self._seed = seed
         self._do_preprocess = (preprocessor_config_file is not None)
         self._generated_instances = []
@@ -220,9 +222,6 @@ class CountFuzzer():
         num = None
         unsat = False
         pat = re.compile(counter.regex)
-        print(counter.regex)
-        print(counter.regex.replace('\s',"s"))
-        print(f"pat: {pat}")
         if self._verbosity >= 3:
             log_message("OUTPUT")
 
@@ -230,7 +229,6 @@ class CountFuzzer():
             l = l.strip()
             m = re.match(pat, l)
             if m is not None:
-                print(f"m: {m}")
                 return True, int(m.group("count"))
 
             if self._verbosity >= 3:
@@ -300,7 +298,11 @@ class CountFuzzer():
 
         counter_dir = str(Path(counter.path).parent.absolute())
         command = f"{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
-        command = f"{counter.path} {counter.config} {path_to_instance}"
+        tmp_command = f"{counter.path} {counter.config} {path_to_instance}"
+
+
+        command = fstr(tmp_command, STAREXEC_MAX_MEM=self._max_mem, STAREXEC_WALLCLOCK_LIMIT=self._max_time)
+
         if self._verbosity >= 2:
             log_message(f"command: {command}")
 

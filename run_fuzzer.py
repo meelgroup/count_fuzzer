@@ -61,10 +61,13 @@ def parse_arguments():
       "--messyweight", dest="messy_weights", default=False, required=False,
       action="store_true", help="With this, weights are NOT fully given, and can contain negative values.")
 
-
     behaviour.add_argument(
       "--max-time", "-t", dest="max_time", type=int, default=4, required=False,
       help="Max time to run, in seconds. Default: %default")
+
+    behaviour.add_argument(
+      "--max-mem", "-m", dest="max_mem", type=int, default=32000, required=False,
+      help="Max memory per run.")
 
     behaviour.add_argument(
       "--verbosity", "-v", type=int, default=2, required=False,
@@ -109,6 +112,10 @@ def parse_arguments():
 if __name__ == "__main__":
 
     args = parse_arguments()
+
+    os.environ['STAREXEC_WALLCLOCK_LIMIT'] = str(args.max_time)
+    os.environ['STAREXEC_MAX_MEM'] = str(args.max_mem)
+
     fuzzer = CountFuzzer(
         counter_config_file=args.counters,
         generator_config_file=args.generators,
@@ -117,6 +124,7 @@ if __name__ == "__main__":
         weighted=args.weighted,
         verbosity=args.verbosity,
         max_time=args.max_time,
+        max_mem=args.max_mem,
         seed=args.rnd_seed
     )
     buggy_instance = fuzzer.fuzz()
