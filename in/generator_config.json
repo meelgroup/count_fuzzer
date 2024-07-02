@@ -1,0 +1,10 @@
+{
+   "biere": {
+      "path":"/home/anna/projects/count_fuzzer/biere-fuzz",
+      "config":"{seed} {type_num} > {out_file}"
+   },
+   "brummayer": {
+      "path":"/home/anna/projects/count_fuzzer/cnf-fuzz-brummayer.py",
+      "config":"-I 21 -s {seed} -T {type_num} > {out_file}"
+   }
+}
