@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
+# See https://mccompetition.org/assets/files/2021/competition2021.pdf for input format info
 
 from collections import namedtuple
 from datetime import datetime
@@ -31,6 +32,11 @@ import shutil
 import subprocess
 import sys
 import time
+
+# Johannes' scripts:
+sys.path.insert(1, '/home/anna/projects/mc_experiments/eval/scripts/')
+from parse_counts_util.py import log10cnt
+
 
 SCRIPT_NAME = os.path.basename(__file__)
 
@@ -100,6 +106,8 @@ class CountFuzzer():
         self._seed = seed
         self._do_preprocess = (preprocessor_config_file is not None)
         self._generated_instances = []
+        # TODO: Come up with reliable way to read and process model counts for different output formats
+        self._result_pat = re.compile(r'c s (exact|approx) (arb|single|double|quadruple) -?\d+\.?\d*')
 
         counters = json.load(open(counter_config_file))
         generators = json.load(open(generator_config_file))
@@ -221,25 +229,39 @@ class CountFuzzer():
     def _parse_output(self, counter_output, counter, path_to_instance) -> (bool, int):
         num = None
         unsat = False
+        unknown = False
+        count = -1
+
         pat = re.compile(counter.regex)
         if self._verbosity >= 3:
             log_message("OUTPUT")
 
         for l in counter_output.split("\n"):
             l = l.strip()
-            m = re.match(pat, l)
-            if m is not None:
-                return True, int(m.group("count"))
 
+            # Print each line of the counter's output, if verbosity level is high enough
             if self._verbosity >= 3:
                 log_message(l)
-            if "s UNSATIS" in l: # TODO Check if this is a reliable way of detecting unsatisfiability
+
+            # Check if this is the line in which the count is reported
+            m = re.match(pat, l)
+            if m is not None:
+                count = int(m.group("count"))
+
+            # Check if instance is found to be unsatisfiable
+            if "s UNSATISFIABLE" in l:
                 unsat = True
                 if self._verbosity >= 2:
                     log_message(f"Counter {counter.name} found {path_to_instance} to be UNSAT.")
+
+            if "s UNKOWN" in l:
+                unknown = True
+                if self._verbosity >= 2:
+                    log_message(f"Counter {counter.name} found the satisfiability of {path_to_instance} to be unknown.")
+
             if "Assertion " in l and "failed" in l:
                 if self._verbosity >= 2:
-                    log_message(f"Assertion fail")  # TODO: come up with better error message
+                    log_message(f"Counter {counter.name} reports assertion fail: {l}")  # TODO: come up with better error message
                 return False, None
             if "ERROR Memory out!" in l:
                 if self._verbosity >= 2:
@@ -280,6 +302,11 @@ class CountFuzzer():
                     exit(-1)
         if unsat:
             return True, 0
+        if unknown:
+            return True, -1 # TOOD: Figure out what to return here
+        if count > 0:
+            return True, count
+
 
         # TODO: again, the following is super hacky, come up with something better.
         if num is None:
