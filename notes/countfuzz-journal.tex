@@ -17,6 +17,7 @@
 \input{style/style.tex}
 \input{preamble.tex}
 
+% \addbibresource{countfuzz.bib}
 \bibliographystyle{abbrvnat}
 
 \title{Count Fuzzer labjournal}
@@ -455,11 +456,67 @@
 	
 	The \python{} packages that we use surely have some measure that we can use to quantify how skewed the distribution is.
 	We can then use delta debugging to construct a CNF that skews the distribution as much as possible.
+
+		
+	\noindent\hrulefill
+	
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Thu 27 June 2024: Anna}
+	
+	I want to make a plan for creating and releasing a counter fuzzer, and for participating in writing the report for the yearly model counting competition.
+
+	Ideally, I would create a {\bf fuzzer} that does the following things:
+
+	\begin{compactitem}
+		\item Take as input:
+			\begin{compactitem}
+				\item one or more (exact or approximate) counters {\em of the same type} (cnf, wcnf, pcnf, wpcnf, pb, ...)
+				\item one or more problem generators suitable for that type
+				\item a maximum number of iterations
+				\item additional parameters for the evaluation, \eg{}, time and space resources, confidence and precision parameters for approximate counting.
+			\end{compactitem}
+		\item Generate problem instances {\em with known count}, save those that cause a bug or miscount in at least one of the tested solvers.
+		\item Return a short, human-readable and machine-parsable report on findings, and store findings.
+	\end{compactitem}
+
+	In addition, I would create a set of {\bf experimentation and evaluation scripts} that ideally generate some statistics and figures that can be included in the model counting competition reports.
+
+	Finally, I would create a {\bf delta-debugger}, that would take as input a model counter and an instance on which the model counter fails, and try to minimise the instance to obtain an as-small-as-possible instance on which the model counter fails.
+
+
+	\noindent\hrulefill
+	
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Tue 2 July 2024: Anna}
+
+	Just as a reminder to myself, from now on, I will have to work with the following scripts/repos:
+
+	\begin{compactitem}
+		\item \href{https://github.com/daajoe/mc_experiments/blob/main/eval/scripts/count_replication/parse_counts_util.py}{\texttt{parse\_counts\_util.py}} can be used to parse the standardised output of counters.
+		\item \href{https://github.com/daajoe/mc_format_tools/blob/main/wmc_nnf_generator/genrandomweights2.py}{\texttt{genrandomweights2.py}} can be used for generating wCNFs from a counting graph.
+		\item \href{https://github.com/daajoe/mc_format_tools/blob/main/wmc_nnf_generator/genrandomweights.py}{\texttt{genrandomweights.py}} can be used to generate a random(?) wCNF.
+		\item \href{https://github.com/arijitsh/mccomp/blob/main/scripts/step5_prepare_instances/step5aa_random_weights.py}{\texttt{step5aa\_random\_weights.py}} can be used to generate wCNFs, pCNFs and pwCNFs. 
+		\item The competition scripts can be found \href{https://github.com/daajoe/mc_experiments/tree/main/eval/scripts}{here}. It would be good if my code was run similarly.
+		\item Johannes also suggested that I take inspiration from the benchmarking framework, which should also run on the cluster: \href{https://github.com/tlyphed/copperbench}{copperbench}.
+	\end{compactitem}
+
+	Regarding the last point, Johannes writes:
+
+	\begin{quote}
+		Comment on the cluster, if you want to do things the easy way for now, it might be an option to use a terminal multiplexer (screen/byobu) and leave it running in the background. 
+		Or if it's a slurm cluster login from a university desktop computer and get a node on the cluster \verb|srun -n 1 -c NUMCORES -p PARTITION --pty bash| and run it there.
+		(We do have a benchmarking framework for systematic evaluations: https://github.com/tlyphed/copperbench Should work on other clusters as well, can do a quick introduction at some point if you want to. But for a fuzzer, I would avoid the cluster.)
+	\end{quote}
 	
 	\noindent\hrulefill
 	
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	\newpage
 	\bibliography{countfuzz.bib}
+	% \printbibliography
 	
 \end{document} 
