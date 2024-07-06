@@ -512,12 +512,81 @@
 		(We do have a benchmarking framework for systematic evaluations: https://github.com/tlyphed/copperbench Should work on other clusters as well, can do a quick introduction at some point if you want to. But for a fuzzer, I would avoid the cluster.)
 	\end{quote}
 
-	Spoke to Sebastijan, and he says that I can just share the code online, then submit a paper to JAIR's Open Source track to get it published. Sounds like a plan.
+	Spoke to Sebastijan, and he says that I can just share the code online, then submit a paper to JMLR's Open Source track to get it published. Sounds like a plan.
 
 	Also spoke to Mathijs. He says that Bachelor students will pick a project in September/October. It would be good if the fuzzer was at least available online by then, also because of the Veni deadline. Will need to discuss that with Johannes, though, and with Arijit. Will also have to ask Mathijs how the bachelor project idea aligns with students working on other people's code.
 	
+	Johannes also recommended that I check out the \href{https://cca.informatik.uni-freiburg.de/papers/BrummayerLonsingBiere-SAT10.pdf}{Automated Testing and Debugging of SAT and QBF Solvers} paper~\cite{BLB2010} and corresponding \href{https://fmv.jku.at/brummayer/talks/Brummayer-SAT10-talk.pdf}{slides}.
+
+	Also, I should keep in mind the \href{https://mccompetition.org/assets/files/mccomp_format_24.pdf}{model counting competition format}.
+
+	\noindent\hrulefill
+		
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	
+	\newday{Thu 4 July 2024: Anna}
 	
+	I am thinking about how to organise the fuzzer, conceptually. It would be great if it could be as configurable and flexible as possible, which leads to the following desiderata:
+
+	\begin{compactenum}
+		\item Add as many counters as you like (at least one), with as many configurations as you like.
+		\item Use as many instance generators as you like, with as many configurations as you like.
+		\item Optiona
+	\end{compactenum}
+
+	\begin{algorithm}[ht]
+		\caption{CountFuzz}
+		\label{algo:count-fuzz}
+		\hspace*{\algorithmicindent} \textbf{Input:} 
+			\begin{compactitem}
+			 \item $\mathcal{C}$: A set of counters.
+			 \item $\mathcal{G}$: A set of instance generators.
+			 \item $\mathcal{P}$: A (possibly empty) set of preprocessors.
+			 \item $\mathcal{D}$: A (possibly empty) set of delta-debuggers.
+			 \item $C_{gt}$: A counter that computes the ground truth of an instance or set of instances.
+			 \item $N \in \mathbb{N}^+$: Maximum iterations.
+			 \item $\textsf{GroundTruth} \in \{\top, \bot\}$: An indicator variable to specify if the user wants to compute the ground truth of each test instance.
+			 \item $t_{gt} \in \mathbb{N}^+$: A timeout variable to specify how many seconds the ground truth computation is allowed to take.
+			%  \item $\textsc{ProblemType} \in \{\textsc{CNF}, \textsc{wCNF}, \textsc{pCNF}, \textsc{wpCNF}\}$: A variable that specifies the counting problem type.
+			%  \item $t_{to} \in \mathbb{N}^+$: Timeout time in seconds for one run of one counter on one instance.
+			%  \item $m \in \mathbb{N}^+$: Max memory (in MB?) for one run of one counter on one instance.
+			\end{compactitem}
+		\hspace*{\algorithmicindent} \textbf{Output:} the optimal strategy and its corresponding score .
+		
+		\begin{algorithmic}[1]
+		 \Statex
+		 \Procedure{CountFuzz}{$\mathcal{C}$, $\mathcal{G}$, $\textsf{GroundTruth}$, }
+		    \State $c \gets -1$
+		    \For{$1 \leq i \leq N$}
+				\State $f \gets \textsc{GetInstance(}\mathcal{G}\textsc{)}$
+				\State $\mathcal{F} \gets \textsc{PreProcess(}f, \mathcal{P}\textsc{)}$
+				\If{\textsf{GroundTruth}}
+					\State $c \gets C(\mathcal{F})$
+				\EndIf
+				\State $\textsf{Passed}, \textsf{Counts} \gets \textsc{TestCounters(} \mathcal{C}, \mathcal{F}, \textsf{GroundTruth}, c\textsc{)}$
+				\State 
+		   \EndFor
+		 \EndProcedure
+		\end{algorithmic}
+	   \end{algorithm}
+
+	\begin{fullwidth}
+	\noindent\includegraphics[width=\linewidth]{figs/fuzzer-overview.pdf}
+	\end{fullwidth}
+
+	
+	\noindent\hrulefill
+		
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	
+	\newday{Sat 6 July 2024: Anna}
+
+	Spoke to Mathijs yesterday. He suggested to try to be strategic about when and how to publish about the fuzzer. He suggested that if there are any theoretical contributions that I want to make, I better do them, write them up, and have them ready to submit as soon as the fuzzer is made public.
+
+	I've been thinking about the problem generation part and the delta-debugging part of the fuzzer. Since Mate and I never worked on a delta-debugger, it makes sense to work on that one as part of a more theoretical contribution. I'd also have to check the problem generation tools that we have now (biere, brummayer, Arijit's tool and the tools for generating wCNF and pCNF and pwCNF) and see what I can add to that.
+
+	Either way, I think it makes sense to try to build the fuzzer in as modular a way as possible, to leave the user maximal freedom to create and use alternative generators and delta-debuggers.
+
 	\noindent\hrulefill
 	
 	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
