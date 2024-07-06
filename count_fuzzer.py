@@ -34,8 +34,10 @@ import sys
 import time
 
 # Johannes' scripts:
-sys.path.insert(1, '/home/anna/projects/mc_experiments/eval/scripts/')
-from parse_counts_util.py import log10cnt
+# sys.path.insert(1, '/Users/aldlatour/research-software/mc_experiments-johannes/eval/scripts/count_replication')
+# sys.path.insert(1, '/Users/aldlatour/research-software/mc_experiments-johannes/eval/scripts')
+# sys.path.insert(1, '/Users/aldlatour/research-software/mc_experiments-johannes/eval')
+from parse_counts_util import log10cnt
 
 
 SCRIPT_NAME = os.path.basename(__file__)
@@ -46,6 +48,8 @@ Generator = namedtuple("Generator", "name path config",
                        defaults=[None, None, None])
 Preprocessor = namedtuple("Preprocessor", "name path config",
                        defaults=[None, None, None])
+DeltaDebugger = namedtuple("DeltaDebugger", "name path config",
+                       defaults=[None, None, None])
 
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 maxtimediff = 1
@@ -54,6 +58,7 @@ maxtimediff = 1
 def log_message(message: str):
     print(f'[{SCRIPT_NAME}], {datetime.now().strftime("%Y-%m-%d, %Hh%Mm%Ss")}: {message}')
     sys.stdout.flush()
+
 
 def get_file_number(file_dir, extension):
     return len(glob.glob1(file_dir, f"*.{extension}")) + 1
@@ -84,8 +89,14 @@ def fstr(template, **kwargs):
     return eval(f"f'{template}'", kwargs)
 
 
-
 class CountFuzzer():
+    """ A class to manage the fuzzing of model counters
+
+    Attributes:
+        _projected (bool):  True iff doing projected counting.
+        _weighted (bool):   True iff doing weighted counting.
+
+    """
 
     def __init__(self,
                  counter_config_file: str,
@@ -94,27 +105,53 @@ class CountFuzzer():
                  projected=False,
                  weighted=False,
                  verbosity=2,
-                 max_time=4,
-                 max_mem=32000,
+                 counter_timeout=4,
+                 counter_memout=32000,
                  seed=None):
 
+        # Type of counting
         self._projected = projected
         self._weighted = weighted
-        self._verbosity = verbosity
-        self._max_time = max_time
-        self._max_mem = max_mem
-        self._seed = seed
-        self._do_preprocess = (preprocessor_config_file is not None)
+
+        self._counter_timeout = -1
+        self._counter_memout = -1
+
+        self._verbosity = -1
+        self._seed = -1
+
         self._generated_instances = []
         # TODO: Come up with reliable way to read and process model counts for different output formats
         self._result_pat = re.compile(r'c s (exact|approx) (arb|single|double|quadruple) -?\d+\.?\d*')
 
-        counters = json.load(open(counter_config_file))
-        generators = json.load(open(generator_config_file))
-        if preprocessor_config_file is not None:
-            preprocessors = json.load(open(preprocessor_config_file))
-
         self._counters = []
+        self._generators = []
+        self._preprocessors = []
+        self._delta_debuggers = []
+
+        self._create_directories()
+        self._set_random_seed()
+
+        self.add_counters(counter_config_file=counter_config_file)
+        self.add_generators(generator_config_file=generator_config_file)
+        self.add_preprocessors(preprocessor_config_file=preprocessor_config_file)
+
+        self.set_counter_timeout(timeout=counter_timeout)
+        self.set_counter_memout(memout=counter_memout)
+
+        self.set_seed(seed=seed)
+        self.set_verbosity(verbosity=verbosity)
+
+    def reset_counters(self):
+        """Remove all counters from memory."""
+        self._counters = []
+
+    def add_counters(self, counter_config_file: str):
+        """Append counters from a given json file with the counter configurations.
+
+        Parameters:
+            counter_config_file (str): Path to json file with counter configuration
+        """
+        counters = json.load(open(counter_config_file))
         for name in counters:
             new_counter = Counter(
                 name,
@@ -125,36 +162,78 @@ class CountFuzzer():
             self._counters.append(new_counter)
         assert len(self._counters) > 1, "Aborting. Please specify at least two counters."
 
-        self._generators = []
-        for name in generators:
-            new_generator = Generator(name, generators[name]["path"], generators[name]["config"])
-            self._generators.append(new_generator)
-        assert self._generators, "Aborting. Please specify at least one CNF generator."
-
-        self._preprocessors = []
-        if preprocessor_config_file is not None:
-            for name in preprocessors:
-                new_preprocessor = Preprocessor(name, preprocessors[name]["path"], preprocessors[name]["config"])
-                self._preprocessors.append(new_preprocessor)
-
-        self._create_directories()
-        self._set_random_seed()
-
     def print_counter_info(self):
         log_message("Test the following solvers:")
         log_message("\n")
         # TODO: print counter info in a nicely readable format
+
+    def reset_generators(self):
+        """Remove all generators from memory."""
+        self._generators = []
+
+    def add_generators(self, generator_config_file: str):
+        """Append instance generators from a given json file with the generator configurations.
+
+        Parameters:
+            generator_config_file (str): Path to json file with generator configuration
+        """
+        generators = json.load(open(generator_config_file))
+        for name in generators:
+            new_generator = Generator(name, generators[name]["path"], generators[name]["config"])
+            self._generators.append(new_generator)
+        assert self._generators, "Aborting. Please specify at least one CNF generator."
 
     def print_generator_info(self):
         log_message("Generate test instances with:")
         log_message("\n")
         # TODO: print generator info in a nicely readable format
 
+    def reset_preprocessors(self):
+        """Remove all preprocessors from memory."""
+        self._preprocessors = []
+
+    def add_preprocessors(self, preprocessor_config_file: str):
+        """Append preprocessors from a given json file with the preprocessor configurations.
+
+        Parameters:
+            preprocessor_config_file (str): Path to json file with preprocessor configuration
+        """
+        if preprocessor_config_file is not None:
+            preprocessors = json.load(open(preprocessor_config_file))
+            for name in preprocessors:
+                new_preprocessor = Preprocessor(name, preprocessors[name]["path"], preprocessors[name]["config"])
+                self._preprocessors.append(new_preprocessor)
+
     def print_preprocessor_info(self):
         log_message("Preprocess test instances with:")
         log_message("\n")
         # TODO: print preprocessor info in a nicely readable format
 
+    def set_counter_timeout(self, timeout: int):
+        """Set timeout time in seconds for one run of one counter on one instance.
+
+        Parameters:
+            timeout (int): timeout time in seconds.
+        """
+        assert timeout > 0, "Please specify timeout in seconds."
+        self._counter_timeout = timeout
+
+    def set_counter_memout(self, memout: int): #TODO: check memory units
+        """Set maximum allowed memory in MBs for one run of one counter on one instance.
+
+        Parameters:
+            memout (int): maximum allowed memory in MBs.
+        """
+        assert memout > 0, "Please specify max memory in MBs."
+        self._counter_memout = memout
+
+    def set_seed(self, seed: int):
+        self._seed = seed
+
+    def set_verbosity(self, verbosity: int):
+        assert 1 <= verbosity <= 3, "Please specify verbosity level 1, 2, or 3"
+        self._verbosity = verbosity
+        
     def write_report(self, path_to_report):
         return
 
@@ -190,10 +269,10 @@ class CountFuzzer():
         log_message(f"Using seed: {self._seed}")
         random.seed(self._seed)
 
-    def _get_generator(self):
+    def _get_random_generator(self):
         return random.choice(self._generators)
 
-    def _get_preprocessor(self):
+    def _get_random_preprocessor(self):
         return random.choice(self._preprocessors)
 
     def _get_path_to_new_instance(self, generator):
@@ -328,7 +407,7 @@ class CountFuzzer():
         tmp_command = f"{counter.path} {counter.config} {path_to_instance}"
 
 
-        command = fstr(tmp_command, STAREXEC_MAX_MEM=self._max_mem, STAREXEC_WALLCLOCK_LIMIT=self._max_time)
+        command = fstr(tmp_command, STAREXEC_MAX_MEM=self._max_mem, STAREXEC_WALLCLOCK_LIMIT=self._counter_timeout)
 
         if self._verbosity >= 2:
             log_message(f"command: {command}")
@@ -352,8 +431,8 @@ class CountFuzzer():
         diff_time = time.time() - start_time
 
         # Abort if counter exceeds maximum time
-        if diff_time > self._max_time - maxtimediff:
-            log_message(f"Aborted! Counter {counter.name} exceeded maximum time of {self._max_time} s on instance {path_to_instance}.")
+        if diff_time > self._counter_timeout - maxtimediff:
+            log_message(f"Aborted! Counter {counter.name} exceeded maximum time of {self._counter_timeout} s on instance {path_to_instance}.")
             return True, None
 
         # Otherwise, parse output
@@ -405,10 +484,10 @@ class CountFuzzer():
     def fuzz(self):
 
         while True:
-            generator = self._get_generator()
+            generator = self._get_random_generator()
             preprocessor = None
             if self._do_preprocess:
-                preprocessor = self._get_preprocessor()
+                preprocessor = self._get_random_preprocessor()
             path_to_instance = self._get_path_to_new_instance(generator)
 
             self.generate_instance(generator, path_to_instance)

@@ -1,26 +1,66 @@
 # Model Counter Fuzzer
 
-Currently requires Ganak and ApproxMC to be built, and available from the following locations, relative to this path:
-
-```
-../ganak/build/ganak
-../approxmc/build/approxmc
-```
-
+## Build instructions (internal, temporary)
 Before you run, you must build:
-```
+```bash
 cmake .
 make
+```
+And create the following symbolic links:
+```bash
+user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts scripts
+user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts/utils.py utils.py
+user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts/count_replication/parse_counts_util.py parse_counts_util.py
+```
+And compile our modified version of Armin Biere's instance generator:
+```bash
+user@machine /path/to/count_fuzz$ g++ cnf-fuzz-biere.c -o biere-fuzz
+```
+
+Then, create configuration files to communicate to the fuzzer which counters to evaluate and which instance generators to use. For example:
+```bash
+user@machine /path/to/count_fuzz$ cat counter_config.json
+{
+   "my-counter-cnfg1": {
+      "path":"/path/to/my/counter.py",
+      "config":"--thisarg=1 --thatarg=2",
+      "exact":"True"
+   },
+   "my-counter-cnfg2": {
+      "path":"/path/to/my/counter.py",
+      "config":"--thisarg=2 --thatarg=4",
+      "exact":"True"
+   },
+   "my-other-counter": {
+      "path":"/path/to/my/other_counter",
+      "config":"",
+      "exact":"True"
+   }
+}
+```
+and
+```bash
+user@machine /path/to/count_fuzz$ cat generator_config.json
+{
+   "biere": {
+      "path":"/path/to/count_fuzzer/biere-fuzz",
+      "config":"{seed} {type_num} > {out_file}"
+   },
+   "brummayer": {
+      "path":"/path/to/count_fuzzer/cnf-fuzz-brummayer.py",
+      "config":"-I 21 -s {seed} -T {type_num} > {out_file}"
+   }
+}
 ```
 
 Then you can run:
 
-```
-./fuzz.py
+```bash
+user@machine /path/to/count_fuzz$ 
 ```
 
 # TODOs
 
 Some ideas:
-* We should have our own fuzz generator. Currently only cnf-fuzz-biere is hooked up
-* Maybe our fuzz generator should generate instances that have a known number of solutions? Or we should use the proof system that was published at SAT 2022, and verify the proof of a counter, and use that as a baseline?
+* We should have our own fuzz generator. Currently only cnf-fuzz-biere and brummayer are hooked up
+* We should add functionality for determining the exact count of an instance. We could use Tbuddy for that, maybe?

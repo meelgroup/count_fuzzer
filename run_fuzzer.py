@@ -63,7 +63,7 @@ def parse_arguments():
 
     behaviour.add_argument(
       "--max-time", "-t", dest="max_time", type=int, default=4, required=False,
-      help="Max time to run, in seconds. Default: %default")
+      help="Max time to run, in seconds.")
 
     behaviour.add_argument(
       "--max-mem", "-m", dest="max_mem", type=int, default=32000, required=False,
@@ -80,7 +80,7 @@ def parse_arguments():
     behaviour.add_argument( # TODO: Check if this is actually used
       "--keep-bugs-only", dest="keep_bugs_only", default=True, required=False,
         action="store_true",
-        help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
+        help="Only keep the CNFs that yield bugs, clean up the others.")
 
 
     # behaviour.add_option(
@@ -105,7 +105,7 @@ def parse_arguments():
     # optional.add_option(
     #     "--num-samples", dest="num_samples", type=int, default=3,
     #     help="How many samples to take for approximate counters. Default: %default")
-
+    #
     return parser.parse_args()
 
 
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         projected=args.projected,
         weighted=args.weighted,
         verbosity=args.verbosity,
-        max_time=args.max_time,
-        max_mem=args.max_mem,
+        counter_timeout=args.max_time,
+        counter_memout=args.max_mem,
         seed=args.rnd_seed
     )
     buggy_instance = fuzzer.fuzz()
