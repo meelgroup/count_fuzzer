@@ -9,7 +9,7 @@ make
 And create the following symbolic links:
 ```bash
 user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts scripts
-user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts/utils.py utils.py
+user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts/fuzzer_utils.py fuzzer_utils.py
 user@machine /path/to/count_fuzz$ ln -s /path/to/mc_experiments/eval/scripts/count_replication/parse_counts_util.py parse_counts_util.py
 ```
 And compile our modified version of Armin Biere's instance generator:
