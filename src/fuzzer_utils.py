@@ -56,8 +56,8 @@ Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 # TODO: add support for alternative precisions
 # TODO: add support for all value formats
 sat_pat = re.compile(r'\s*s\s+(?P<satisfiability>(UN)?((SATISFIABLE)|(KNOWN)))\s*', re.DOTALL)
-type_pat = re.compile(r'\s*c\s+o\s+type\s+(?P<problem_type>((mc)|(wmc)|(pmc)|(pwmc)))\s*', re.DOTALL)
-est_pat = re.compile(r'\s*c\s+s\s+(?P<est_type>(neg)?log10-estimate)\s+(?P<est_val>\d+\.*\d*)\s*', re.DOTALL)
+type_pat = re.compile(r'\s*c\s+s\s+type\s+(?P<problem_type>((w)|(p)|(pw))?mc)\s*', re.DOTALL)
+est_pat = re.compile(r'\s*c\s+s\s+(?P<est_type>(neg)?log10-estimate)\s+(?P<est_val>[\d.e\-inf]+)\s*', re.DOTALL)
 count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+(?P<precision>((arb)|(single)|(double)|(quadruple)))\s+(?P<notation>((log10)|(float)|(prec-sci)|(int)|(frac)))\s+(?P<value>((inf)|(\d+\.*\d*)))\s*', re.DOTALL)
 # TODO: add functionality for pac guarantees
 
@@ -69,21 +69,22 @@ def fstr(template, **kwargs):
 def log10cnt(cnt: str):
     """
 
-    Source: from Johannes' parse_counts_util.py.
+    Source: adapted from Johannes' parse_counts_util.py.
 
     :param cnt:
     :return:
     """
     try:
-        if cnt == 'inf':
+        if 'inf' in cnt:
             log10_value = str(mpfr('nan'))
         elif 'e' in cnt:
             cnt = Decimal(cnt)
             log10_value = str(log10(mpz(cnt)))
         else:
+            cnt = Decimal(cnt)
             log10_value = str(log10(mpz(cnt)))
     except ValueError as _:
-        print('ValueError')
+        print(f"ValueError: {cnt}")
         log10_value = str(mpfr('nan'))
     return log10_value
 
@@ -158,6 +159,7 @@ def parse_output(
         counter_output: str,
         counter: Counter,
         path_to_instance: str,
+        timed_out=False,
         verbosity=1) -> (bool, dict):
 
     result = {
@@ -171,7 +173,8 @@ def parse_output(
         'count_precision': None,
         'count_notation': None,
         'count_value': None,
-        'error': False
+        'error': False,
+        'timed_out': timed_out
     }
 
     if verbosity >= 3:
@@ -216,7 +219,7 @@ def parse_output(
         m = re.match(est_pat, l)
         if m is not None:
             result['est_type'] = m.group("est_type")
-            result['est_val'] = log10cnt(m.group("est_val"))  # TODO: check what should happen if neglog10
+            result['est_val'] = m.group("est_val")  # TODO: check what should happen if neglog10
             continue
         m = re.match(count_pat, l)
         if m is not None:

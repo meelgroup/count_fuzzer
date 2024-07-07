@@ -204,6 +204,7 @@ def run_counter(counter: fut.Counter,
                 max_mem=32000,
                 verbosity=1):
     # TODO: add functionality for approximate counters
+    timed_out = False
     if verbosity >= 2:
         rm.log_message(f"Running counter {counter.name} on instance {path_to_instance}.")
 
@@ -237,10 +238,9 @@ def run_counter(counter: fut.Counter,
     if diff_time > timeout:
         rm.log_message(
             f"Aborted! Counter {counter.name} exceeded maximum time of {timeout} s on instance {path_to_instance}.")
-        return True, None
 
     # Otherwise, parse output
-    success, result = fut.parse_output(counter_output, counter, path_to_instance)
+    success, result = fut.parse_output(counter_output, counter, path_to_instance, timed_out=timed_out)
     if not success:
         log_file = fm.store_counter_output(command, counter_output, counter, log_dir)
         rm.log_message(f"ERROR when running {counter.name}. Output written to {log_file}")
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     cnf_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/instances" if args.cnf_dir is None else args.cnf_dir
     log_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/logs" if ('log_dir' not in args or args.log_dir is None) else args.log_dir
     bug_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/bugs" if args.bug_dir is None else args.bug_dir
-    fm.create_directories(cnf_dir=cnf_dir, bug_dir=bug_dir, generators=generators)
+    fm.create_directories(cnf_dir=cnf_dir, bug_dir=bug_dir, log_dir=log_dir, generators=generators)
 
     seed = fut.get_random_seed(args.rnd_seed)
     random.seed(seed)

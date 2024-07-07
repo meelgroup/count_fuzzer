@@ -40,6 +40,7 @@ from report_manager import log_message
 
 def create_directories(cnf_dir: str,
                        bug_dir: str,
+                       log_dir: str,
                        generators=None,
                        preprocessors=None,
                        delta_debuggers=None,
@@ -71,6 +72,8 @@ def create_directories(cnf_dir: str,
             |-- generator 1-preprocessor 2-delta-debugger 2
             ...
 
+    :param log_dir:
+    :param verbosity:
     :param cnf_dir:         string with path to directory to store instances
     :param bug_dir:         string with path to directory to store buggy instances
     :param generators:      dict with instance generator configuration
@@ -87,6 +90,9 @@ def create_directories(cnf_dir: str,
     if not os.path.isdir(bug_dir):
         log_message(f"Creating directory to store instances that seem to trigger bugs: {bug_dir}.")
         os.makedirs(f"{bug_dir}", exist_ok=True)
+    if not os.path.isdir(log_dir):
+        log_message(f"Creating directory to store instances that seem to trigger bugs: {log_dir}.")
+        os.makedirs(f"{log_dir}", exist_ok=True)
 
     for sub_dir in [cnf_dir, bug_dir]:
         for generator in generators:
