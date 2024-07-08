@@ -133,6 +133,11 @@ def parse_arguments():
 
 
 def set_limits(t):
+    """
+
+    :param t:
+    :return:
+    """
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
     rm.log_message(f"Setting resource limit in child (pid {os.getpid()})")
     resource.setrlimit(resource.RLIMIT_CPU, (t, t))
