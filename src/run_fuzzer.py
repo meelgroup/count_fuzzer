@@ -75,11 +75,11 @@ def parse_arguments():
     )
     behaviour.add_argument(
         "--max-time", "-t", dest="max_time", type=int, default=10, required=False,
-        help="Max time to run, in seconds."
+        help="Timeout time for individual runs, in seconds."
     )
     behaviour.add_argument(
         "--max-mem", "-m", dest="max_mem", type=int, default=32000, required=False,
-        help="Max memory per run."
+        help="Max memory for individual runs."
     )
     behaviour.add_argument(
         "--verbosity", "-v", type=int, default=2, required=False,
@@ -87,12 +87,12 @@ def parse_arguments():
     )
     behaviour.add_argument(
         "--seed", "-s", dest="rnd_seed", type=int, required=False,
-        help="Fuzz test start seed. Otherwise, random seed is picked"
+        help="Fuzz test start seed. If unset, a random seed is picked."
     )
     behaviour.add_argument(  # TODO: Check if this is actually used
         "--keep-bugs-only", dest="keep_bugs_only", default=True, required=False,
         action="store_true",
-        help="Only keep the CNFs that yield bugs, clean up the others."
+        help="Only keep the CNFs that yield bugs, clean up all others."
     )
     behaviour.add_argument(
         "--num-iter", "-n", dest="n_iter", type=int, default=100,
@@ -105,6 +105,10 @@ def parse_arguments():
     admin.add_argument(
         "--bug-dir", dest="bug_dir", type=str, required=False,
         help="Specify path to directory to store instances that are suspected to trigger bugs. Default: /path/to/fuzzer/bugs"
+    )
+    admin.add_argument(
+        "--log-dir", dest="log_dir", type=str, required=False,
+        help="Specify path to directory to store logs. Default: /path/to/fuzzer/logs"
     )
 
     # behaviour.add_option(
@@ -191,9 +195,12 @@ def run(command: str,
     if verbosity >= 3:
         rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
 
-    p = subprocess.Popen(command, stderr=subprocess.STDOUT, shell=True,
-                         stdout=subprocess.PIPE, universal_newlines=True, cwd=dir,
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir)
+    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
+                         stdout=subprocess.PIPE, universal_newlines=True,
                          preexec_fn=partial(set_limits, timeout))
+    os.chdir(this_dir)
 
     console_output, err = p.communicate()
     if verbosity >= 3:
@@ -214,8 +221,7 @@ def run_counter(counter: fut.Counter,
         rm.log_message(f"Running counter {counter.name} on instance {path_to_instance}.")
 
     counter_dir = str(Path(counter.path).parent.absolute())
-    command = f"{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
-    tmp_command = f"{counter.path} {counter.config} {path_to_instance}"
+    tmp_command = f"./{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
     command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout)
 
     if verbosity >= 2:
@@ -231,7 +237,7 @@ def run_counter(counter: fut.Counter,
     #     toexec.extend([last])
 
     start_time = time.time()
-    counter_output, err = run(command, counter_dir + '/', verbosity=verbosity)
+    counter_output, err = run(command.split(), counter_dir + '/', verbosity=verbosity)
     if err is None:
         if verbosity >= 3:
             rm.log_message("No error.")
