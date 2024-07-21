@@ -343,7 +343,7 @@ if __name__ == "__main__":
         weighted=args.weighted,
         timeout=args.max_time,
         memout=args.max_mem,
-        verbosity=1
+        verbosity=args.verbosity
     )
 
     print(problem_instances)
