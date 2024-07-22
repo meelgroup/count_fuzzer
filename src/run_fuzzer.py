@@ -78,7 +78,7 @@ def parse_arguments():
         help="Timeout time for individual runs, in seconds."
     )
     behaviour.add_argument(
-        "--max-mem", "-m", dest="max_mem", type=int, default=32000, required=False,
+        "--max-mem", "-m", dest="max_mem", type=int, default=3200, required=False,
         help="Max memory for individual runs."
     )
     behaviour.add_argument(
@@ -191,10 +191,12 @@ def run(command: str,
         verbosity=1,
         timeout=10):
     if verbosity >= 2:
-        rm.log_message(f'--> Executing: {command} in dir {dir}')
+        rm.log_message(f'--> Executing: {" ".join(command)} in dir {dir}')
     if verbosity >= 3:
         rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
 
+    print(f"STAREXEC_MAX_MEM: {os.getenv('STAREXEC_MAX_MEM')}")
+    subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
     this_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir)
     p = subprocess.Popen(command, stderr=subprocess.STDOUT,

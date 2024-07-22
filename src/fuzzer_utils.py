@@ -40,7 +40,7 @@ import re
 
 import report_manager as rm
 
-Counter = namedtuple("Counter", "name path config regex exact",
+Counter = namedtuple("Counter", "name path config exact",
                      defaults=[None, None, None, None, True])
 Generator = namedtuple("Generator", "name path config",
                        defaults=[None, None, None])
@@ -123,7 +123,7 @@ def parse_counters(counter_config_file: str):
         counter_config_file (str): Path to json file with counter configuration
     """
     counter_dict = json.load(open(counter_config_file))
-    counters = [Counter(name, counter_dict[name]["path"], counter_dict[name]["config"], counter_dict[name]["result_regex"], bool(counter_dict[name]["exact"]))
+    counters = [Counter(name, counter_dict[name]["path"], counter_dict[name]["config"], bool(counter_dict[name]["exact"]))
                 for name in counter_dict]
     assert len(counters) > 1, "Aborting. Please specify at least two counters."
     return counters
