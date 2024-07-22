@@ -195,7 +195,6 @@ def run(command: str,
     if verbosity >= 3:
         rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
 
-    print(f"STAREXEC_MAX_MEM: {os.getenv('STAREXEC_MAX_MEM')}")
     subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
     this_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir)
@@ -215,7 +214,7 @@ def run_counter(counter: fut.Counter,
                 path_to_instance: str,
                 log_dir: str,
                 timeout=10,
-                max_mem=32000,
+                max_mem=3200,
                 verbosity=1):
     # TODO: add functionality for approximate counters
     timed_out = False
@@ -309,7 +308,7 @@ def fuzz(n_iter: int,
                 counts[counter.name] = result['count_value']
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
             if verbosity >= 2:
-                rm.log_message(f"Completed iteration {i}.{j}")
+                rm.log_message(f"Completed iteration {i+1}.{j+1}")
             same_counts = fut.check_counts(counts)
             rm.print_counts(same_counts, counts)
             if not same_counts:
