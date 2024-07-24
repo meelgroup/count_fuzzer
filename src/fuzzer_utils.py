@@ -33,15 +33,18 @@ Description: Long description.
 
 from collections import namedtuple
 from decimal import Decimal
+from functools import partial
 from gmpy2 import mpz, log10, mpfr
 import json
 import os
 import re
+import resource
+import subprocess
 
 import report_manager as rm
 
 Counter = namedtuple("Counter", "name path config exact",
-                     defaults=[None, None, None, None, True])
+                     defaults=[None, None, None, True])
 Generator = namedtuple("Generator", "name path config",
                        defaults=[None, None, None])
 Preprocessor = namedtuple("Preprocessor", "name path config",
@@ -64,6 +67,41 @@ count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+
 
 def fstr(template, **kwargs):
     return eval(f"f'{template}'", kwargs)
+
+
+def set_limits(t):
+    """
+
+    :param t:
+    :return:
+    """
+    # Set maximum CPU time to 1 second in child process, after fork() but before exec()
+    rm.log_message(f"Setting resource limit in child (pid {os.getpid()})")
+    resource.setrlimit(resource.RLIMIT_CPU, (t, t))
+
+
+def run(command: str,
+        dir: str,
+        verbosity=1,
+        timeout=10):
+    if verbosity >= 2:
+        rm.log_message(f'--> Executing: {" ".join(command)} in dir {dir}')
+    if verbosity >= 3:
+        rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
+
+    subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir)
+    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
+                         stdout=subprocess.PIPE, universal_newlines=True,
+                         preexec_fn=partial(set_limits, timeout))
+    os.chdir(this_dir)
+
+    console_output, err = p.communicate()
+    if verbosity >= 3:
+        rm.log_message(
+            f"CPU limit of parent (pid {os.getpid()}) after child finished executing: {resource.getrlimit(resource.RLIMIT_CPU)}")
+    return console_output, err
 
 
 def log10cnt(cnt: str):
@@ -127,7 +165,6 @@ def parse_counters(counter_config_file: str):
                 for name in counter_dict]
     assert len(counters) > 1, "Aborting. Please specify at least two counters."
     return counters
-
 
 
 def parse_generators(generator_config_file: str):
