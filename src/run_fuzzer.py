@@ -21,12 +21,10 @@
 
 import argparse
 from datetime import datetime
-from functools import partial
 import os
 import pandas as pd
 from pathlib import Path
 import random
-import resource
 import subprocess
 import time
 
@@ -55,6 +53,11 @@ def parse_arguments():
         "--preprocessors", dest="preprocessors", type=str, required=False, default='',
         help="Path to json file with the preprocessors and their configurations."
     )
+    tools.add_argument(
+        "--ground-truth-script", dest="ground_truth_script", type=str, required=False, default=None,
+        help="Path to a script that takes as argument a path to a .cnf file and then "
+             "generates a verified proof of correctness of the model count.")
+
     problem_type.add_argument(
         "--projected", dest="projected", default=False, action="store_true", required=False,
         help="If True, all specified counters are expected to do projected model counting, "
@@ -136,17 +139,6 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def set_limits(t):
-    """
-
-    :param t:
-    :return:
-    """
-    # Set maximum CPU time to 1 second in child process, after fork() but before exec()
-    rm.log_message(f"Setting resource limit in child (pid {os.getpid()})")
-    resource.setrlimit(resource.RLIMIT_CPU, (t, t))
-
-
 def generate_instance(generator: fut.Generator,
                       new_cnf_path: str,
                       seed: int,
@@ -186,36 +178,12 @@ def generate_instances(generators: list,
     return new_instances
 
 
-def run(command: str,
-        dir: str,
-        verbosity=1,
-        timeout=10):
-    if verbosity >= 2:
-        rm.log_message(f'--> Executing: {" ".join(command)} in dir {dir}')
-    if verbosity >= 3:
-        rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
-
-    subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(dir)
-    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
-                         stdout=subprocess.PIPE, universal_newlines=True,
-                         preexec_fn=partial(set_limits, timeout))
-    os.chdir(this_dir)
-
-    console_output, err = p.communicate()
-    if verbosity >= 3:
-        rm.log_message(
-            f"CPU limit of parent (pid {os.getpid()}) after child finished executing: {resource.getrlimit(resource.RLIMIT_CPU)}")
-    return console_output, err
-
-
 def run_counter(counter: fut.Counter,
                 path_to_instance: str,
                 log_dir: str,
                 timeout=10,
                 max_mem=3200,
-                verbosity=1):
+                verbosity=1) -> dict:
     # TODO: add functionality for approximate counters
     timed_out = False
     if verbosity >= 2:
@@ -238,7 +206,7 @@ def run_counter(counter: fut.Counter,
     #     toexec.extend([last])
 
     start_time = time.time()
-    counter_output, err = run(command.split(), counter_dir + '/', verbosity=verbosity)
+    counter_output, err = fut.run(command.split(), counter_dir + '/', verbosity=verbosity)
     if err is None:
         if verbosity >= 3:
             rm.log_message("No error.")
@@ -261,6 +229,52 @@ def run_counter(counter: fut.Counter,
     return result
 
 
+def get_ground_truth(
+        path_to_instance: str,
+        verifier_script: str,
+        timeout=100,
+        max_mem=3200,
+        verbosity=1) -> dict:
+    timed_out = False
+
+    if verbosity >= 2:
+        rm.log_message(f"Running verification script {verifier_script} on instance {path_to_instance}.")
+
+    verification_dir = str(Path(verifier_script).parent.absolute())
+    proof_dir = f"{str(Path(Path(__file__).parent.absolute()).parent.absolute())}/proofs"
+    output_file = f"{proof_dir}/{os.path.basename(path_to_instance)}.output"
+    tmp_command = f"./{os.path.basename(verifier_script)} {path_to_instance}"
+    command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout)
+
+    if verbosity >= 2:
+        rm.log_message(f"command: {command}")
+
+    start_time = time.time()
+    verification_output, err = fut.run(command.split(), verification_dir + '/', verbosity=verbosity)
+    if err is None:
+        if verbosity >= 3:
+            rm.log_message("No error.")
+    else:
+        rm.log_message(f"Error: {err}")
+    diff_time = time.time() - start_time
+
+    # Abort if counter exceeds maximum time
+    if diff_time > timeout:
+        rm.log_message(
+            f"Aborted! Verification script {verifier_script} exceeded maximum "
+            "time of {timeout} s on instance {path_to_instance}.")
+
+    # Otherwise, parse output
+    success, result = fut.parse_verifier_output(output_file, timed_out=timed_out)
+    result['problem_type'] = 'mc'  # For now only support for ground truth of this type
+    result['instance'] = path_to_instance
+    if not success:
+        rm.log_message(f"ERROR when running {verifier_script}. Output written to {output_file}")
+
+    return result
+
+
+
 def fuzz(n_iter: int,
          seed: int,
          cnf_dir: str,
@@ -269,6 +283,7 @@ def fuzz(n_iter: int,
          generators: list,
          preprocessors=[],
          minimisers=[],
+         ground_truth_script=None,
          projected=False,
          weighted=False,
          timeout=10,
@@ -289,13 +304,27 @@ def fuzz(n_iter: int,
             inst_num=i,
             seed=seed + i,
             projected=projected,
-            weighted=weighted
+            weighted=weighted,
         )
         # TODO: Handle preprocessing
         # TODO: Handle delta-debugging
 
         for j, instance in enumerate(new_base_instances):
+
             counts = dict()
+
+            if ground_truth_script is not None:
+                result = get_ground_truth(
+                    path_to_instance=instance,
+                    verifier_script=ground_truth_script,
+                    timeout=timeout*10,
+                    max_mem=memout,
+                    verbosity=verbosity
+                )
+                counts['ground_truth'] = result['verified_count']
+                result['generator'] = os.path.basename(os.path.dirname(instance))
+                df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
+
             for counter in counters:
                 result = run_counter(
                     counter=counter,
@@ -306,6 +335,7 @@ def fuzz(n_iter: int,
                     verbosity=verbosity
                 )
                 counts[counter.name] = result['count_value']
+                result['generator'] = os.path.basename(os.path.dirname(instance))
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
             if verbosity >= 2:
                 rm.log_message(f"Completed iteration {i+1}.{j+1}")
@@ -346,6 +376,7 @@ if __name__ == "__main__":
         log_dir=log_dir,
         counters=counters,
         generators=generators,
+        ground_truth_script=args.ground_truth_script,
         projected=args.projected,
         weighted=args.weighted,
         timeout=args.max_time,

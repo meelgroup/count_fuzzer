@@ -33,15 +33,18 @@ Description: Long description.
 
 from collections import namedtuple
 from decimal import Decimal
+from functools import partial
 from gmpy2 import mpz, log10, mpfr
 import json
 import os
 import re
+import resource
+import subprocess
 
 import report_manager as rm
 
 Counter = namedtuple("Counter", "name path config exact",
-                     defaults=[None, None, None, None, True])
+                     defaults=[None, None, None, True])
 Generator = namedtuple("Generator", "name path config",
                        defaults=[None, None, None])
 Preprocessor = namedtuple("Preprocessor", "name path config",
@@ -61,9 +64,47 @@ est_pat = re.compile(r'\s*c\s+s\s+(?P<est_type>(neg)?log10-estimate)\s+(?P<est_v
 count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+(?P<precision>((arb)|(single)|(double)|(quadruple)))\s+(?P<notation>((log10)|(float)|(prec-sci)|(int)|(frac)))\s+(?P<value>((inf)|(\d+\.*\d*)))\s*', re.DOTALL)
 # TODO: add functionality for pac guarantees
 
+# REGEX for parsing verifier output
+trace_pat = re.compile(r'reading from \"(?P<trace_file>.*\.trace)\"...done', re.DOTALL)
+verified_count_pat = re.compile(r'root model count: (?P<verified_count>\d+)\s*', re.DOTALL)
 
 def fstr(template, **kwargs):
     return eval(f"f'{template}'", kwargs)
+
+
+def set_limits(t):
+    """
+
+    :param t:
+    :return:
+    """
+    # Set maximum CPU time to 1 second in child process, after fork() but before exec()
+    rm.log_message(f"Setting resource limit in child (pid {os.getpid()})")
+    resource.setrlimit(resource.RLIMIT_CPU, (t, t))
+
+
+def run(command: str,
+        dir: str,
+        verbosity=1,
+        timeout=10):
+    if verbosity >= 2:
+        rm.log_message(f'--> Executing: {" ".join(command)} in dir {dir}')
+    if verbosity >= 3:
+        rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
+
+    subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir)
+    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
+                         stdout=subprocess.PIPE, universal_newlines=True,
+                         preexec_fn=partial(set_limits, timeout))
+    os.chdir(this_dir)
+
+    console_output, err = p.communicate()
+    if verbosity >= 3:
+        rm.log_message(
+            f"CPU limit of parent (pid {os.getpid()}) after child finished executing: {resource.getrlimit(resource.RLIMIT_CPU)}")
+    return console_output, err
 
 
 def log10cnt(cnt: str):
@@ -127,7 +168,6 @@ def parse_counters(counter_config_file: str):
                 for name in counter_dict]
     assert len(counters) > 1, "Aborting. Please specify at least two counters."
     return counters
-
 
 
 def parse_generators(generator_config_file: str):
@@ -239,3 +279,38 @@ def check_counts(counts: dict) -> bool:
     if len(set(counts.values())) == 1:
         return True
     return False
+
+
+def parse_verifier_output(output_file: str, timed_out=bool) -> dict():
+    result = {'verified': False,
+              'satisfiability': None,
+              'timed_out': timed_out,
+              'error': None,
+              'no_root_claim': False,
+              'verified_count': None}
+    with open(output_file, 'r') as out_file:
+        for l in out_file.readlines():
+            l = l.strip()
+
+            m = re.match(trace_pat, l)
+            if m is not None:
+                result['trace_file'] = m.group("trace_file")
+                continue
+            m = re.match(verified_count_pat, l)
+            if m is not None:
+                result['verified_count'] = m.group("verified_count")
+                result['satisfiability'] = 'SATISFIABLE'
+                continue
+
+            if 'proofs verified' in l:
+                result['verified'] = True
+                continue
+            if 'IntegrityError(NoRootClaim)' in l:        # I think this means that the instance is UNSAT
+                result['no_root_claim'] = True
+                result['satisfiability'] = 'UNSATISFIABLE'
+                continue
+            if 'error' in l.lower():
+                result['error']: l
+                return False, result
+
+    return True, result

@@ -82,8 +82,31 @@ cd src
 ./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json 
 ```
 
+## Compute ground truth
 
+If you want to compare to a ground truth model count (currently only available for unweighted, unprojected model counting), do the following.
 
+First, download and install/compile the following software:
+- [d4](https://github.com/crillab/d4)
+- [nnf2trace](https://github.com/vroland/nnf2trace)
+- [sharptrace](https://github.com/vroland/sharptrace)
+
+Then, create the following symbolic links:
+```bash
+cd /path/to/count_fuzzer/verified
+ln -s /path/to/d4/d4 d4
+ln -s /path/to/nnf2trace nnf2trace
+ln -s /path/to/sharptrace/sharptrace_checker sharptrace_checker
+```
+
+Then you can run:
+
+```bash
+cd src
+./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json --ground-truth-script verified/d4-proof-trace-and-check.sh
+```
+
+In the future, we would like to make different scripts available, so you can use your favourite certified model counting tool.
 
 # TODOs
 
@@ -91,3 +114,4 @@ Some ideas:
 * We should have our own fuzz generator. Currently only cnf-fuzz-biere and brummayer are hooked up
 * We should add functionality for determining the exact count of an instance. We could use Tbuddy for that, maybe?
 * Figure out license information for Biere and Brummayer and include them in the repository the right way.
+* Add functionality for alternative certified model counting tools.
