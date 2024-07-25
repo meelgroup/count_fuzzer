@@ -228,13 +228,51 @@ def run_counter(counter: fut.Counter,
     print(result)
     return result
 
+
 def get_ground_truth(
         path_to_instance: str,
-        proof_dir: str,
+        verifier_script: str,
         timeout=100,
         max_mem=3200,
         verbosity=1) -> dict:
-    return
+    timed_out = False
+
+    if verbosity >= 2:
+        rm.log_message(f"Running verification script {verifier_script} on instance {path_to_instance}.")
+
+    verification_dir = str(Path(verifier_script).parent.absolute())
+    proof_dir = f"{str(Path(Path(__file__).parent.absolute()).parent.absolute())}/proofs"
+    output_file = f"{proof_dir}/{os.path.basename(path_to_instance)}.output"
+    tmp_command = f"./{os.path.basename(verifier_script)} {path_to_instance}"
+    command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout)
+
+    if verbosity >= 2:
+        rm.log_message(f"command: {command}")
+
+    start_time = time.time()
+    verification_output, err = fut.run(command.split(), verification_dir + '/', verbosity=verbosity)
+    if err is None:
+        if verbosity >= 3:
+            rm.log_message("No error.")
+    else:
+        rm.log_message(f"Error: {err}")
+    diff_time = time.time() - start_time
+
+    # Abort if counter exceeds maximum time
+    if diff_time > timeout:
+        rm.log_message(
+            f"Aborted! Verification script {verifier_script} exceeded maximum "
+            "time of {timeout} s on instance {path_to_instance}.")
+
+    # Otherwise, parse output
+    success, result = fut.parse_verifier_output(output_file, timed_out=timed_out)
+    result['problem_type'] = 'mc'  # For now only support for ground truth of this type
+    result['instance'] = path_to_instance
+    if not success:
+        rm.log_message(f"ERROR when running {verifier_script}. Output written to {output_file}")
+
+    return result
+
 
 
 def fuzz(n_iter: int,
@@ -272,10 +310,21 @@ def fuzz(n_iter: int,
         # TODO: Handle delta-debugging
 
         for j, instance in enumerate(new_base_instances):
-            if ground_truth_script is not None:
-                print('ground_truth')
 
             counts = dict()
+
+            if ground_truth_script is not None:
+                result = get_ground_truth(
+                    path_to_instance=instance,
+                    verifier_script=ground_truth_script,
+                    timeout=timeout*10,
+                    max_mem=memout,
+                    verbosity=verbosity
+                )
+                counts['ground_truth'] = result['verified_count']
+                result['generator'] = os.path.basename(os.path.dirname(instance))
+                df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
+
             for counter in counters:
                 result = run_counter(
                     counter=counter,

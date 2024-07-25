@@ -64,6 +64,9 @@ est_pat = re.compile(r'\s*c\s+s\s+(?P<est_type>(neg)?log10-estimate)\s+(?P<est_v
 count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+(?P<precision>((arb)|(single)|(double)|(quadruple)))\s+(?P<notation>((log10)|(float)|(prec-sci)|(int)|(frac)))\s+(?P<value>((inf)|(\d+\.*\d*)))\s*', re.DOTALL)
 # TODO: add functionality for pac guarantees
 
+# REGEX for parsing verifier output
+trace_pat = re.compile(r'reading from \"(?P<trace_file>.*\.trace)\"...done', re.DOTALL)
+verified_count_pat = re.compile(r'root model count: (?P<verified_count>\d+)\s*', re.DOTALL)
 
 def fstr(template, **kwargs):
     return eval(f"f'{template}'", kwargs)
@@ -276,3 +279,38 @@ def check_counts(counts: dict) -> bool:
     if len(set(counts.values())) == 1:
         return True
     return False
+
+
+def parse_verifier_output(output_file: str, timed_out=bool) -> dict():
+    result = {'verified': False,
+              'satisfiability': None,
+              'timed_out': timed_out,
+              'error': None,
+              'no_root_claim': False,
+              'verified_count': None}
+    with open(output_file, 'r') as out_file:
+        for l in out_file.readlines():
+            l = l.strip()
+
+            m = re.match(trace_pat, l)
+            if m is not None:
+                result['trace_file'] = m.group("trace_file")
+                continue
+            m = re.match(verified_count_pat, l)
+            if m is not None:
+                result['verified_count'] = m.group("verified_count")
+                result['satisfiability'] = 'SATISFIABLE'
+                continue
+
+            if 'proofs verified' in l:
+                result['verified'] = True
+                continue
+            if 'IntegrityError(NoRootClaim)' in l:        # I think this means that the instance is UNSAT
+                result['no_root_claim'] = True
+                result['satisfiability'] = 'UNSATISFIABLE'
+                continue
+            if 'error' in l.lower():
+                result['error']: l
+                return False, result
+
+    return True, result
