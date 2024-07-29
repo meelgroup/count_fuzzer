@@ -290,7 +290,7 @@ def get_ground_truth(
             "time of {timeout} s on instance {path_to_instance}.")
 
     # Otherwise, parse output
-    success, result = fut.parse_verifier_output(output_file, timed_out=timed_out)
+    success, result = fut.parse_verifier_output(path_to_instance, output_file, timed_out=timed_out, verbosity=verbosity)
     result['problem_type'] = 'mc'  # For now only support for ground truth of this type
     result['instance'] = path_to_instance
     if not success:

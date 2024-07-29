@@ -65,7 +65,7 @@ count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+
 # TODO: add functionality for pac guarantees
 
 # REGEX for parsing verifier output
-trace_pat = re.compile(r'reading from \"(?P<trace_file>.*\.trace)\"...done', re.DOTALL)
+# trace_pat = re.compile(r'reading from \"(?P<trace_file>.*\.trace)\"...done', re.DOTALL)
 verified_count_pat = re.compile(r'(root)?\s*(m|M)odel count: (?P<verified_count>\d+)\s*', re.DOTALL)
 
 def fstr(template, **kwargs):
@@ -281,7 +281,7 @@ def check_counts(counts: dict) -> bool:
     return False
 
 
-def parse_verifier_output(output_file: str, timed_out=bool) -> (bool, dict):
+def parse_verifier_output(path_to_instance: str, output_file: str, timed_out=bool, verbosity=1) -> (bool, dict):
     """ Parse the output of a verifier to obtain a verified model count.
 
     TODO: Right now, much of this is hardcoded for two specific verifier pipelines. Ideally, the user should be able to any verifier they like, but currently there is no support for that.
@@ -290,21 +290,20 @@ def parse_verifier_output(output_file: str, timed_out=bool) -> (bool, dict):
     result = {'verified': False,
               'satisfiability': None,
               'timed_out': timed_out,
-              'error': None,
+              'error': False,
               'no_root_claim': False,
               'verified_count': None}
     with (open(output_file, 'r') as out_file):
         for l in out_file.readlines():
             l = l.strip()
 
-            m = re.match(trace_pat, l)
-            if m is not None:
-                result['trace_file'] = m.group("trace_file")
-                continue
             m = re.match(verified_count_pat, l)
             if m is not None:
                 result['verified_count'] = m.group("verified_count")
-                result['satisfiability'] = 'SATISFIABLE'
+                if result['verified_count'] == '0':
+                    result['satisfiability'] = 'UNSATISFIABLE'
+                else:
+                    result['satisfiability'] = 'SATISFIABLE'
                 continue
 
             if ('proofs verified' in l              # When using the nnf2trace-and-sharptrace-verifier.sh script
@@ -317,8 +316,22 @@ def parse_verifier_output(output_file: str, timed_out=bool) -> (bool, dict):
                 result['no_root_claim'] = True
                 result['satisfiability'] = 'UNSATISFIABLE'
                 continue
-            if 'error' in l.lower():
-                result['error']: l
+
+            # Catch some basic errors:
+            if "Assertion " in l and "failed" in l:
+                rm.log_message(
+                    f"Verifier reports assertion fail: {l}")  # TODO: come up with better error message
+                result['error']: True
+                return False, result
+            if "ERROR Memory out!" in l:
+                if verbosity >= 2:
+                    rm.log_message(f"Verifier ran out of memory on {path_to_instance}.")
+                result['error']: True
+                return False, result
+            if "error" in l.lower():  # TODO: check if this is a reliable way to detect errors
+                if verbosity >= 2:
+                    rm.log_message(f"ERROR found in verifier on instance {path_to_instance}: {l}")
+                result['error']: True
                 return False, result
 
     return True, result
