@@ -66,7 +66,7 @@ count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+
 
 # REGEX for parsing verifier output
 trace_pat = re.compile(r'reading from \"(?P<trace_file>.*\.trace)\"...done', re.DOTALL)
-verified_count_pat = re.compile(r'root model count: (?P<verified_count>\d+)\s*', re.DOTALL)
+verified_count_pat = re.compile(r'(root)?\s*(m|M)odel count: (?P<verified_count>\d+)\s*', re.DOTALL)
 
 def fstr(template, **kwargs):
     return eval(f"f'{template}'", kwargs)
@@ -281,14 +281,19 @@ def check_counts(counts: dict) -> bool:
     return False
 
 
-def parse_verifier_output(output_file: str, timed_out=bool) -> dict():
+def parse_verifier_output(output_file: str, timed_out=bool) -> (bool, dict):
+    """ Parse the output of a verifier to obtain a verified model count.
+
+    TODO: Right now, much of this is hardcoded for two specific verifier pipelines. Ideally, the user should be able to any verifier they like, but currently there is no support for that.
+
+    """
     result = {'verified': False,
               'satisfiability': None,
               'timed_out': timed_out,
               'error': None,
               'no_root_claim': False,
               'verified_count': None}
-    with open(output_file, 'r') as out_file:
+    with (open(output_file, 'r') as out_file):
         for l in out_file.readlines():
             l = l.strip()
 
@@ -302,10 +307,13 @@ def parse_verifier_output(output_file: str, timed_out=bool) -> dict():
                 result['satisfiability'] = 'SATISFIABLE'
                 continue
 
-            if 'proofs verified' in l:
+            if ('proofs verified' in l              # When using the nnf2trace-and-sharptrace-verifier.sh script
+                or 'PROOF SUCCESSFUL' in l):        # When using the cpog-verifier.sh script
                 result['verified'] = True
                 continue
-            if 'IntegrityError(NoRootClaim)' in l:        # I think this means that the instance is UNSAT
+            # TODO: implement verified unsatisfiability
+            if ('IntegrityError(NoRootClaim)' in l         # I think this means that sharptrace concludes that the instance is UNSAT
+                or 'proof done but some clause is neither the asserted root nor a POG definition' in l): # I think this means that cpog concludes that the instance is UNSAT
                 result['no_root_claim'] = True
                 result['satisfiability'] = 'UNSATISFIABLE'
                 continue

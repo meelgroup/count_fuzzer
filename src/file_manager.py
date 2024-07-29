@@ -54,8 +54,6 @@ def create_directories(cnf_dir: str,
 
     sub_dir
         |-- base
-            |-- generator 1
-            |-- generator 2
             ...
         |-- preprocessed
             |-- generator 1-preprocessor 1

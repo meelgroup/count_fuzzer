@@ -82,9 +82,13 @@ cd src
 ./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json 
 ```
 
-## Compute ground truth
+## [OPTIONAL] Compute ground truth
 
-If you want to compare to a ground truth model count (currently only available for unweighted, unprojected model counting), do the following.
+*Experimental feature*: for unprojected, unweighted model counting, we currently offer support for two tools that can produce a verified count. They both use the [d4](https://github.com/crillab/d4) knowledge compiler.
+
+### Verifying counts with `nnf2trace` & `sharptrace`
+
+To generate verified model counts with [nnf2trace](https://github.com/vroland/nnf2trace) and [sharptrace](https://github.com/vroland/sharptrace), do the following:
 
 First, download and install/compile the following software:
 - [d4](https://github.com/crillab/d4)
@@ -93,20 +97,45 @@ First, download and install/compile the following software:
 
 Then, create the following symbolic links:
 ```bash
-cd /path/to/count_fuzzer/verified
-ln -s /path/to/d4/d4 d4
-ln -s /path/to/nnf2trace nnf2trace
-ln -s /path/to/sharptrace/sharptrace_checker sharptrace_checker
+cd /path/to/count_fuzzer/verifiers
+ln -s /path/to/d4/d4
+ln -s /path/to/nnf2trace
+ln -s /path/to/sharptrace/target/release/sharptrace_checker
 ```
 
 Then you can run:
 
 ```bash
 cd src
-./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json --ground-truth-script verified/d4-proof-trace-and-check.sh
+./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json --ground-truth-script verifiers/nnf2trace-and-sharptrace-verifier.sh
 ```
 
 In the future, we would like to make different scripts available, so you can use your favourite certified model counting tool.
+
+
+### Verifying counts with `cpog`
+
+To generate verified model counts with [cpog](https://github.com/rebryant/cpog), do the following:
+
+First, download and install/compile [cpog](https://github.com/rebryant/cpog) and all its dependencies. Make sure to run `make linstall` in the process.
+
+Then, create the following symbolic links:
+```bash
+cd /path/to/count_fuzzer/verifiers
+ln -s /path/to/d4/d4
+ln -s /path/to/cpog/VerifiedChecker/build/bin/checker cpog_checker
+ln -s /path/to/cpog/src/cpog-gen
+```
+
+Then you can run:
+
+```bash
+cd src
+./run_fuzzer -c /path/to/counter_config.json -g /path/to/generator_config.json --ground-truth-script verifiers/nnf2trace-and-sharptrace-verifier.sh
+```
+
+In the future, we would like to make different scripts available, so you can use your favourite certified model counting tool.
+
 
 # TODOs
 
