@@ -128,7 +128,7 @@ def parse_arguments():
         help="Specify how much time the verifier gets to obtain a verified model count. Default 10 * --max-time."
     )
     verification.add_argument(
-        "--cleanup-proofs", dest="cleanup_proofs", default=False, required=False, action="store_true",
+        "--clean-up-proofs", dest="clean_up_proofs", default=False, required=False, action="store_true",
         help="Clean up all proof-related files after verified count has been obtained."
     )
 
@@ -312,7 +312,8 @@ def fuzz(n_iter: int,
          weighted=False,
          timeout=10,
          memout=32000,
-         verbosity=1
+         verbosity=1,
+         clean_up_proofs=False,
          ):
     # Create data structures to store summary of results
     df = pd.DataFrame(columns=[])
@@ -333,11 +334,13 @@ def fuzz(n_iter: int,
         # TODO: Handle delta-debugging
 
         for j, instance in enumerate(new_base_instances):
+            rm.log_message("")
             rm.log_message("-" * 60)
             rm.log_message("")
             rm.log_message(f"New instance: {instance}")
             rm.log_message("")
             rm.log_message("-" * 60)
+            rm.log_message("")
             counts = dict()
 
             if verifier is not None:
@@ -365,10 +368,15 @@ def fuzz(n_iter: int,
                 result['generator'] = os.path.basename(os.path.dirname(instance))
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
             if verbosity >= 2:
-                rm.log_message(f"Completed iteration {i + 1}.{j + 1}")
+                rm.log_message(f"COMPLETED iteration {i + 1}.{j + 1}")
             same_counts = fut.check_counts(counts)
             rm.print_counts(same_counts, counts)
-            if not same_counts:
+            if same_counts:
+                if clean_up_proofs:
+                    fm.clean_up_proof(instance=instance)
+                    if verbosity >= 2:
+                        rm.log_message(f"Cleaned up proof files for instance {instance}.")
+            else:
                 problem_instances.append(instance)
 
         # Every iteration, store results:
@@ -408,7 +416,8 @@ if __name__ == "__main__":
         weighted=args.weighted,
         timeout=args.max_time,
         memout=args.max_mem,
-        verbosity=args.verbosity
+        verbosity=args.verbosity,
+        clean_up_proofs=args.clean_up_proofs
     )
 
     print(problem_instances)
