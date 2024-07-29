@@ -46,4 +46,4 @@ log_file="${proof_dir}/${f##*/}.log"
 # Run 
 ./d4 -dDNNF $f -out=$ddnnf_file
 ./cpog-gen -v 2 -L $log_file $f $ddnnf_file $proof_file
-./cpog_checker -c $f $proof_file
+./cpog_checker -c $f $proof_file &> $output_file
