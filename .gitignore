@@ -20,3 +20,6 @@ out/
 **journal.blg
 **journal.bbl
 bins/sharpsat-td-mccomp2022/build/
+*.DS_Store
+.idea
+*._wordcount_selection.tex
