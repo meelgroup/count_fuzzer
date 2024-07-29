@@ -40,7 +40,10 @@ def parse_arguments():
     problem_type = parser.add_argument_group("Problem type")
     behaviour = parser.add_argument_group("Fuzzer behaviour")
     admin = parser.add_argument_group("Admin")
+    verification = parser.add_argument_group(
+        "[OPTIONAL] Verification (*only* available for unweighted, unprojected model counting!)")
 
+    # -------------------------   TOOLS   ------------------------- #
     tools.add_argument(
         "--counters", "-c", dest="counters", type=str, required=True,
         help="Path to json file with the counters and their configurations."
@@ -53,11 +56,8 @@ def parse_arguments():
         "--preprocessors", dest="preprocessors", type=str, required=False, default='',
         help="Path to json file with the preprocessors and their configurations."
     )
-    tools.add_argument(
-        "--ground-truth-script", dest="ground_truth_script", type=str, required=False, default=None,
-        help="Path to a script that takes as argument a path to a .cnf file and then "
-             "generates a verified proof of correctness of the model count.")
 
+    # -------------------------   PROBLEM TYPE   ------------------------- #
     problem_type.add_argument(
         "--projected", dest="projected", default=False, action="store_true", required=False,
         help="If True, all specified counters are expected to do projected model counting, "
@@ -76,6 +76,8 @@ def parse_arguments():
         "--messyweight", dest="messy_weights", default=False, required=False,
         action="store_true", help="With this, weights are NOT fully given, and can contain negative values."
     )
+
+    # -------------------------   BEHAVIOUR   ------------------------- #
     behaviour.add_argument(
         "--max-time", "-t", dest="max_time", type=int, default=10, required=False,
         help="Timeout time for individual runs, in seconds."
@@ -93,7 +95,7 @@ def parse_arguments():
         help="Fuzz test start seed. If unset, a random seed is picked."
     )
     behaviour.add_argument(  # TODO: Check if this is actually used
-        "--keep-bugs-only", dest="keep_bugs_only", default=True, required=False,
+        "--keep-bugs-only", dest="keep_bugs_only", default=False, required=False,
         action="store_true",
         help="Only keep the CNFs that yield bugs, clean up all others."
     )
@@ -101,6 +103,8 @@ def parse_arguments():
         "--num-iter", "-n", dest="n_iter", type=int, default=100,
         required=False, help="Specify the maximum number of iterations."
     )
+
+    # -------------------------   ADMIN   ------------------------- #
     admin.add_argument(
         "--instance-dir", dest="cnf_dir", type=str, required=False,
         help="Specify path to directory to store generated instances. Default: /path/to/fuzzer/instances"
@@ -112,6 +116,20 @@ def parse_arguments():
     admin.add_argument(
         "--log-dir", dest="log_dir", type=str, required=False,
         help="Specify path to directory to store logs. Default: /path/to/fuzzer/logs"
+    )
+
+    # -------------------------   VERIFICATION   ------------------------- #
+    verification.add_argument(
+        "--verifier", dest="verifier", type=str, required=False, default=None,
+        help="Path to a script that takes as argument a path to a .cnf file and then "
+             "generates a verified proof of correctness of the model count.")
+    verification.add_argument(
+        "--verifier-timeout", dest="verifier_timeout", type=int, required=False,
+        help="Specify how much time the verifier gets to obtain a verified model count. Default 10 * --max-time."
+    )
+    verification.add_argument(
+        "--clean-up-proofs", dest="clean_up_proofs", default=False, required=False, action="store_true",
+        help="Clean up all proof-related files after verified count has been obtained."
     )
 
     # behaviour.add_option(
@@ -136,7 +154,15 @@ def parse_arguments():
     #     "--num-samples", dest="num_samples", type=int, default=3,
     #     help="How many samples to take for approximate counters. Default: %default")
     #
-    return parser.parse_args()
+
+    # -------------------------   SANITY CHECKS   ------------------------- #
+    parsed_args = parser.parse_args()
+
+    if parsed_args.verifier is not None and (parsed_args.projected or parsed_args.weighted):
+        rm.log_message("Verification not available for projected or weighted model counting. Aborting.")
+        exit(1)
+
+    return parsed_args
 
 
 def generate_instance(generator: fut.Generator,
@@ -162,7 +188,6 @@ def generate_instance(generator: fut.Generator,
 
 
 def generate_instances(generators: list,
-                       basename: str,
                        cnf_dir: str,
                        inst_num: int,
                        seed: int,
@@ -171,7 +196,7 @@ def generate_instances(generators: list,
     ext = fut.get_extension(projected=projected, weighted=weighted)
     new_instances = []
     for generator in generators:
-        file_name = f"{cnf_dir}/base/{generator.name}/{basename}_{inst_num:03}_s{seed}.{ext}"
+        file_name = f"{cnf_dir}/base/{generator.name}_{inst_num:03}_s{seed}.{ext}"
         generate_instance(generator=generator, new_cnf_path=file_name, seed=seed, projected=projected,
                           weighted=weighted)
         new_instances.append(file_name)
@@ -236,7 +261,7 @@ def get_ground_truth(
         max_mem=3200,
         verbosity=1) -> dict:
     timed_out = False
-
+    # TODO: figure out how to communicate time + space resources
     if verbosity >= 2:
         rm.log_message(f"Running verification script {verifier_script} on instance {path_to_instance}.")
 
@@ -265,14 +290,13 @@ def get_ground_truth(
             "time of {timeout} s on instance {path_to_instance}.")
 
     # Otherwise, parse output
-    success, result = fut.parse_verifier_output(output_file, timed_out=timed_out)
+    success, result = fut.parse_verifier_output(path_to_instance, output_file, timed_out=timed_out, verbosity=verbosity)
     result['problem_type'] = 'mc'  # For now only support for ground truth of this type
     result['instance'] = path_to_instance
     if not success:
         rm.log_message(f"ERROR when running {verifier_script}. Output written to {output_file}")
 
     return result
-
 
 
 def fuzz(n_iter: int,
@@ -283,12 +307,13 @@ def fuzz(n_iter: int,
          generators: list,
          preprocessors=[],
          minimisers=[],
-         ground_truth_script=None,
+         verifier=None,
          projected=False,
          weighted=False,
          timeout=10,
          memout=32000,
-         verbosity=1
+         verbosity=1,
+         clean_up_proofs=False,
          ):
     # Create data structures to store summary of results
     df = pd.DataFrame(columns=[])
@@ -299,7 +324,6 @@ def fuzz(n_iter: int,
     for i in range(n_iter):
         new_base_instances = generate_instances(
             generators=generators,
-            basename="fuzz",
             cnf_dir=cnf_dir,
             inst_num=i,
             seed=seed + i,
@@ -310,14 +334,20 @@ def fuzz(n_iter: int,
         # TODO: Handle delta-debugging
 
         for j, instance in enumerate(new_base_instances):
-
+            rm.log_message("")
+            rm.log_message("-" * 60)
+            rm.log_message("")
+            rm.log_message(f"New instance: {instance}")
+            rm.log_message("")
+            rm.log_message("-" * 60)
+            rm.log_message("")
             counts = dict()
 
-            if ground_truth_script is not None:
+            if verifier is not None:
                 result = get_ground_truth(
                     path_to_instance=instance,
-                    verifier_script=ground_truth_script,
-                    timeout=timeout*10,
+                    verifier_script=verifier,
+                    timeout=timeout * 10,
                     max_mem=memout,
                     verbosity=verbosity
                 )
@@ -338,10 +368,15 @@ def fuzz(n_iter: int,
                 result['generator'] = os.path.basename(os.path.dirname(instance))
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
             if verbosity >= 2:
-                rm.log_message(f"Completed iteration {i+1}.{j+1}")
+                rm.log_message(f"COMPLETED iteration {i + 1}.{j + 1}")
             same_counts = fut.check_counts(counts)
             rm.print_counts(same_counts, counts)
-            if not same_counts:
+            if same_counts:
+                if clean_up_proofs:
+                    fm.clean_up_proof(instance=instance)
+                    if verbosity >= 2:
+                        rm.log_message(f"Cleaned up proof files for instance {instance}.")
+            else:
                 problem_instances.append(instance)
 
         # Every iteration, store results:
@@ -350,7 +385,6 @@ def fuzz(n_iter: int,
 
 
 if __name__ == "__main__":
-
     args = parse_arguments()
 
     # Setup
@@ -359,7 +393,8 @@ if __name__ == "__main__":
     # preprocessors = fut.parse_preprocessors(args.preprocessors)
 
     cnf_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/instances" if args.cnf_dir is None else args.cnf_dir
-    log_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/logs" if ('log_dir' not in args or args.log_dir is None) else args.log_dir
+    log_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/logs" if (
+            'log_dir' not in args or args.log_dir is None) else args.log_dir
     bug_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/bugs" if args.bug_dir is None else args.bug_dir
     fm.create_directories(cnf_dir=cnf_dir, bug_dir=bug_dir, log_dir=log_dir, generators=generators)
 
@@ -376,12 +411,13 @@ if __name__ == "__main__":
         log_dir=log_dir,
         counters=counters,
         generators=generators,
-        ground_truth_script=args.ground_truth_script,
+        verifier=args.verifier,
         projected=args.projected,
         weighted=args.weighted,
         timeout=args.max_time,
         memout=args.max_mem,
-        verbosity=args.verbosity
+        verbosity=args.verbosity,
+        clean_up_proofs=args.clean_up_proofs
     )
 
     print(problem_instances)
