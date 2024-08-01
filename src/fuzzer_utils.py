@@ -133,7 +133,7 @@ def log10cnt(cnt: str):
 def get_random_seed(seed):
     if seed is None:
         b = os.urandom(8)
-        seed = int.from_bytes(b)
+        seed = int.from_bytes(b, byteorder='big', signed=False)
     rm.log_message(f"Using seed: {seed}")
     return seed
 
