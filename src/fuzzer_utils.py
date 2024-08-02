@@ -62,6 +62,7 @@ sat_pat = re.compile(r'\s*s\s+(?P<satisfiability>(UN)?((SATISFIABLE)|(KNOWN)))\s
 type_pat = re.compile(r'\s*c\s+s\s+type\s+(?P<problem_type>((w)|(p)|(pw))?mc)\s*', re.DOTALL)
 est_pat = re.compile(r'\s*c\s+s\s+(?P<est_type>(neg)?log10-estimate)\s+(?P<est_val>[\d.e\-inf]+)\s*', re.DOTALL)
 count_pat = re.compile(r'\s*c\s+s\s+(?P<counter_type>((exact)|(approximate)))\s+(?P<precision>((arb)|(single)|(double)|(quadruple)))\s+(?P<notation>((log10)|(float)|(prec-sci)|(int)|(frac)))\s+(?P<value>((inf)|(\d+\.*\d*)))\s*', re.DOTALL)
+gen_pat = re.compile(r'.*\/base\/(?P<generator>\w+)_\d+_s\d+\.p?w?cnf', re.DOTALL)
 # TODO: add functionality for pac guarantees
 
 # REGEX for parsing verifier output
@@ -92,7 +93,6 @@ def run(command: str,
     if verbosity >= 3:
         rm.log_message(f'CPU limit of parent (pid {os.getpid()}): {resource.getrlimit(resource.RLIMIT_CPU)}')
 
-    subprocess.call(['echo', '$STAREXEC_MAX_MEM'])
     this_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir)
     p = subprocess.Popen(command, stderr=subprocess.STDOUT,
@@ -200,6 +200,7 @@ def parse_output(
         counter: Counter,
         path_to_instance: str,
         timed_out=False,
+        error=False,
         verbosity=1) -> (bool, dict):
 
     result = {
@@ -213,8 +214,8 @@ def parse_output(
         'count_precision': None,
         'count_notation': None,
         'count_value': None,
-        'error': False,
-        'timed_out': timed_out
+        'timed_out': timed_out,
+        'error': error,
     }
 
     if verbosity >= 3:
@@ -271,6 +272,13 @@ def parse_output(
     return True, result
 
 
+def get_generator(path_to_instance: str) -> str:
+    m = re.match(gen_pat, path_to_instance)
+    if m is not None:
+        return m.group('generator')
+    return "unknown"
+
+
 def check_counts(counts: dict) -> bool:
     # TODO: Add functionality for approximate counters
     # TODO: Add functionality for weighted & projected counters
@@ -281,7 +289,7 @@ def check_counts(counts: dict) -> bool:
     return False
 
 
-def parse_verifier_output(path_to_instance: str, output_file: str, timed_out=bool, verbosity=1) -> (bool, dict):
+def parse_verifier_output(path_to_instance: str, output_file: str, timed_out:bool, error: bool, verbosity=1) -> (bool, dict):
     """ Parse the output of a verifier to obtain a verified model count.
 
     TODO: Right now, much of this is hardcoded for two specific verifier pipelines. Ideally, the user should be able to any verifier they like, but currently there is no support for that.
@@ -290,7 +298,7 @@ def parse_verifier_output(path_to_instance: str, output_file: str, timed_out=boo
     result = {'verified': False,
               'satisfiability': None,
               'timed_out': timed_out,
-              'error': False,
+              'error': error,
               'no_root_claim': False,
               'verified_count': None}
     with (open(output_file, 'r') as out_file):
@@ -312,7 +320,7 @@ def parse_verifier_output(path_to_instance: str, output_file: str, timed_out=boo
                 continue
             # TODO: implement verified unsatisfiability
             if ('IntegrityError(NoRootClaim)' in l         # I think this means that sharptrace concludes that the instance is UNSAT
-                or 'proof done but some clause is neither the asserted root nor a POG definition' in l): # I think this means that cpog concludes that the instance is UNSAT
+                or 'proof done but some clause is neither the asserted root nor a POG definition' in l):                   # I think this means that cpog concludes that the instance is UNSAT
                 result['no_root_claim'] = True
                 result['satisfiability'] = 'UNSATISFIABLE'
                 continue

@@ -32,6 +32,7 @@ Description: Long description.
 """
 
 from datetime import datetime
+import json
 import sys
 
 
@@ -51,3 +52,19 @@ def print_counts(same_counts: bool, counts: dict):
         log_message("-" * (name_width + 1 + count_width))
         for counter, count in counts.items():
             log_message(f"{counter:<{name_width}}|{str(count):>{count_width}}")
+
+
+def save_parameters(args, seed, log_dir, output_prefix):
+    args_dict = dict(vars(args))
+    print(args_dict)
+    args_dict['rnd_seed'] = seed
+    args_dict['generator_configs'] = json.load(open(args.generators))
+    args_dict['counter_configs'] = json.load(open(args.counters))
+    param_file = f"{log_dir}/{output_prefix}_parameters.json"
+    with open(param_file, 'w') as out_file:
+        json.dump(args_dict, out_file, indent=4)
+
+
+def save_problem_instances(problem_instances, log_dir, output_prefix):
+    with open(f"{log_dir}/{output_prefix}_problem_instances.txt", 'w') as out_file:
+        out_file.write("\n".join(problem_instances))

@@ -16,10 +16,12 @@ out/
 **journal.synctex.gz
 **journal.out
 **journal.log
-**journal.aux
-**journal.blg
-**journal.bbl
+**.aux
+**.blg
+**l.bbl
 bins/sharpsat-td-mccomp2022/build/
 *.DS_Store
 .idea
 *._wordcount_selection.tex
+**report.log
+**report.out

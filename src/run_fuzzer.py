@@ -35,7 +35,7 @@ import report_manager as rm
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     tools = parser.add_argument_group("Tools")
     problem_type = parser.add_argument_group("Problem type")
     behaviour = parser.add_argument_group("Fuzzer behaviour")
@@ -92,7 +92,12 @@ def parse_arguments():
     )
     behaviour.add_argument(
         "--seed", "-s", dest="rnd_seed", type=int, required=False,
-        help="Fuzz test start seed. If unset, a random seed is picked."
+        help="Fuzz test start seed. If unset, a random seed is picked. "
+             "WARNING: the seed for generating new instances is created by "
+             "simply adding 1 to the seed for each iteration. Hence, if you are "
+             "running multiple instances of the fuzzer in parallel, make sure "
+             "that they each get seeds that are far enough away from each other "
+             "to not risk calling the instance generators with the same seed."
     )
     behaviour.add_argument(  # TODO: Check if this is actually used
         "--keep-bugs-only", dest="keep_bugs_only", default=False, required=False,
@@ -125,7 +130,7 @@ def parse_arguments():
              "generates a verified proof of correctness of the model count.")
     verification.add_argument(
         "--verifier-timeout", dest="verifier_timeout", type=int, required=False,
-        help="Specify how much time the verifier gets to obtain a verified model count. Default 10 * --max-time."
+        help="Specify how much time the verifier gets to obtain a verified model count. Default 100 * --max-time."
     )
     verification.add_argument(
         "--clean-up-proofs", dest="clean_up_proofs", default=False, required=False, action="store_true",
@@ -161,6 +166,26 @@ def parse_arguments():
     if parsed_args.verifier is not None and (parsed_args.projected or parsed_args.weighted):
         rm.log_message("Verification not available for projected or weighted model counting. Aborting.")
         exit(1)
+
+    cnf_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/instances" \
+        if parsed_args.cnf_dir is None \
+        else parsed_args.cnf_dir
+    log_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/logs" \
+        if parsed_args.log_dir is None \
+        else parsed_args.log_dir
+    bug_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/bugs" \
+        if parsed_args.bug_dir is None \
+        else parsed_args.bug_dir
+
+    parsed_args.cnf_dir = cnf_dir
+    parsed_args.log_dir = log_dir
+    parsed_args.bug_dir = bug_dir
+
+    if parsed_args.verifier is not None and parsed_args.verifier_timeout is None:
+        parsed_args.verifier_timeout = parsed_args.max_time * 100
+
+    seed = fut.get_random_seed(parsed_args.rnd_seed)
+    parsed_args.rnd_seed = seed
 
     return parsed_args
 
@@ -211,12 +236,16 @@ def run_counter(counter: fut.Counter,
                 verbosity=1) -> dict:
     # TODO: add functionality for approximate counters
     timed_out = False
+    error = False
     if verbosity >= 2:
         rm.log_message(f"Running counter {counter.name} on instance {path_to_instance}.")
 
     counter_dir = str(Path(counter.path).parent.absolute())
-    tmp_command = f"./{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
-    command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout)
+    if '{INSTANCE}' in counter.config:
+        tmp_command = f"./{os.path.basename(counter.path)} {counter.config}"
+    else:
+        tmp_command = f"./{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
+    command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout, INSTANCE=path_to_instance, TMP='/scratch/aldlatour/sharpfuzz')
 
     if verbosity >= 2:
         rm.log_message(f"command: {command}")
@@ -236,16 +265,18 @@ def run_counter(counter: fut.Counter,
         if verbosity >= 3:
             rm.log_message("No error.")
     else:
+        error = True
         rm.log_message(f"Error: {err}")
-    diff_time = time.time() - start_time
 
     # Abort if counter exceeds maximum time
+    diff_time = time.time() - start_time
     if diff_time > timeout:
+        timed_out = True
         rm.log_message(
             f"Aborted! Counter {counter.name} exceeded maximum time of {timeout} s on instance {path_to_instance}.")
 
     # Otherwise, parse output
-    success, result = fut.parse_output(counter_output, counter, path_to_instance, timed_out=timed_out)
+    success, result = fut.parse_output(counter_output, counter, path_to_instance, timed_out=timed_out, error=error)
     if not success:
         log_file = fm.store_counter_output(command, counter_output, counter, log_dir)
         rm.log_message(f"ERROR when running {counter.name}. Output written to {log_file}")
@@ -261,6 +292,7 @@ def get_ground_truth(
         max_mem=3200,
         verbosity=1) -> dict:
     timed_out = False
+    error = False
     # TODO: figure out how to communicate time + space resources
     if verbosity >= 2:
         rm.log_message(f"Running verification script {verifier_script} on instance {path_to_instance}.")
@@ -280,17 +312,19 @@ def get_ground_truth(
         if verbosity >= 3:
             rm.log_message("No error.")
     else:
+        error = True
         rm.log_message(f"Error: {err}")
-    diff_time = time.time() - start_time
 
     # Abort if counter exceeds maximum time
+    diff_time = time.time() - start_time
     if diff_time > timeout:
+        timed_out = True
         rm.log_message(
             f"Aborted! Verification script {verifier_script} exceeded maximum "
             "time of {timeout} s on instance {path_to_instance}.")
 
     # Otherwise, parse output
-    success, result = fut.parse_verifier_output(path_to_instance, output_file, timed_out=timed_out, verbosity=verbosity)
+    success, result = fut.parse_verifier_output(path_to_instance, output_file, timed_out=timed_out, error=error, verbosity=verbosity)
     result['problem_type'] = 'mc'  # For now only support for ground truth of this type
     result['instance'] = path_to_instance
     if not success:
@@ -303,6 +337,7 @@ def fuzz(n_iter: int,
          seed: int,
          cnf_dir: str,
          log_dir: str,
+         output_prefix: str,
          counters: list,
          generators: list,
          preprocessors=[],
@@ -311,13 +346,14 @@ def fuzz(n_iter: int,
          projected=False,
          weighted=False,
          timeout=10,
-         memout=32000,
+         memout=3200,
          verbosity=1,
+         verifier_timeout=None,
          clean_up_proofs=False,
          ):
     # Create data structures to store summary of results
     df = pd.DataFrame(columns=[])
-    path_to_csv = f"{log_dir}/{datetime.now().strftime('%Y-%m-%d_%H%M%S')}_fuzz-results.csv"
+    path_to_csv = f"{log_dir}/{output_prefix}_fuzz-results.csv"
     problem_instances = []
 
     # Main loop
@@ -343,16 +379,19 @@ def fuzz(n_iter: int,
             rm.log_message("")
             counts = dict()
 
+            generator = fut.get_generator(instance)
+
             if verifier is not None:
                 result = get_ground_truth(
                     path_to_instance=instance,
                     verifier_script=verifier,
-                    timeout=timeout * 10,
+                    timeout=verifier_timeout,
                     max_mem=memout,
                     verbosity=verbosity
                 )
-                counts['ground_truth'] = result['verified_count']
-                result['generator'] = os.path.basename(os.path.dirname(instance))
+                counts['verified_count'] = result['verified_count']
+                result['generator'] = generator
+                result['counter'] = 'verifier'
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
 
             for counter in counters:
@@ -365,7 +404,9 @@ def fuzz(n_iter: int,
                     verbosity=verbosity
                 )
                 counts[counter.name] = result['count_value']
-                result['generator'] = os.path.basename(os.path.dirname(instance))
+                result['generator'] = generator
+                if verifier is not None:
+                    result['verified_count'] = counts['verified_count']
                 df = pd.concat([df, pd.DataFrame([result])], ignore_index=True)
             if verbosity >= 2:
                 rm.log_message(f"COMPLETED iteration {i + 1}.{j + 1}")
@@ -392,23 +433,22 @@ if __name__ == "__main__":
     generators = fut.parse_generators(args.generators)
     # preprocessors = fut.parse_preprocessors(args.preprocessors)
 
-    cnf_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/instances" if args.cnf_dir is None else args.cnf_dir
-    log_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/logs" if (
-            'log_dir' not in args or args.log_dir is None) else args.log_dir
-    bug_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/bugs" if args.bug_dir is None else args.bug_dir
-    fm.create_directories(cnf_dir=cnf_dir, bug_dir=bug_dir, log_dir=log_dir, generators=generators)
-
-    seed = fut.get_random_seed(args.rnd_seed)
-    random.seed(seed)
+    random.seed(args.rnd_seed)
+    fm.create_directories(cnf_dir=args.cnf_dir, bug_dir=args.bug_dir, log_dir=args.log_dir)
 
     os.environ['STAREXEC_WALLCLOCK_LIMIT'] = str(args.max_time)
     os.environ['STAREXEC_MAX_MEM'] = str(args.max_mem)
 
+    output_prefix = f"{datetime.now().strftime('%Y-%m-%d_%H%M%S')}_s{args.rnd_seed}"
+
+    rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix)
+
     path_to_results, problem_instances = fuzz(
         n_iter=args.n_iter,
-        seed=seed,
-        cnf_dir=cnf_dir,
-        log_dir=log_dir,
+        seed=args.rnd_seed,
+        cnf_dir=args.cnf_dir,
+        log_dir=args.log_dir,
+        output_prefix=output_prefix,
         counters=counters,
         generators=generators,
         verifier=args.verifier,
@@ -417,10 +457,12 @@ if __name__ == "__main__":
         timeout=args.max_time,
         memout=args.max_mem,
         verbosity=args.verbosity,
+        verifier_timeout= args.verifier_timeout,
         clean_up_proofs=args.clean_up_proofs
     )
 
     print(problem_instances)
+    rm.save_problem_instances(problem_instances, args.log_dir, output_prefix)
     # this_dir = os.path.dirname(os.path.realpath(__file__))
     # save_dir = f"{this_dir}/out/bugs_{datetime.now().strftime('%Y-%m-%d')}"
     # if not os.path.isdir(f"{save_dir}"):
