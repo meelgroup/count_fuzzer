@@ -56,7 +56,6 @@ def silent_remove(filename):
 def create_directories(cnf_dir: str,
                        bug_dir: str,
                        log_dir: str,
-                       generators=None,
                        preprocessors=None,
                        delta_debuggers=None,
                        verbosity=1):
@@ -94,7 +93,7 @@ def create_directories(cnf_dir: str,
     :param delta_debuggers: dict with delta-debugger configuration
     :return:
     """
-    assert generators, "Aborting, must specify a generator config file."
+    # assert generators, "Aborting, must specify a generator config file."
 
     # Generate all directories for storing CNFs:
     if not os.path.isdir(cnf_dir):
