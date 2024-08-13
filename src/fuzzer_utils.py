@@ -54,6 +54,9 @@ DeltaDebugger = namedtuple("DeltaDebugger", "name path config",
 
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 
+Instance = namedtuple("Instance", "path problem_type n_vars n_clss proj_vars lits2weights",
+                           defaults=[None, None, None, None, None, None])
+
 # The following regular expressions are all based on the information in
 # https://mccompetition.org/assets/files/mccomp_format_24.pdf
 # TODO: add support for alternative precisions
@@ -166,7 +169,6 @@ def parse_counters(counter_config_file: str):
     counter_dict = json.load(open(counter_config_file))
     counters = [Counter(name, counter_dict[name]["path"], counter_dict[name]["config"], bool(counter_dict[name]["exact"]))
                 for name in counter_dict]
-    assert len(counters) > 1, "Aborting. Please specify at least two counters."
     return counters
 
 
@@ -194,6 +196,65 @@ def parse_preprocessors(preprocessor_config_file: str):
         preprocessors = [Preprocessor(name, prep_dict[name]["path"], prep_dict[name]["config"]) for name in prep_dict]
     return preprocessors
 
+
+def parse_cnf(path_to_cnf: str) -> Instance:
+    """ Parse DIMACS cnf instance following the format specified in
+    https://mccompetition.org/assets/files/mccomp_format_24.pdf
+    """
+    n_vars = 0
+    proj_vars = set()
+    lits2weights = dict()
+    problem_type = ''
+    with (open(path_to_cnf, 'r') as infile):
+        for line in infile.readlines():
+            line = line.strip()
+            # DIMACS HEADER
+            if line.startswith("p "):
+                _, inst_type, n_vars_str, n_clss_str = line.split()
+                n_vars = int(n_vars_str)
+                n_clss = int(n_clss_str)
+                assert inst_type in ["cnf", "wcnf", "pcnf", "pwcnf"], \
+                    f"Invalid instance type: {inst_type} for {path_to_cnf}."
+            # OPTIONAL MODEL COUNTING HEADER
+            elif line.startswith("c t "):
+                _, _, problem_type = line.split()
+                assert problem_type in ["mc", "wmc", "pmc", "pwmc", ""], \
+                    f"Invalid problem type: {problem_type} for {path_to_cnf}."
+            # WEIGHTED LITERALS
+            elif line.startswith("c p "):
+                _, _, w_lit, weight, zero = line.split()
+                assert zero == '0', \
+                    f"Invalid weight specification in {path_to_cnf}."
+                lits2weights[int(w_lit)] = weight
+            # PROJECTED VARIABLES
+            elif line.startswith("c p show "):
+                new_proj_vars = set([int(var) for var in line.split()[2:-1]])
+                proj_vars = proj_vars.union(new_proj_vars)
+
+    # Do some sanity checks and clean up
+    assert n_vars != 0, f"ERROR: Cannot find 'p cnf' in {path_to_cnf}"
+    # TODO: do sanity checks on the given weights
+
+    if len(proj_vars) == n_vars and not lits2weights:
+        if problem_type != "mc":
+            rm.log_message(f"WARNING: changing problem type from {problem_type} to mc, since all variables are projected and none are weighted.")
+        problem_type = "mc"
+    elif proj_vars and not lits2weights:
+        if problem_type != "pmc":
+            rm.log_message(f"WARNING: changing problem type from {problem_type} to pmc, since some variables are projected and none are weighted.")
+        problem_type = "pmc"
+    elif len(proj_vars) == n_vars and lits2weights:
+        if problem_type != "wmc":
+            rm.log_message(f"WARNING: changing problem type from {problem_type} to wmc, since all variables are projected and some are weighted.")
+        problem_type = "wmc"
+    elif proj_vars and lits2weights:
+        if problem_type != "pwmc":
+            rm.log_message(f"WARNING: changing problem type from {problem_type} to pwmc, since some variables are projected and some are weighted.")
+        problem_type = "pwmc"
+
+    # Return info about instance
+    instance_info = Instance(path=path_to_cnf, problem_type=problem_type, n_vars=n_vars, n_clss=n_clss, proj_vars=proj_vars, lits2weights=lits2weights)
+    return instance_info
 
 def parse_output(
         counter_output: str,

@@ -345,6 +345,7 @@ def get_failure_type(res_dict):
 
 
 def create_table_with_detailed_results(counter_names: list, df_results, df_summary):
+    verifier_rows = []
     rows = []
     # # results = df_results.to_dict(orient='index_names')
     # summary = df_summary.to_dict(orient='tight')

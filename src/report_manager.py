@@ -33,6 +33,7 @@ Description: Long description.
 
 from datetime import datetime
 import json
+import os
 import sys
 
 
@@ -54,13 +55,13 @@ def print_counts(same_counts: bool, counts: dict):
             log_message(f"{counter:<{name_width}}|{str(count):>{count_width}}")
 
 
-def save_parameters(args, seed, log_dir, output_prefix):
+def save_parameters(args, seed, log_dir, output_prefix, script_name):
     args_dict = dict(vars(args))
     print(args_dict)
     args_dict['rnd_seed'] = seed
     args_dict['generator_configs'] = json.load(open(args.generators))
     args_dict['counter_configs'] = json.load(open(args.counters))
-    param_file = f"{log_dir}/{output_prefix}_parameters.json"
+    param_file = f"{log_dir}/{output_prefix}_{os.path.splitext(script_name)[0]}parameters.json"
     with open(param_file, 'w') as out_file:
         json.dump(args_dict, out_file, indent=4)
 

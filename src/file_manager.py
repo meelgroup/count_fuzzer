@@ -148,6 +148,30 @@ def create_directories(cnf_dir: str,
     #     os.makedirs("bug", exist_ok=True)
 
 
+def create_instance_directories(
+        instance_dir: str,
+        weighted=False,
+        projected=False
+):
+    if not os.path.isdir(instance_dir):
+        log_message(f"Creating directory to store generated test instances: {instance_dir}.")
+        os.makedirs(f"{instance_dir}", exist_ok=True)
+
+    child_dirs = ['cnf']
+    if weighted and not projected:
+        child_dirs.append('wcnf')
+    elif projected and not weighted:
+        child_dirs.append('pcnf')
+    elif weighted and projected:
+        child_dirs.append('pwcnf')
+
+    new_dirs = dict()
+    for child_dir in child_dirs:
+        new_dir = f"{instance_dir}/{child_dir}"
+        new_dirs[child_dir] = new_dir
+        os.makedirs(new_dir, exist_ok=True)
+    return new_dirs
+
 def store_counter_output(command: str,
                          counter_output: str,
                          counter: Counter,

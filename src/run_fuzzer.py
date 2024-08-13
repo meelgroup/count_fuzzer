@@ -190,42 +190,7 @@ def parse_arguments():
     return parsed_args
 
 
-def generate_instance(generator: fut.Generator,
-                      new_cnf_path: str,
-                      seed: int,
-                      projected=False,
-                      weighted=False,
-                      verbosity=1
-                      ):
-    # command = f"{generator.path} {generator.config} {new_cnf_path} {self._projected} {self._weighted}"
-    # seed = random.randint(0, 1000000000)
-    tmp_command = f"{generator.path} {generator.config}"
-    type_num = fut.get_type_number(projected, weighted)
-    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed, type_num=type_num)
-    status = subprocess.call(command, shell=True)
-    if status != 0:
-        rm.log_message(f"Failed generator call: {command}")
-        exit(-1)
-    elif verbosity >= 3:
-        rm.log_message(f"Called generator: {command}")
-    elif verbosity >= 2:
-        rm.log_message(f"Generated file {new_cnf_path}.")
 
-
-def generate_instances(generators: list,
-                       cnf_dir: str,
-                       inst_num: int,
-                       seed: int,
-                       projected=False,
-                       weighted=False):
-    ext = fut.get_extension(projected=projected, weighted=weighted)
-    new_instances = []
-    for generator in generators:
-        file_name = f"{cnf_dir}/base/{generator.name}_{inst_num:03}_s{seed}.{ext}"
-        generate_instance(generator=generator, new_cnf_path=file_name, seed=seed, projected=projected,
-                          weighted=weighted)
-        new_instances.append(file_name)
-    return new_instances
 
 
 def run_counter(counter: fut.Counter,
@@ -430,6 +395,7 @@ if __name__ == "__main__":
 
     # Setup
     counters = fut.parse_counters(args.counters)
+    # assert len(counters) > 1, "Aborting. Please specify at least two counters."
     generators = fut.parse_generators(args.generators)
     # preprocessors = fut.parse_preprocessors(args.preprocessors)
 
