@@ -34,7 +34,7 @@ PROJECT_DIR=$(dirname "$SCRIPT_DIR")
 f=$(realpath "$1")
 
 # create relevant directories if necessary
-proof_dir=$PROJECT_DIR/proofs
+proof_dir=$PROJECT_DIR/out/verification
 mkdir -p $proof_dir
 
 # get filenames
@@ -43,7 +43,9 @@ proof_file="${proof_dir}/${f##*/}.cpog"
 output_file="${proof_dir}/${f##*/}.output"
 log_file="${proof_dir}/${f##*/}.log"
 
+rm -f $output_file
+
 # Run 
-./d4 -dDNNF $f -out=$ddnnf_file
-./cpog-gen -v 2 -L $log_file $f $ddnnf_file $proof_file
-./cpog_checker -c $f $proof_file &> $output_file
+./d4 -dDNNF $f -out=$ddnnf_file >> $output_file 2>&1
+./cpog-gen -v 2 -L $log_file $f $ddnnf_file $proof_file  >> $output_file 2>&1
+./cpog_checker -c $f $proof_file >> $output_file 2>&1
