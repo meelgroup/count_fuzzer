@@ -142,15 +142,6 @@ def get_random_seed(seed):
     rm.log_message(f"Using seed: {seed}")
     return seed
 
-
-def get_type_number(projected=False, weighted=False) -> str:
-    ty = "0"
-    if projected and not weighted: ty = "1"
-    if not projected and weighted: ty = "2"
-    if projected and weighted: ty = "3"
-    return ty
-
-
 def get_extension(projected=False, weighted=False) -> str:
     if not projected and not weighted:
         return "cnf"
