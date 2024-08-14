@@ -154,7 +154,7 @@ $ python src/run_fuzzer.py --counters /path/to/counter_config.json
 or 
 ```bash
 $ python src/generate_instances.py --generators /path/to/generator_config.json --verifier /path/to/verifier/script
-$ python src/run_fuzzer.py --counters /path/to/counter_config.json --verified_counts /path/to/verified_counts.csv
+$ python src/run_fuzzer.py --counters /path/to/counter_config.json --instances /path/to/instances
 ```
 
 ## About
