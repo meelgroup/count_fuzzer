@@ -193,3 +193,10 @@ def clean_up_proof(instance: str):
 
     for f in [nnf_file, proof_file, out_file, log_file]:
         silent_remove(f)
+
+
+def remove_file(the_file):
+    try:
+        os.remove(the_file)
+    except OSError:
+        pass

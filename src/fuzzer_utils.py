@@ -34,6 +34,8 @@ Description: Long description.
 from collections import namedtuple
 from decimal import Decimal
 from functools import partial
+
+import pandas as pd
 from gmpy2 import mpz, log10, mpfr
 import json
 import os
@@ -195,6 +197,19 @@ def parse_preprocessors(preprocessor_config_file: str):
         prep_dict = json.load(open(preprocessor_config_file))
         preprocessors = [Preprocessor(name, prep_dict[name]["path"], prep_dict[name]["config"]) for name in prep_dict]
     return preprocessors
+
+
+def get_instance_list(path_to_instances):
+    if os.path.isdir(path_to_instances):
+        return [f"{path_to_instances}/{file_name}"
+                for file_name in os.listdir(path_to_instances)
+                if os.path.isfile(f"{path_to_instances}/{file_name}")]
+    elif os.path.isfile(path_to_instances):
+        with open(path_to_instances, 'r') as infile:
+            return [filename.strip() for filename in infile.readlines()]
+    else:
+        print("ERROR: please provide a path to a directory with problem instances "
+              "or a path to a file with a path to a problem instance on each line.")
 
 
 def parse_cnf(path_to_cnf: str) -> Instance:

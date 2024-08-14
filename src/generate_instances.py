@@ -380,9 +380,10 @@ if __name__ == "__main__":
     generators = fut.parse_generators(args.generators)
     random.seed(args.rnd_seed)
 
-    output_prefix = f"{datetime.now().strftime('%Y-%m-%d_%H%M%S')}_s{args.rnd_seed}"
+    output_prefix = f"{datetime.now().strftime('%Y-%m-%d')}_s{args.rnd_seed}"
     new_dirs = fm.create_instance_directories(instance_dir=f"{args.out_dir}/instances", weighted=args.weighted, projected=args.projected)
     # new_dirs = rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix, os.path.basename(__file__))
+
 
     file_paths = generate_instances(
         generators=generators,
@@ -405,6 +406,12 @@ if __name__ == "__main__":
         rm.log_message(f"Saved weighted problem instances to {Path(file_paths_weighted[0]).parent.resolve()}")
         file_paths = file_paths_weighted
 
+    instances_list_file =f"{args.out_dir}/{output_prefix}_generated_instances.txt"
+    fm.remove_file(instances_list_file)
+
+    with open(instances_list_file, 'w') as outfile:
+        outfile.write('\n'.join(file_paths))
+
     if args.verifier:
         verified_counts = []
         os.makedirs(f"{args.out_dir}/verification", exist_ok=True) # TODO: move this to file_manager.py
@@ -417,5 +424,7 @@ if __name__ == "__main__":
                 max_mem=args.memout)
             verified_counts.append(result)
         df_results = pd.DataFrame(verified_counts)
-        df_results.to_csv(f"{args.out_dir}/verification/{output_prefix}_verified_counts.csv")
+        df_results.to_csv(f"{args.out_dir}/{output_prefix}_verified_counts.csv")
         # TODO: implement moving the verification information to the user-specified directory
+
+    # TODO: save parameters

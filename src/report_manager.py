@@ -37,18 +37,21 @@ import os
 import sys
 
 
-def log_message(message: str):
-    print(f'[sharp-fuzz], {datetime.now().strftime("%Y-%m-%d, %Hh%Mm%Ss")}: {message}')
+def log_message(message: str, print_time=False):
+    if print_time:
+        print(f'[sharp-fuzz], {datetime.now().strftime("%Y-%m-%d, %Hh%Mm%Ss")}: {message}')
+    else: print(f'[sharp-fuzz]: {message}')
     sys.stdout.flush()
 
 
 def print_counts(same_counts: bool, counts: dict):
+    log_message("")
     if same_counts:
         log_message(f"All counters agree on count: {list(counts.values())[0]}.")
     else:
         log_message("ATTENTION: at least one counter disagrees with the others.")
-        name_width = max(len(max(counts.keys(), key=len)), 6) + 1
-        count_width = len(max([str(count) for count in counts.values()], key=len)) + 1
+        name_width = max(len(max(counts.keys(), key=len)), 7) + 1
+        count_width = max(len(max([str(count) for count in counts.values()], key=len)), 5) + 1
         log_message(f"{'counter':<{name_width}}|{'count':>{count_width}}")
         log_message("-" * (name_width + 1 + count_width))
         for counter, count in counts.items():
