@@ -192,9 +192,10 @@ def parse_preprocessors(preprocessor_config_file: str):
 
 def get_instance_list(path_to_instances):
     if os.path.isdir(path_to_instances):
-        return [f"{path_to_instances}/{file_name}"
-                for file_name in os.listdir(path_to_instances)
-                if os.path.isfile(f"{path_to_instances}/{file_name}")]
+        abs_path = os.path.abspath(path_to_instances)
+        return [f"{abs_path}/{file_name}"
+                for file_name in os.listdir(abs_path)
+                if os.path.isfile(f"{abs_path}/{file_name}")]
     elif os.path.isfile(path_to_instances):
         with open(path_to_instances, 'r') as infile:
             return [filename.strip() for filename in infile.readlines()]
