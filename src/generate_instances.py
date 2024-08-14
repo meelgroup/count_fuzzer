@@ -38,6 +38,7 @@ from pathlib import Path
 import random
 import re
 import subprocess
+import time
 import pandas as pd
 
 # Fuzzer modules
@@ -223,8 +224,8 @@ def generate_instances(generators: list,
         subdir = 'pcnf'
     for i in range(num_iter):
         for generator in generators:
-            file_name = f"{cnf_dir}/{subdir}/{generator.name}_{i:03}_s{seed}.{ext}"
-            generate_instance(generator=generator, new_cnf_path=file_name, seed=seed)
+            file_name = f"{cnf_dir}/{subdir}/{generator.name}_{i:03}_s{seed+i}.{ext}"
+            generate_instance(generator=generator, new_cnf_path=file_name, seed=seed+i)
             new_instances.append(file_name)
         if i % 50 == 49:
             rm.log_message(f"Progress: generated {(i+1) * len(generators)} / {num_iter * len(generators)} instances.")
@@ -401,6 +402,7 @@ if __name__ == "__main__":
 
     with open(instances_list_file, 'w') as outfile:
         outfile.write('\n'.join(file_paths))
+    rm.log_message(f"Saved a list of all generated instances to {instances_list_file}")
 
     if args.verifier:
         verified_counts = []

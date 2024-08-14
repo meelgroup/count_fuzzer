@@ -29,7 +29,7 @@ Description: Long description.
 """
 
 import argparse
-import datetime
+from datetime import datetime
 import os
 import re
 import time
@@ -41,8 +41,8 @@ import file_manager as fm
 import fuzzer_utils as fut
 import report_manager as rm
 
-verified_counts_prefix_pat = re.compile(r'(?P<prefix>\d{4}-\d{2}-\d{2}_s\d+)_verified_counts\.csv', re.DOTALL)
-instance_seed_pat = re.compile(r'\w+_000_s(?P<seed>\d+)\.\w+', re.DOTALL)
+instances_prefix_pat = re.compile(r'(?P<prefix>\d{4}-\d{2}-\d{2}_s\d+)_generated_instances\.txt', re.DOTALL)
+instance_seed_pat = re.compile(r'[\w\-]+_000_s(?P<seed>\d+)\.\w+', re.DOTALL)
 
 
 def parse_arguments():
@@ -285,8 +285,8 @@ if __name__ == "__main__":
     os.environ['STAREXEC_MAX_MEM'] = str(args.memout)
 
     output_prefix = ''
-    if args.verified_counts is not None:
-        m = re.match(verified_counts_prefix_pat, os.path.basename(args.verified_counts))
+    if os.path.isfile(args.instances):
+        m = re.match(instances_prefix_pat, os.path.basename(args.instances))
         output_prefix = m.group('prefix')
     else:
         print(os.path.basename(sorted(instances)[0]))
