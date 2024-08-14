@@ -247,6 +247,8 @@ def fuzz(instances: [],
         if len(counts) == 1:
             name = counters[0].name
             rm.log_message(f"Counter {name} reports count {counts[name]}")
+            if result['error']:
+                problem_instances.append(path_to_instance)
         else:
             same_counts = fut.check_counts(counts)
             rm.print_counts(same_counts, counts)
@@ -291,7 +293,7 @@ if __name__ == "__main__":
     else:
         print(os.path.basename(sorted(instances)[0]))
         m = re.match(instance_seed_pat, os.path.basename(sorted(instances)[0]))
-        output_prefix = f"{datetime.now().strftime('YYYY-MM-DD')}_s{m.group('seed')}"
+        output_prefix = f"{datetime.now().strftime('%Y-%m-%d')}_s{m.group('seed')}"
 
     # rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix)
     # TODO: save parameters
@@ -316,6 +318,6 @@ if __name__ == "__main__":
         for instance in problem_instances:
             rm.log_message(instance)
     elif not problem_instances and len(counters) == 1 and args.verified_counts is None:
-        rm.log_message(f"None of the instance triggered a crash on {counters[0].name}")
+        rm.log_message(f"None of the instances triggered a crash on {counters[0].name}")
     else:
         rm.log_message("None of the instances triggered bugs!")
