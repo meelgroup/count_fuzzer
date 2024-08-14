@@ -38,8 +38,6 @@ from pathlib import Path
 import random
 import re
 import subprocess
-import time
-
 import pandas as pd
 
 # Fuzzer modules
@@ -181,15 +179,7 @@ def parse_arguments():
     out_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/out" \
         if parsed_args.out_dir is None \
         else parsed_args.out_dir
-    parsed_args.out_dir = out_dir
-
-    # instance_dir = f"{out_dir}/instances"
-    # parsed_args.instance_dir = instance_dir
-    #
-    # if parsed_args.verifier is not None:
-    #     result_dir = f"{out_dir}/verification"
-    #     parsed_args.result_dir = result_dir
-    #     os.makedirs(result_dir, exist_ok=True) # TODO: move to file_manager.py
+    parsed_args.out_dir = out_dir  # TODO: move to file_manager.py
 
     seed = fut.get_random_seed(parsed_args.rnd_seed)
     parsed_args.rnd_seed = seed
@@ -200,13 +190,12 @@ def parse_arguments():
 def generate_instance(generator: fut.Generator,
                       new_cnf_path: str,
                       seed: int,
-                      projected=False,
-                      weighted=False,
                       verbosity=1
                       ):
     tmp_command = f"{generator.path} {generator.config}"
-    type_num = fut.get_type_number(projected, weighted)
-    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed, type_num=type_num)
+    if '{out_file}' not in generator.config:
+        tmp_command += ' {out_file}'
+    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed)
     status = subprocess.call(command, shell=True)
     if status != 0:
         rm.log_message(f"Failed generator call: {command}")
@@ -235,8 +224,7 @@ def generate_instances(generators: list,
     for i in range(num_iter):
         for generator in generators:
             file_name = f"{cnf_dir}/{subdir}/{generator.name}_{i:03}_s{seed}.{ext}"
-            generate_instance(generator=generator, new_cnf_path=file_name, seed=seed, projected=projected,
-                              weighted=weighted)
+            generate_instance(generator=generator, new_cnf_path=file_name, seed=seed)
             new_instances.append(file_name)
         if i % 50 == 49:
             rm.log_message(f"Progress: generated {(i+1) * len(generators)} / {num_iter * len(generators)} instances.")
@@ -373,8 +361,8 @@ def get_ground_truth(
     return result
 
 
-
 if __name__ == "__main__":
+    # TODO: save parameters
     args = parse_arguments()
 
     generators = fut.parse_generators(args.generators)
@@ -390,10 +378,12 @@ if __name__ == "__main__":
         cnf_dir=f"{args.out_dir}/instances",    # TODO: clean up
         num_iter=args.num_iter,
         seed=args.rnd_seed)
+    rm.log_message("")
     rm.log_message(f"Generated {len(file_paths)} problem instances.")
     rm.log_message(f"Saved problem instances to {Path(file_paths[0]).parent.resolve()}")
 
     if args.weighted:
+        rm.log_message("")
         rm.log_message(f"Adding weights to generated instances according to the following parameters:")
         rm.log_message(f"- both weights specified? {args.both_weights_specified}")
         rm.log_message(f"- weight format: {args.weight_format}")
@@ -406,7 +396,7 @@ if __name__ == "__main__":
         rm.log_message(f"Saved weighted problem instances to {Path(file_paths_weighted[0]).parent.resolve()}")
         file_paths = file_paths_weighted
 
-    instances_list_file =f"{args.out_dir}/{output_prefix}_generated_instances.txt"
+    instances_list_file = f"{args.out_dir}/{output_prefix}_generated_instances.txt"
     fm.remove_file(instances_list_file)
 
     with open(instances_list_file, 'w') as outfile:
@@ -427,4 +417,3 @@ if __name__ == "__main__":
         df_results.to_csv(f"{args.out_dir}/{output_prefix}_verified_counts.csv")
         # TODO: implement moving the verification information to the user-specified directory
 
-    # TODO: save parameters

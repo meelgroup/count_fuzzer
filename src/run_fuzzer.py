@@ -29,6 +29,7 @@ Description: Long description.
 """
 
 import argparse
+import datetime
 import os
 import re
 import time
@@ -290,7 +291,7 @@ if __name__ == "__main__":
     else:
         print(os.path.basename(sorted(instances)[0]))
         m = re.match(instance_seed_pat, os.path.basename(sorted(instances)[0]))
-        output_prefix = f"{time.strftime('YYYY-MM-DD')}_s{m.group('seed')}"
+        output_prefix = f"{datetime.now().strftime('YYYY-MM-DD')}_s{m.group('seed')}"
 
     # rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix)
     # TODO: save parameters
