@@ -149,7 +149,7 @@ In the future, we would like to make different scripts available, so you can use
 If everything is set up correctly, you can run `#fuzz` as follows:
 ```bash
 $ python src/generate_instances.py --generators /path/to/generator_config.json
-$ python src/run_fuzzer.py --counters /path/to/counter_config.json
+$ python src/run_fuzzer.py --counters /path/to/counter_config.json --instances /path/to/instances
 ```
 or 
 ```bash

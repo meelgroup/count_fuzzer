@@ -94,15 +94,6 @@ def parse_arguments():
         "--verbosity", "-v", type=int, default=2, required=False,
         dest="verbosity", help="Specify verbosity level 1, 2 or 3"
     )
-    # behaviour.add_argument(
-    #     "--seed", "-s", dest="rnd_seed", type=int, required=False,
-    #     help="Fuzz test start seed. If unset, a random seed is picked. "
-    #          "WARNING: the seed for generating new instances is created by "
-    #          "simply adding 1 to the seed for each iteration. Hence, if you are "
-    #          "running multiple instances of the fuzzer in parallel, make sure "
-    #          "that they each get seeds that are far enough away from each other "
-    #          "to not risk calling the instance generators with the same seed."
-    # )
     behaviour.add_argument(  # TODO: Check if this is actually used
         "--keep-bugs-only", dest="keep_bugs_only", default=False, required=False,
         action="store_true",
@@ -130,7 +121,6 @@ def parse_arguments():
         help="Clean up all proof-related files after verified count has been obtained."
     )
 
-
     # -------------------------   SANITY CHECKS   ------------------------- #
     parsed_args = parser.parse_args()
 
@@ -140,13 +130,13 @@ def parse_arguments():
 
     out_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/out" \
         if parsed_args.out_dir is None \
-        else parsed_args.out_dir
+        else fut.abs_path(parsed_args.out_dir)
     parsed_args.out_dir = out_dir
     os.makedirs(out_dir, exist_ok=True)
 
     log_dir = f"{parsed_args.out_dir}/logs" \
         if parsed_args.log_dir is None \
-        else parsed_args.log_dir
+        else fut.abs_path(parsed_args.log_dir)
     parsed_args.log_dir = log_dir
     os.makedirs(log_dir, exist_ok=True)
 
@@ -159,45 +149,24 @@ def run_counter(counter: fut.Counter,
                 timeout=10,
                 memout=3200,
                 verbosity=1) -> dict:
-    timed_out = False
-    error = False
+
     if verbosity >= 2:
         rm.log_message(f"Running counter {counter.name} on instance {path_to_instance}.")
 
-    counter_dir = str(Path(counter.path).parent.absolute())
-    if '{INSTANCE}' in counter.config:
-        tmp_command = f"./{os.path.basename(counter.path)} {counter.config}"
-    else:
-        tmp_command = f"./{os.path.basename(counter.path)} {counter.config} {path_to_instance}"
-    command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=memout, STAREXEC_WALLCLOCK_LIMIT=timeout, INSTANCE=path_to_instance, TMP='/scratch/aldlatour/sharpfuzz')
-
+    command, counter_dir = fut.construct_command(counter, path_to_instance, memout=memout, timeout=timeout)
     start_time = time.time()
     counter_output, err = fut.run(command.split(), counter_dir + '/', verbosity=verbosity)
-    if err is None:
-        if verbosity >= 3:
-            rm.log_message("No error.")
-    else:
-        error = True
-        rm.log_message(f"Error: {err}")
+    error = fut.handle_errors(err, verbosity=verbosity)
+    timed_out = fut.handle_timeout(start_time=start_time, timeout=timeout,
+                                   counter_name=counter.name, path_to_instance=path_to_instance)
 
-    # Abort if counter exceeds maximum time
-    diff_time = time.time() - start_time
-    if diff_time > timeout:
-        timed_out = True
-        rm.log_message(
-            f"Aborted! Counter {counter.name} exceeded maximum time of {timeout} s on instance {path_to_instance}.")
-
-    # Otherwise, parse output
-    success, result = fut.parse_output(counter_output, counter, path_to_instance, timed_out=timed_out, error=error)
-    if not success:
-        log_file = fm.store_counter_output(command, counter_output, counter, log_dir)
-        rm.log_message(f"ERROR when running {counter.name}. Output written to {log_file}")
-
-    return result
+    return fut.parse_counter_output(
+        counter_output, counter, path_to_instance,
+        timed_out=timed_out, error=error, log_dir=log_dir, command=command)
 
 
 def fuzz(instances: [],
-         log_dir: str,
+         out_dir: str,
          output_prefix: str,
          counters: list,
          verified_counts=None,
@@ -210,9 +179,10 @@ def fuzz(instances: [],
          ):
     # Create data structures to store summary of results
     df = pd.DataFrame(columns=[])
-    path_to_csv = f"{log_dir}/{output_prefix}_fuzz-results.csv"
-    path_to_problematic_instances = f"{log_dir}/{output_prefix}_problematic-instances.txt"
-    fm.remove_file(path_to_problematic_instances)
+    log_dir = f"{out_dir}/logs"
+    path_to_csv = f"{out_dir}/{output_prefix}_fuzz-results.csv"
+    path_to_problematic_instances = f"{out_dir}/{output_prefix}_problematic-instances.txt"
+    fm.silent_remove(path_to_problematic_instances)
     problem_instances = []
     verified = False
 
@@ -220,14 +190,14 @@ def fuzz(instances: [],
     rm.log_message("")
     for i, path_to_instance in enumerate(instances):
         rm.log_message("")
-        rm.log_message(f"Instance {i}/{len(instances)}: {path_to_instance}", print_time=True)
+        rm.log_message(f"Instance {i+1}/{len(instances)}: {path_to_instance}", print_time=True)
         # TODO: Handle preprocessing
         # TODO: Handle delta-debugging
         counts = dict()
         if verified_counts is not None:
             verified = verified_counts[path_to_instance]['verified']
-            verified_count = verified_counts[path_to_instance]['verified_count']
-            counts['verified_count'] = str(verified_count)
+            verified_count_str = verified_counts[path_to_instance]['verified_count']
+            counts['verified_count'] = verified_count_str
         for counter in counters:
             result = run_counter(
                 counter=counter,
@@ -238,6 +208,7 @@ def fuzz(instances: [],
                 verbosity=verbosity
             )
             counts[counter.name] = result['count_value']
+            result['generator'] = fut.get_generator(path_to_instance)
             if verified_counts is not None:
                 result['verified_count'] = counts['verified_count']
             result['verified'] = verified
@@ -273,13 +244,8 @@ if __name__ == "__main__":
     # Setup
     counters = fut.parse_counters(args.counters)
     instances = fut.get_instance_list(args.instances)
-    verified_counts_dict = None
-
-    if args.verified_counts is not None:
-        verified_counts_df = pd.read_csv(args.verified_counts)
-        verified_counts_dict = {
-            row['instance']: {col: row[col] for col in verified_counts_df.columns if col != 'instance'}
-            for _, row in verified_counts_df.iterrows()}
+    print(f"type(instances): {type(instances)}")
+    verified_counts_dict = fut.load_verified_counts(args.verified_counts)
 
     os.makedirs(args.log_dir, exist_ok=True)
 
@@ -295,12 +261,12 @@ if __name__ == "__main__":
         m = re.match(instance_seed_pat, os.path.basename(sorted(instances)[0]))
         output_prefix = f"{datetime.now().strftime('%Y-%m-%d')}_s{m.group('seed')}"
 
-    # rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix)
+    rm.save_parameters(args, args.log_dir, output_prefix, os.path.basename(__file__))
     # TODO: save parameters
 
     path_to_results, problem_instances = fuzz(
         instances=instances,
-        log_dir=args.log_dir,
+        out_dir=args.out_dir,
         output_prefix=output_prefix,
         counters=counters,
         verified_counts=verified_counts_dict,

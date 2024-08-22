@@ -3,14 +3,12 @@
 """
 Short description.
 
-Author:     Anna L.D. Latour
-Authors:    [Anna L.D. Latour, And another one, etc]
+Authors:    Anna L.D. Latour, Mate Soos
 Contact:    a.l.d.latour@tudelft.nl
-Date:       2024-08-08
+Date:       2024-08-13
 Maintainer: Anna L.D. Latour
 Version:    0.0.1
-Credits:    [One developer, And another one, etc]
-Copyright:  (C) 2024, Anna L.D. Latour
+Copyright:  (C) 2024, Anna L.D. Latour, Mate Soos
 License:    GPLv3
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -164,7 +162,6 @@ def parse_arguments():
     #     help="Specify path to directory to store generated instances. Default: /path/to/fuzzer/instances"
     # )
 
-
     # -------------------------   SANITY CHECKS   ------------------------- #
     parsed_args = parser.parse_args()
 
@@ -179,8 +176,12 @@ def parse_arguments():
 
     out_dir = f"{Path(__file__).parent.resolve().parent.resolve()}/out" \
         if parsed_args.out_dir is None \
-        else parsed_args.out_dir
+        else fut.abs_path(parsed_args.out_dir)
     parsed_args.out_dir = out_dir  # TODO: move to file_manager.py
+
+    if parsed_args.verifier is not None:
+        abs_path = fut.abs_path(parsed_args.verifier)
+        parsed_args.verifier = abs_path
 
     seed = fut.get_random_seed(parsed_args.rnd_seed)
     parsed_args.rnd_seed = seed
@@ -216,6 +217,7 @@ def generate_instances(generators: list,
     ext = fut.get_extension(projected=projected, weighted=weighted)
     new_instances = []
     subdir = 'cnf'
+    progress_interval = max(int(num_iter * len(generators) / 10.0), 1)
     if weighted and not projected:
         subdir = 'wcnf'
     elif weighted and projected:
@@ -227,7 +229,7 @@ def generate_instances(generators: list,
             file_name = f"{cnf_dir}/{subdir}/{generator.name}_{i:03}_s{seed+i}.{ext}"
             generate_instance(generator=generator, new_cnf_path=file_name, seed=seed+i)
             new_instances.append(file_name)
-        if i % 50 == 49:
+        if i % progress_interval == progress_interval - 1:
             rm.log_message(f"Progress: generated {(i+1) * len(generators)} / {num_iter * len(generators)} instances.")
     return new_instances
 
@@ -241,6 +243,7 @@ def add_projection(path_to_instance: str,
 def generate_float_weights(precision, negative):
     # TODO: implement float weights
     return
+
 
 def generate_fractional_weights(precision, negative):
     max_val = 1000000
@@ -327,8 +330,6 @@ def get_ground_truth(
     # proof_dir = f"{str(Path(Path(__file__).parent.absolute()).parent.absolute())}/proofs"
     proof_dir = f"{out_dir}/verification"
     output_file = f"{proof_dir}/{os.path.basename(path_to_instance)}.output"
-    print(verifier_script)
-    print(os.path.basename(verifier_script))
     tmp_command = f"./{os.path.basename(verifier_script)} {path_to_instance}"
     command = fut.fstr(tmp_command, STAREXEC_MAX_MEM=max_mem, STAREXEC_WALLCLOCK_LIMIT=timeout)
 
@@ -354,7 +355,7 @@ def get_ground_truth(
 
     # Otherwise, parse output
     success, result = fut.parse_verifier_output(path_to_instance, output_file, timed_out=timed_out, error=error, verbosity=verbosity)
-    result['problem_type'] = 'mc'  # For now only support for ground truth of this type
+    result['problem_type'] = 'mc'  # For now only support for ground truth of this type TODO: Implement for weighted
     result['instance'] = path_to_instance
     if not success:
         rm.log_message(f"ERROR when running {verifier_script}. Output written to {output_file}")
@@ -371,8 +372,9 @@ if __name__ == "__main__":
 
     output_prefix = f"{datetime.now().strftime('%Y-%m-%d')}_s{args.rnd_seed}"
     new_dirs = fm.create_instance_directories(instance_dir=f"{args.out_dir}/instances", weighted=args.weighted, projected=args.projected)
-    # new_dirs = rm.save_parameters(args, args.rnd_seed, args.log_dir, output_prefix, os.path.basename(__file__))
-
+    log_dir = f"{args.out_dir}/logs"
+    os.makedirs(f"{args.out_dir}/logs", exist_ok=True)
+    rm.save_parameters(args, log_dir, output_prefix, os.path.basename(__file__))
 
     file_paths = generate_instances(
         generators=generators,
@@ -398,7 +400,7 @@ if __name__ == "__main__":
         file_paths = file_paths_weighted
 
     instances_list_file = f"{args.out_dir}/{output_prefix}_generated_instances.txt"
-    fm.remove_file(instances_list_file)
+    fm.silent_remove(instances_list_file)
 
     with open(instances_list_file, 'w') as outfile:
         outfile.write('\n'.join(file_paths))
@@ -407,15 +409,22 @@ if __name__ == "__main__":
     if args.verifier:
         verified_counts = []
         os.makedirs(f"{args.out_dir}/verification", exist_ok=True) # TODO: move this to file_manager.py
-        for file_path in file_paths:
+        progress_interval = max(int(args.num_iter / 10.0), 1)
+        for i, file_path in enumerate(file_paths):
             result = get_ground_truth(
                 path_to_instance=file_path,
                 verifier_script=args.verifier,
                 out_dir=args.out_dir,
                 timeout=args.timeout,
                 max_mem=args.memout)
+            if 'verified_count' in result:
+                result['verified_count'] = str(result['verified_count'])
+
             verified_counts.append(result)
-        df_results = pd.DataFrame(verified_counts)
-        df_results.to_csv(f"{args.out_dir}/{output_prefix}_verified_counts.csv")
+            if i % progress_interval == progress_interval - 1:
+                rm.log_message(f"Progress: verified {(i+1)} / {args.num_iter * len(generators)} instances.", print_time=True)
+            df_results = pd.DataFrame(verified_counts)
+            df_results['verified_count'] = df_results['verified_count'].astype(str)
+            df_results.to_csv(f"{args.out_dir}/{output_prefix}_verified_counts.csv")
         # TODO: implement moving the verification information to the user-specified directory
 

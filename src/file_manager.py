@@ -33,10 +33,11 @@ Description: Long description.
 
 from datetime import datetime
 import errno
+import tarfile
 import os
 from pathlib import Path
 
-from fuzzer_utils import Counter
+from tools import Counter
 from report_manager import log_message
 
 PROJECT_DIR = Path(os.path.dirname(__file__)).parent.absolute()
@@ -51,6 +52,10 @@ def silent_remove(filename):
     except OSError as e: # this would be "except OSError, e:" before Python 2.6
         if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
             raise # re-raise exception if a different error occurred
+
+
+def get_file_name(path_to_file):
+    return os.path.splitext(os.path.basename(path_to_file))[0]
 
 
 def create_directories(cnf_dir: str,
@@ -172,11 +177,14 @@ def create_instance_directories(
         os.makedirs(new_dir, exist_ok=True)
     return new_dirs
 
+
 def store_counter_output(command: str,
+                         path_to_instance: str,
                          counter_output: str,
                          counter: Counter,
                          log_dir: str):
-    log_file = f"{log_dir}/{datetime.now().strftime('%Y-%m-%d_%H%M%S')}_{counter.name}_output.log"
+
+    log_file = f"{log_dir}/{get_file_name(path_to_instance)}_{counter.name}_output.log"
     with open(log_file, 'w') as lf:
         lf.write(f"$ {command}\n")
         lf.write(counter_output)
@@ -195,8 +203,9 @@ def clean_up_proof(instance: str):
         silent_remove(f)
 
 
-def remove_file(the_file):
-    try:
-        os.remove(the_file)
-    except OSError:
-        pass
+def compress_file(the_file, compression='tar.gz'):
+    return
+
+
+def unpack_file(the_file):
+    return
