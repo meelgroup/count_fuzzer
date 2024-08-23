@@ -62,6 +62,19 @@ sorting=ynt
 \sharpvelvet{} is a fuzzer for propositional model counters, developed by Anna L.D. Latour and Mate Soos.
 The current version can be found in the following repository: \url{https://github.com/meelgroup/SharpVelvet}.
 \sharpvelvet{} has functionality for formally verifying the model counts of unweighted, unprojected model counting instances, using \cpog{}~\cite{BNAH2023}.
+%
+% The fuzzer is also capable of finding inconsistencies between the model
+% counts returned by the same or different model counters. This can be useful
+% for finding and debugging issues with model counters. In particular, since
+% the fuzzer can be set to a short timeout, and the generated instances are
+% small in size, the bugs found tend to be easy to reproduce and debug.
+%
+% Modern model counters are complex pieces of software, and it is not uncommon
+% for them to have bugs. This fuzzer was built as a tool to help find and fix
+% such bugs. Even if a model counter can emit a proof for the correctness of
+% the count, this fuzzer can still be useful: it can help generate instances
+% that the proof verifier fails on, i.e. that the model counter either
+% miscounted or created an incorrect proof for.
 
 \section{Experimental Setup}
 \label{sec:experimental-setup}
