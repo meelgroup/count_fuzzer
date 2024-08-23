@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Short description.
+Script for generating a .tex file and a .pdf file, presenting the findings of
+a SharpVelvet run.
 
-Author:     Anna L.D. Latour
-Authors:    [Anna L.D. Latour, And another one, etc]
-Contact:    a.l.d.latour@tudelft.nl
-Date:       2024-07-21
-Maintainer: Anna L.D. Latour
-Version:    0.0.1
-Credits:    [One developer, And another one, etc]
-Copyright:  (C) 2024, Anna L.D. Latour
-License:    GPLv3
+Authors:     Anna L.D. Latour, Mate Soos
+Contact:     a.l.d.latour@tudelft.nl
+Date:        2024-07-21
+Maintainers: Anna L.D. Latour, Mate Soos
+Version:     0.0.1
+Copyright:   (C) 2024, Anna L.D. Latour, Mate Soos
+License:     GPLv3
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; version 3
@@ -27,7 +26,8 @@ License:    GPLv3
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
     02110-1301, USA.
     
-Description: Long description.
+Description: Needs the LaTeX template stored in the latex-template subdirectory
+             of the SharpVelvet root directory.
 
 """
 
@@ -68,6 +68,9 @@ def parse_arguments():
         "--pdflatex", "-p", dest="pdflatex", required=False, action='store_true', default=False,
         help="Generate .pdf from LaTeX file."
     )
+    parser.add_argument(
+        "--print-details", "-d", dest="print_details", required=False, action='store_true', default=False,
+        help="Include detailed results in report.")
 
     parsed_args = parser.parse_args()
     parsed_args.csv = fut.abs_path(parsed_args.csv)
@@ -75,15 +78,6 @@ def parse_arguments():
 
     latex_dir = f"{fut.abs_path(parsed_args.out_dir)}/report"
     os.makedirs(latex_dir, exist_ok=True)
-
-    # parser.add_argument(
-    #     "--latex", dest="latex", type=str, required=True,
-    #     help="Path to .tex file with results report."
-    # )
-    # parser.add_argument(
-    #     "--txt", dest="txt", type=str, required=True,
-    #     help="Path to .txt file with results report."
-    # )
 
     return parsed_args
 
@@ -141,20 +135,14 @@ def get_instances(df) -> list:
 
 
 def get_param_file(csv_file: str, script_name: str) -> str:
-    print(csv_file)
     m = re.match(pat_prefix, csv_file)
-    print(m)
-    print(f"{m.group('path')}logs/{m.group('prefix')}{script_name}_parameters.json")
     return f"{m.group('path')}logs/{m.group('prefix')}{script_name}_parameters.json"
 
 
 def create_table_with_fuzzing_parameters(
         fuzzer_param_dict: dict,
         generator_param_dict: dict) -> str:
-    print(generator_param_dict)
     generator_fields = ['projected', 'weighted', 'precision', 'rnd_seed', 'out_dir']
-    print(generator_param_dict['weighted'])
-    print(type(generator_param_dict['weighted']))
     if generator_param_dict['weighted']:
         generator_fields.extend(['both_weights_specified', 'weight_format', 'negative_weights', 'percentage_weighted'])
     fuzzer_fields = ['instances', 'verified_counts', 'timeout', 'memout', 'out_dir']
@@ -205,14 +193,12 @@ def get_sat_info(generator_names: list, df):
             for instance in set(df.instance):
                 if generator not in instance:
                     continue
-                print(df)
                 sat_vals = pd.unique(df[(df.instance == instance) & (df.generator == generator)]['satisfiability'])
                 if 'SATISFIABLE' in sat_vals and 'UNSATISFIABLE' not in sat_vals:
                     satisfiability = 'SATISFIABLE'
                 elif 'SATISFIABLE' not in sat_vals and 'UNSATISFIABLE' in sat_vals:
                     satisfiability = 'UNSATISFIABLE'
                 else:
-                    print(instance, sat_vals)
                     satisfiability = 'UNKNOWN'
                 # TODO: add functionality for making verified result leading here.
 
@@ -459,8 +445,14 @@ def run_latex(path_to_tex_file: str, report_dir=None):
         report_dir = os.path.dirname(path_to_tex_file)
     this_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(report_dir)
-    cmd = ['pdflatex', path_to_tex_file]
-    return_value = subprocess.call(cmd, shell=False)
+    path_to_file = os.path.splitext(path_to_tex_file)[0]
+    cmd_copy = ['cp', f"{this_dir}/../latex-template/reprt.bib", report_dir]
+    cmd_pdflatex = ['pdflatex', path_to_tex_file]
+    cmd_biber = ['biber', path_to_file + '.aux']
+    exts = ['aux', 'log', 'out', 'bbl', 'blg', 'aux.bbl', 'aux.blg', 'bcf', 'run.xml']
+    cmd_clean = ['rm'] + [f"{path_to_file}.{ext}" for ext in exts] + ['report.bib']
+    for cmd in [cmd_copy, cmd_pdflatex, cmd_biber, cmd_pdflatex, cmd_pdflatex, cmd_clean]:
+        return_value = subprocess.call(cmd, shell=False)
     os.chdir(this_dir)
 
 
@@ -485,7 +477,6 @@ if __name__ == "__main__":
     counter_names = sorted(counters_configs.keys())
     if generator_params['verifier'] is not None:
         counter_names.append('verifier')
-    print(counter_names)
 
     verified_counts_dict = fut.load_verified_counts(args.verified_counts)
 
@@ -507,23 +498,33 @@ if __name__ == "__main__":
                                     dict_verified=verified_counts_dict, df_fuzz=df_fuzz)
     table_counter_verifier_status_summary = create_table_with_counter_verifier_status_summary(counter_names, df_summary)
 
-    table_counter_verifier_status_details = create_table_with_detailed_results(
-        counter_names, df_fuzz, df_summary, verified_counts_dict)
+    if args.print_details:
+        table_counter_verifier_status_details = create_table_with_detailed_results(
+            counter_names, df_fuzz, df_summary, verified_counts_dict)
 
     os.makedirs(f"{args.out_dir}", exist_ok=True)
-    with open(f"{PROJECT_DIR}/latex_generator/report_template.tex", 'r') as infile:
+    with open(f"{PROJECT_DIR}/latex-template/report_template.tex", 'r') as infile:
         text = str(infile.read())
         text = text.replace("@@count_type@@", "mc")
         text = text.replace("@@table_fuzzing_parameters@@", table_fuzzing_parameters)
         text = text.replace("@@list_generator_info@@", list_generator_info)
         text = text.replace("@@list_counter_info@@", list_counter_info)
         text = text.replace("@@table_generator_satisfiability@@", table_generator_satisfiability)
-        text = text.replace("@@list_unsatisfiable_instances@@", list_unsat_instances)
+        if args.print_details:
+            text = text.replace("@@list_unsatisfiable_instances@@", list_unsat_instances)
+        else:
+            text = text.replace("@@list_unsatisfiable_instances@@", "List of unsat instances omitted.")
         text = text.replace("@@list_unknown_instances@@", list_unknown_instances)
         text = text.replace("@@table_counter_verifier_status_summary@@", table_counter_verifier_status_summary)
-        text = text.replace("@@table_counter_verifier_status_details@@", table_counter_verifier_status_details)
+        if args.print_details:
+            text = text.replace(
+                "@@table_counter_verifier_status_details@@", table_counter_verifier_status_details)
+        else:
+            text = text.replace(
+                "@@table_counter_verifier_status_details@@", "Table with detailed results omitted.")
         with open(f"{args.out_dir}/report/report.tex", 'w') as outfile:
             outfile.write(text)
 
     if args.pdflatex:
         run_latex(f"{args.out_dir}/report/report.tex")
+

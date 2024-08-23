@@ -34,7 +34,7 @@ PROJECT_DIR=$(dirname "$SCRIPT_DIR")
 f=$(realpath "$1")
 
 # create relevant directories if necessary
-proof_dir=$PROJECT_DIR/out/verification
+proof_dir=/scratch/aldlatour/mc2024_track1/out/verification
 mkdir -p $proof_dir
 
 # get filenames

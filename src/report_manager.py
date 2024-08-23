@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Short description.
+Helper functions for printing information for SharpVelvet, and for saving
+information to disk.
 
-Author:     Anna L.D. Latour
-Authors:    [Anna L.D. Latour, And another one, etc]
-Contact:    a.l.d.latour@tudelft.nl
-Date:       2024-07-06
-Maintainer: Anna L.D. Latour
-Version:    0.0.1
-Credits:    [One developer, And another one, etc]
-Copyright:  (C) 2024, Anna L.D. Latour
-License:    GPLv3
+Authors:     Anna L.D. Latour, Mate Soos
+Contact:     a.l.d.latour@tudelft.nl
+Date:        2024-07-06
+Maintainers: Anna L.D. Latour, Mate Soos
+Version:     0.1.0
+Copyright:   (C) 2024, Anna L.D. Latour, Mate Soos
+License:     GPLv3
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; version 3
@@ -26,8 +25,6 @@ License:    GPLv3
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
     02110-1301, USA.
-    
-Description: Long description.
 
 """
 
@@ -39,8 +36,8 @@ import sys
 
 def log_message(message: str, print_time=False):
     if print_time:
-        print(f'[sharp-fuzz], {datetime.now().strftime("%Y-%m-%d, %Hh%Mm%Ss")}: {message}')
-    else: print(f'[sharp-fuzz]: {message}')
+        print(f'[SharpVelvet], {datetime.now().strftime("%Y-%m-%d, %Hh%Mm%Ss")}: {message}')
+    else: print(f'[SharpVelvet]: {message}')
     sys.stdout.flush()
 
 

@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Short description.
+Main script to run SharpVelvet. Run after generate_instances.py.
 
-Authors:    Anna L.D. Latour, Mate Soos
-Contact:    a.l.d.latour@tudelft.nl
-Date:       2024-08-13
-Maintainer: Anna L.D. Latour
-Version:    0.0.1
-Copyright:  (C) 2024, Anna L.D. Latour, Mate Soos
-License:    GPLv3
+Authors:     Anna L.D. Latour, Mate Soos
+Contact:     a.l.d.latour@tudelft.nl
+Date:        2024-08-13
+Maintainers: Anna L.D. Latour, Mate Soos
+Version:     0.0.1
+Copyright:   (C) 2024, Anna L.D. Latour, Mate Soos
+License:     GPLv3
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; version 3
@@ -25,7 +25,12 @@ License:    GPLv3
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
     02110-1301, USA.
     
-Description: Long description.
+Description: Takes as input a set of model counters and a set of problem
+             instances, and runs each counter on each instance, reporting
+             whenever at least one of the counters disagrees with the others
+             on the value of the model count for an instance. If provided with
+             verified counts, the model counts that are reported by the counters
+             are also compared to verified counts.
 """
 
 import argparse
@@ -244,7 +249,6 @@ if __name__ == "__main__":
     # Setup
     counters = fut.parse_counters(args.counters)
     instances = fut.get_instance_list(args.instances)
-    print(f"type(instances): {type(instances)}")
     verified_counts_dict = fut.load_verified_counts(args.verified_counts)
 
     os.makedirs(args.log_dir, exist_ok=True)

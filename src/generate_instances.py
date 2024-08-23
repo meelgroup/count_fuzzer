@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Short description.
+Generate CNF instances in DIMACS format for model counting problems.
 
-Authors:    Anna L.D. Latour, Mate Soos
-Contact:    a.l.d.latour@tudelft.nl
-Date:       2024-08-13
-Maintainer: Anna L.D. Latour
-Version:    0.0.1
-Copyright:  (C) 2024, Anna L.D. Latour, Mate Soos
-License:    GPLv3
+Authors:     Anna L.D. Latour, Mate Soos
+Contact:     a.l.d.latour@tudelft.nl
+Date:        2024-08-13
+Maintainers: Anna L.D. Latour, Mate Soos
+Version:     0.1.0
+Copyright:   (C) 2024, Anna L.D. Latour, Mate Soos
+License:     GPLv3
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
     as published by the Free Software Foundation; version 3
@@ -25,8 +25,11 @@ License:    GPLv3
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
     02110-1301, USA.
     
-Description: Long description.
-
+Description: This script generates CNF in DIMACS format for model counting
+             problems. It takes as input at least one problem generator, and has
+             (limited) support for adding weights. It also has support for
+             using a verified model counter to obtain verified model counts in
+             an unweighted, unprojected setting (mc).
 """
 
 import argparse
@@ -45,6 +48,8 @@ import fuzzer_utils as fut
 import report_manager as rm
 
 seed_pat = re.compile(r'.*_\d{3}_s(?P<seed>\d+)\.\w+', re.DOTALL)
+
+PROJECT_DIR = Path(os.path.dirname(__file__)).parent.absolute()
 
 
 def parse_arguments():
@@ -197,7 +202,7 @@ def generate_instance(generator: fut.Generator,
     tmp_command = f"{generator.path} {generator.config}"
     if '{out_file}' not in generator.config:
         tmp_command += ' {out_file}'
-    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed)
+    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed, PROJECT_DIR=PROJECT_DIR)
     status = subprocess.call(command, shell=True)
     if status != 0:
         rm.log_message(f"Failed generator call: {command}")
@@ -241,8 +246,14 @@ def add_projection(path_to_instance: str,
 
 
 def generate_float_weights(precision, negative):
-    # TODO: implement float weights
-    return
+    # TODO: build in functionality for very small weights
+    weight = random.uniform(0, 1)
+    formatted_weight = f"{weight:.{precision}f}"
+    if negative:
+        sign = random.choice(['-', ''])
+        return f"{sign}{formatted_weight}"
+    else:
+        return str(formatted_weight), f"{1.0 - weight:.{precision}f}"
 
 
 def generate_fractional_weights(precision, negative):
@@ -285,6 +296,7 @@ def add_weights(path_to_instance: str,
         weight_generator = generate_scientific_weights
     elif args.weight_format == "mixed":
         weight_generator = random.choice([generate_float_weights, generate_fractional_weights, generate_scientific_weights])
+    print(f"weight generator: {weight_generator}")
 
     n_weighted_vars = int(float(args.percentage_weighted) * 0.01 * instance_info.n_vars)
     weighted_vars = random.sample(range(1, instance_info.n_vars), n_weighted_vars)
