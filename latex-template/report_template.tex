@@ -65,9 +65,10 @@ The current version can be found in the following repository: \url{https://githu
 %
 % The fuzzer is also capable of finding inconsistencies between the model
 % counts returned by the same or different model counters. This can be useful
-% for finding and debugging issues with model counters. In particular, since
-% the fuzzer can be set to a short timeout, and the generated instances are
-% small in size, the bugs found tend to be easy to reproduce and debug.
+% for finding and debugging issues with problems that are projected and/or weighted.
+% Since the fuzzer by default has a short timeout, and the generated instances are
+% small in size, the bugs found tend to be easy to reproduce and debug, further aiding
+% the development process.
 %
 % Modern model counters are complex pieces of software, and it is not uncommon
 % for them to have bugs. This fuzzer was built as a tool to help find and fix
