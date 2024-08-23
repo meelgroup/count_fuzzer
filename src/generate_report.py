@@ -142,9 +142,9 @@ def get_param_file(csv_file: str, script_name: str) -> str:
 def create_table_with_fuzzing_parameters(
         fuzzer_param_dict: dict,
         generator_param_dict: dict) -> str:
-    generator_fields = ['projected', 'weighted', 'precision', 'rnd_seed', 'out_dir']
+    generator_fields = ['projected', 'weighted', 'rnd_seed', 'out_dir']
     if generator_param_dict['weighted']:
-        generator_fields.extend(['both_weights_specified', 'weight_format', 'negative_weights', 'percentage_weighted'])
+        generator_fields.extend(['weight_format', 'precision', 'both_weights_specified', 'negative_weights', 'percentage_weighted'])
     fuzzer_fields = ['instances', 'verified_counts', 'timeout', 'memout', 'out_dir']
     param_dict = {key: generator_params[key] for key in generator_fields}
     param_dict.update({key: fuzzer_param_dict[key] for key in fuzzer_fields})
@@ -311,17 +311,25 @@ def get_result_summary(counter_names: list, instances: list, dict_verified: dict
             v_success = dict_verified[instance]['verified']
             v_satisfiability = dict_verified[instance]['satisfiability']
             verified_count = dict_verified[instance]['verified_count']
+            no_root_claim = dict_verified[instance]['no_root_claim']
             for counter in counter_names:
                 if counter == 'verifier':
                     continue
                 c_success, c_satisfiability, count = get_counter_result(df_fuzz, counter, instance)
+                agree = c_success and v_success and (v_satisfiability == c_satisfiability) and (count == verified_count)
+                disagree = c_success and v_success and ((v_satisfiability != c_satisfiability) or (count != verified_count))
+                if no_root_claim:
+                    disagree = False
+                    if count == 0:
+                        agree = True
                 results.append(
                     {'instance': instance, 'counter': counter,
                      'counter_success': c_success, 'counter_satisfiability': c_satisfiability,
                      'verifier_success': v_success, 'verifier_satisfiability': v_satisfiability,
                      'count': count, 'verified_count': count,
-                     'agree': c_success and v_success and (v_satisfiability == c_satisfiability) and (count == verified_count),
-                     'disagree': c_success and v_success and ((v_satisfiability != c_satisfiability) or (count != verified_count)),
+                     'agree': agree,
+                     'disagree': disagree,
+                     'no_root_claim': no_root_claim
                      })
         else:
             # TODO: Implement
@@ -365,12 +373,10 @@ def create_table_with_counter_verifier_status_summary(counter_names: list, df):
 
 
 def get_failure_type(res_dict):
-    if res_dict['timed_out'] and not res_dict['error']:
+    if res_dict['timed_out']:
         return 't/o'
     elif not res_dict['timed_out'] and res_dict['error']:
         return 'error'
-    elif res_dict['timed_out'] and res_dict['error']:
-        return 't/o and error'
     else:
         return 'unknown'
 
@@ -392,6 +398,7 @@ def create_table_with_detailed_results(counter_names: list, df_results, df_summa
             counter_fails = (not selection_dict['counter_success'][0] and selection_dict['verifier_success'][0])
             verifier_fails = (selection_dict['counter_success'][0] and not selection_dict['verifier_success'][0])
             both_fail = (not selection_dict['counter_success'][0] and not selection_dict['verifier_success'][0])
+            no_root_claim = selection_dict['no_root_claim'][0]
             problem = ''
             details = ''
 
@@ -403,7 +410,7 @@ def create_table_with_detailed_results(counter_names: list, df_results, df_summa
             elif counter_fails:
                 problem = 'counter fails'
                 details = get_failure_type(result_dict)
-            elif verifier_fails:
+            elif verifier_fails and not no_root_claim:
                 problem = 'verifier fails'
                 details = get_failure_type(verifier_dict)
             elif both_fail:
