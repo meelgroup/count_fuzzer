@@ -255,16 +255,13 @@ def create_list_with_unknown_instances(sat_df) -> str:
     latex_list += "\\end{compactitems}"
     return latex_list
 
-    print(unsat_instances)
     unknown_instances = sorted(df_sat[df_sat.satisfiability == 'UNKNOWN']['instance'].to_list())
-    print(unknown_instances)
 
 
 def get_counter_result(df, counter_name: str, instance: str):
     count_field = 'count_value'
     if counter_name == 'verifier':
         count_field = 'verified_count'
-        print (df[(df.instance == instance) & (df.counter == counter_name)])
     count = df[(df.instance == instance) & (df.counter == counter_name)][count_field].iloc[0]
     timed_out = df[(df.instance == instance) & (df.counter == counter_name)]['timed_out'].iloc[0]
     error = df[(df.instance == instance) & (df.counter == counter_name)]['error'].iloc[0]
@@ -280,14 +277,6 @@ def get_counter_result(df, counter_name: str, instance: str):
         return False, 'None', count
 
 
-# def get_count(df):
-#     if df.size == 1 and df.isnull().iloc[0]:
-#
-#     elif df.size == 1
-#         print("NaN")
-#     return int(df.fillna(-1))
-
-
 def get_result_summary(counter_names: list, instances: list, dict_verified: dict, df_fuzz):
     """ There are basically five scenarios:
         1. counter and verifier agree on count of a given instance
@@ -300,11 +289,6 @@ def get_result_summary(counter_names: list, instances: list, dict_verified: dict
     This function processes the raw data to collect the above information for
     further processing.
     """
-    # if df_verified is not None:
-    #     df = pd.merge(df_fuzz, df_verified['instance', 'verified_count'], on=['instance'], how='outer')
-    # else:
-    #     df = df_fuzz
-    print(dict_verified)
     results = []
     for instance in instances:
         if dict_verified is not None:
@@ -341,7 +325,6 @@ def get_result_summary(counter_names: list, instances: list, dict_verified: dict
 
 def create_table_with_counter_verifier_status_summary(counter_names: list, df):
     rows = []
-    print(df)
     for counter in counter_names:
         if counter == 'verifier':
             continue
@@ -403,7 +386,7 @@ def create_table_with_detailed_results(counter_names: list, df_results, df_summa
             details = ''
 
             result_dict = df_results[(df_results.counter == counter) & (df_results.instance == instance)].to_dict(orient='list')
-            print(result_dict)
+
             verifier_dict = verified_counts_dict[instance]
             if disagree:
                 problem = 'disagree'
@@ -450,17 +433,17 @@ def create_table_with_detailed_results(counter_names: list, df_results, df_summa
 def run_latex(path_to_tex_file: str, report_dir=None):
     if report_dir is None:
         report_dir = os.path.dirname(path_to_tex_file)
-    this_dir = os.path.dirname(os.path.realpath(__file__))
     os.chdir(report_dir)
     path_to_file = os.path.splitext(path_to_tex_file)[0]
-    cmd_copy = ['cp', f"{this_dir}/../latex-template/reprt.bib", report_dir]
-    cmd_pdflatex = ['pdflatex', path_to_tex_file]
-    cmd_biber = ['biber', path_to_file + '.aux']
+    basename = os.path.basename(path_to_file)
+    cmd_copy = ['cp', f"{SHARPVELVET_DIR}/latex-template/report.bib", report_dir]
+    cmd_pdflatex = ['pdflatex', basename]
+    cmd_biber = ['biber', basename]
     exts = ['aux', 'log', 'out', 'bbl', 'blg', 'aux.bbl', 'aux.blg', 'bcf', 'run.xml']
     cmd_clean = ['rm'] + [f"{path_to_file}.{ext}" for ext in exts] + ['report.bib']
     for cmd in [cmd_copy, cmd_pdflatex, cmd_biber, cmd_pdflatex, cmd_pdflatex, cmd_clean]:
         return_value = subprocess.call(cmd, shell=False)
-    os.chdir(this_dir)
+    os.chdir(f"{SHARPVELVET_DIR}/src")
 
 
 if __name__ == "__main__":
