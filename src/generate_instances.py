@@ -49,7 +49,7 @@ import report_manager as rm
 
 seed_pat = re.compile(r'.*_\d{3}_s(?P<seed>\d+)\.\w+', re.DOTALL)
 
-PROJECT_DIR = Path(os.path.dirname(__file__)).parent.absolute()
+SHARPVELVET_DIR = Path(os.path.dirname(__file__)).parent.absolute()
 
 
 def parse_arguments():
@@ -202,7 +202,7 @@ def generate_instance(generator: fut.Generator,
     tmp_command = f"{generator.path} {generator.config}"
     if '{out_file}' not in generator.config:
         tmp_command += ' {out_file}'
-    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed, PROJECT_DIR=PROJECT_DIR)
+    command = fut.fstr(tmp_command, out_file=new_cnf_path, seed=seed, PROJECT_DIR=SHARPVELVET_DIR)
     status = subprocess.call(command, shell=True)
     if status != 0:
         rm.log_message(f"Failed generator call: {command}")

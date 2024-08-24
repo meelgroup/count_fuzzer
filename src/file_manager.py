@@ -35,7 +35,7 @@ from pathlib import Path
 from tools import Counter
 from report_manager import log_message
 
-PROJECT_DIR = Path(os.path.dirname(__file__)).parent.absolute()
+SHARPVELVET_DIR = Path(os.path.dirname(__file__)).parent.absolute()
 
 
 def silent_remove(filename):
@@ -93,7 +93,7 @@ def store_counter_output(command: str,
 
 def clean_up_proof(instance: str):
     basename = os.path.basename(instance)
-    proof_dir = f"{PROJECT_DIR}/proofs"
+    proof_dir = f"{SHARPVELVET_DIR}/proofs"
     nnf_file = f"{proof_dir}/{basename}.nnf"
     proof_file = f"{proof_dir}/{basename}.trace"
     out_file = f"{proof_dir}/{basename}.output"
