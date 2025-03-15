@@ -59,6 +59,10 @@ def set_up_parser():
       help="Fuzz test start seed. Otherwise, random seed is picked", type=int)
 
     parser.add_option(
+      "--cpx", dest="cpx", default=False,
+      action="store_true", help="Complex numbers only")
+
+    parser.add_option(
       "--weighted", dest="weighted", default=False,
       action="store_true", help="Weighted only")
 
@@ -79,12 +83,16 @@ def set_up_parser():
       help="Max time to run. Default: %default")
 
     parser.add_option(
-      "--messyweight", dest="messy_weights", default=True,
-      action="store_true", help="With this, weights are NOT fully given, and can contain negative values")
+      "--nomessyweight", dest="messy_weights", default=True,
+      action="store_false", help="With this, weights are NOT fully given, and can contain negative values")
 
     parser.add_option(
       "--delta", dest="delta", type=float, default="0.2",
       help="TODO. Default: %default")
+
+    parser.add_option(
+      "--noimag", dest="noimag", default=False, action="store_true",
+      help="Set imag to 0. Default: %default")
 
     parser.add_option(
       "--epsilon", dest="epsilon", type=float, default="0.2",
@@ -152,10 +160,10 @@ def add_weights(fname, projected_vars) :
     if options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
-                w = float(random.randrange(-5, 5))/5.0
+                w = float(random.randrange(-10, 10))/10.0
                 weights.append([var, w])
             if random.choice([True, False]):
-                w2 = float(random.randrange(-5, 5))/5.0
+                w2 = float(random.randrange(-10, 10))/10.0
                 weights.append([-var, w2])
     else:
         for var in all_vars:
@@ -193,12 +201,11 @@ def add_weights_cpx(fname, projected_vars) :
     if options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
-                w = float(random.randrange(-5, 5))/5.0
-                w2 = float(random.randrange(-5, 5))/5.0
+                w = float(random.randrange(-10, 10))/10.0
+                w2 = float(random.randrange(-10, 10))/10.0
                 weights.append([var, w, w2])
-            if random.choice([True, False]):
-                w = float(random.randrange(-5, 5))/5.0
-                w2 = float(random.randrange(-5, 5))/5.0
+                w = float(random.randrange(-10, 10))/10.0
+                w2 = float(random.randrange(-10, 10))/10.0
                 weights.append([-var, w, w2])
     else:
         for var in all_vars:
@@ -206,6 +213,14 @@ def add_weights_cpx(fname, projected_vars) :
             w2 = float(random.randrange(0, 10))/10.0
             weights.append([var, w, w2])
             weights.append([-var, 1.0-w, 1-w2])
+
+    weights2 = list(weights)
+    weights = []
+    if options.noimag:
+        for v,w,w2 in weights2:
+            w2 = 0.0
+            weights.append([v, w, w2])
+    else: weights = weights2
 
     with open(fname, "a") as f:
         for v,w,w2 in weights:
@@ -332,6 +347,14 @@ def run_one_counter(solver, fname, seed=42):
             return False, None
         if len(l) < 4:
             continue
+        if "c s exact arb cpx" in l:
+            # c s exact arb cpx 1.2650e+02 + -6.3250e+01i
+            real = float(l.split()[5].strip())
+            imag = float(l.split()[7].strip()[:-1])
+            print("Complex number is: ", real, imag)
+            print("here")
+            num = complex(real, imag)
+            continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
         if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s exact double prec-sci" in l or " s approx arb int" in l:
@@ -339,7 +362,13 @@ def run_one_counter(solver, fname, seed=42):
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
-            if l[:4] == "s mc" or l[:5] == "s pmc":
+            if cpx:
+                # c s exact double prec-sci 0+0i
+                n = " ".join(l.split()[5:])
+                n = n.replace("i", "j")
+                print("Complex number is: ", n)
+                num = complex(n)
+            elif l[:4] == "s mc" or l[:5] == "s pmc":
                 num = int(l.split()[2])
             elif "c s exact arb int" in l:
                 num = float(l.split()[5])
@@ -469,7 +498,7 @@ if __name__ == "__main__":
         if (options.weighted): weighted = True
         if (options.unweighted): weighted = False
 
-        cpx = True
+        cpx = options.cpx
         if cpx:
             proj = False
             weighted = True
@@ -543,10 +572,10 @@ if __name__ == "__main__":
             weighted = True
             proj = False
             solvers = [
-                Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 Solver("../ganak/build/ganak --mode 2 --verb 0 --arjun 0 --td 0", True),
                 Solver("../ganak/build/ganak --mode 2 --verb 0 --optindep 0 --td 0", True),
                 Solver("../ganak/build/ganak --mode 2 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+                Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
         preprocs = [
@@ -593,7 +622,7 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
-                if (count is not None) and count > 10000 and ('approx' in solver.exe) and options.sandbox:
+                if not cpx and (count is not None) and count > 10000 and ('approx' in solver.exe) and options.sandbox:
                     samples = []
                     preproc_name = "nopreproc"
                     if preproc.exe is not None:
@@ -626,10 +655,17 @@ if __name__ == "__main__":
             continue
 
         print("counts is: ", counts)
+        def perc_diff(a, b):
+            amnt = abs(a-b)
+            val_r = b.real + b.imag
+            val = (abs(amnt.real) + abs(amnt.imag))/val_r
+            # print("perc diff is: ", val)
+            return val
+
         for a in counts:
             if weighted:
                 assert(a.solver.exact)
-                if a.count != exact_count.count and abs(a.count-exact_count.count)/exact_count.count > 0.01:
+                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.01:
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
