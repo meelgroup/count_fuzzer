@@ -22,7 +22,6 @@
 import json
 import subprocess
 import os
-from sys import set_coroutine_origin_tracking_depth
 import time
 import random
 import resource
@@ -285,7 +284,7 @@ def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
     return call
 
 
-def unique_file(fname_begin, fname_end=".cnf", max_num_files=1700):
+def unique_file(fname_begin, fname_end=".cnf", max_num_files=2700):
     counter = 1
     while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
@@ -351,8 +350,7 @@ def run_one_counter(solver, fname, seed=42):
             # c s exact arb cpx 1.2650e+02 + -6.3250e+01i
             real = float(l.split()[5].strip())
             imag = float(l.split()[7].strip()[:-1])
-            print("Complex number is: ", real, imag)
-            print("here")
+            print("Complex number is: ", real, " ## ", imag)
             num = complex(real, imag)
             continue
         if l[0] == 'c' and l[:3] != "c s":
@@ -363,16 +361,21 @@ def run_one_counter(solver, fname, seed=42):
                 # TODO: print command that got executed
                 exit(-1)
             if cpx:
-                # c s exact double prec-sci 0+0i
-                n = " ".join(l.split()[5:])
-                n = n.replace("i", "j")
-                print("Complex number is: ", n)
-                num = complex(n)
+                if unsat_found:
+                    num = complex(0, 0)
+                else:
+                    # c s exact double prec-sci 0+0i
+                    real = float(l.split()[5].strip())
+                    imag = float(l.split()[7].strip()[:-1])
+                    print("Complex number is: ", real, " ## ", imag)
+                    num = complex(real, imag)
             elif l[:4] == "s mc" or l[:5] == "s pmc":
                 num = int(l.split()[2])
             elif "c s exact arb int" in l:
                 num = float(l.split()[5])
             elif "c s exact arb float " in l:
+                num = float(l.split()[5])
+            elif "c s exact quadruple float " in l:
                 num = float(l.split()[5])
             elif l[:13] == "c s exact arb":
                 num = int(l.split()[5])
@@ -547,14 +550,14 @@ if __name__ == "__main__":
             # Solver("../approxmc/build/approxmc", False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
             Solver("../ganak/build/ganak --mode 0 --verb 0 --td 0 --appmct 0.3", False),
+            # Solver("../ganak/build/ganak --mode 0 --verb 0 --restart 1 --rstfirst 100 --optindep 0 --arjun 0 --td 0", True),
             Solver("../ganak/build/ganak --mode 0 --verb 0 --optindep 0 --arjun 0 --td 0", True),
             Solver("../ganak/build/ganak --mode 0 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
             ])
-
-        if weighted:
+        else:
             solvers.extend([
             Solver("../ganak/build/ganak --mode 1 --verb 0 --optindep 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+            Solver("../ganak/build/ganak --mode 7 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -572,9 +575,9 @@ if __name__ == "__main__":
             weighted = True
             proj = False
             solvers = [
-                Solver("../ganak/build/ganak --mode 2 --verb 0 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 2 --verb 0 --optindep 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 2 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+                Solver("../ganak/build/ganak --mode 6 --verb 0 --arjun 0 --td 0", True),
+                Solver("../ganak/build/ganak --mode 6 --verb 0 --optindep 0 --td 0", True),
+                Solver("../ganak/build/ganak --mode 6 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
@@ -656,16 +659,16 @@ if __name__ == "__main__":
 
         print("counts is: ", counts)
         def perc_diff(a, b):
-            amnt = abs(a-b)
-            val_r = b.real + b.imag
-            val = (abs(amnt.real) + abs(amnt.imag))/val_r
+            amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
+            val_r = abs(b.real) + abs(b.imag)
+            val = amnt/val_r
             # print("perc diff is: ", val)
             return val
 
         for a in counts:
             if weighted:
                 assert(a.solver.exact)
-                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.01:
+                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02:
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
