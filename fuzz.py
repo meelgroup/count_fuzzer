@@ -355,7 +355,7 @@ def run_one_counter(solver, fname, seed=42):
             continue
         if l[0] == 'c' and l[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s exact double prec-sci" in l or " s approx arb int" in l:
+        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s approx arb int" in l or "c s exact" in l:
             if num is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
@@ -375,11 +375,21 @@ def run_one_counter(solver, fname, seed=42):
                 num = float(l.split()[5])
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
-            elif "c s exact quadruple float " in l:
+            elif "c s exact quadruple float" in l:
                 num = float(l.split()[5])
-            elif l[:13] == "c s exact arb":
+            elif "c s exact arb int" in l:
                 num = int(l.split()[5])
+            elif "c s exact arb frac" in l:
+                frac = l.split()[5].split("/")
+                num1 = int(frac[0])
+                if len(frac) < 2:
+                    num = float(num1)
+                else:
+                    num2 = int(l.split()[5].split("/")[1])
+                    num = float(num1)/ float(num2)
             elif "s exact double prec-sci" in l:
+                num = float(l.split()[5])
+            elif "c s approx arb int" in l:
                 num = float(l.split()[5])
             else:
                 print("ERROR")
@@ -388,7 +398,7 @@ def run_one_counter(solver, fname, seed=42):
         return True, 0
 
     if num is None:
-        print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s approx arb int' in output")
+        print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s exact arb frac' or 'c s approx arb int' in output")
         for l in out.split("\n"):
             print(l.strip())
         if ("ganak" in solver.exe or "approx" in solver.exe): return False, None
