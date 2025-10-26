@@ -555,19 +555,27 @@ if __name__ == "__main__":
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
         ]
 
+        ganak_extra = " --td " + random.choice(["1", "0"]) +\
+            " --hc " + random.choice(["1", "0"]) +\
+            " --tdoptindep " + random.choice(["1", "0"]) +\
+            " --rstfirst " + random.choice(["100", "10000"]) +\
+            " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
+            " --tdlook " + random.choice(["1", "0"]) +\
+            " --tdlooktwcut " + random.choice(["2", "5"]) +\
+            " --appmct " + random.choice(["0.3", "10000"]) +\
+            " "
+
         if not weighted:
             solvers.extend([
             # Solver("../approxmc/build/approxmc", False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 --td 0 --appmct 0.3", False),
-            # Solver("../ganak/build/ganak --mode 0 --verb 0 --restart 1 --rstfirst 100 --optindep 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 --optindep 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, False),
             ])
         else:
             solvers.extend([
-            Solver("../ganak/build/ganak --mode 1 --verb 0 --optindep 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 7 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
+            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -586,8 +594,7 @@ if __name__ == "__main__":
             proj = False
             solvers = [
                 Solver("../ganak/build/ganak --mode 6 --verb 0 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 6 --verb 0 --optindep 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 6 --verb 0 --arjuncmsmult 0.0001 --arjun 1 --td 0", True),
+                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, True),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
