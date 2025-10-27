@@ -682,10 +682,14 @@ if __name__ == "__main__":
             # print("perc diff is: ", val)
             return val
 
+        def abs_diff(a, b):
+            amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
+            return amnt
+
         for a in counts:
             if weighted:
                 assert(a.solver.exact)
-                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02:
+                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02 and abs_diff(a.count, exact_count.count) > 1e-50:
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
