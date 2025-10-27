@@ -28,4 +28,8 @@ bins/sharpsat-td-mccomp2022/build/
 **report_template.log
 **report_template.out
 **report_template.pdf
-
+bins
+.cache
+instance_generation
+tmpdir
+vgcore.*
