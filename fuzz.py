@@ -86,16 +86,8 @@ def set_up_parser():
       action="store_false", help="With this, weights are NOT fully given, and can contain negative values")
 
     parser.add_option(
-      "--delta", dest="delta", type=float, default="0.2",
-      help="TODO. Default: %default")
-
-    parser.add_option(
       "--noimag", dest="noimag", default=False, action="store_true",
       help="Set imag to 0. Default: %default")
-
-    parser.add_option(
-      "--epsilon", dest="epsilon", type=float, default="0.2",
-      help="TODO. Default: %default")
 
     parser.add_option(
       "--keep-bugs-only", dest="keep_bugs_only", default=True,
@@ -309,9 +301,7 @@ def run_one_counter(solver, fname, seed=42):
     if not solver.exact:
         last = toexec[len(toexec)-1]
         toexec = toexec[:len(toexec)-1]
-        toexec.extend(["--epsilon", str(options.epsilon),
-                       "--delta", str(options.delta),
-                       "-s", str(seed)])
+        toexec.extend(["-s", str(seed)])
         toexec.extend([last])
     out, err = run(toexec, solver.dir)
     if err is None:
@@ -565,9 +555,14 @@ if __name__ == "__main__":
             # " --tdlook " + random.choice(["1", "0"]) +\
             # " --tdlooktwcut " + random.choice(["2", "5"]) +\
 
+        delta = random.choice([0.2, 0.4, 0.6])
+        epsilon = random.choice([0.8, 6, 10])
+        approx_extra = " --epsilon " + str(epsilon) +\
+            " --delta " + str(delta) + " "
+
         if not weighted:
             solvers.extend([
-            Solver("../approxmc/build/approxmc", False),
+            Solver("../approxmc/build/approxmc " + approx_extra, False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
             # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
             Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, False),
@@ -654,8 +649,8 @@ if __name__ == "__main__":
                     shutil.copyfile(fname2, new_fname2)
                     data = {
                         'samples': samples,
-                        'epsilon': options.epsilon,
-                        'delta': options.delta,
+                        'epsilon': epsilon,
+                        'delta': delta,
                         'fname': new_fname,
                         'fname2': new_fname2,
                         'preproc': preproc_name,
