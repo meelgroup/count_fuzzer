@@ -558,7 +558,8 @@ if __name__ == "__main__":
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6, 10])
         approx_extra = " --epsilon " + str(epsilon) +\
-            " --delta " + str(delta) + " "
+            " --delta " + str(delta) + " " +\
+            " --arjun " + random.choice(["0", "1"]) + " "
 
         if not weighted:
             solvers.extend([
