@@ -58,6 +58,10 @@ def set_up_parser():
       help="Fuzz test start seed. Otherwise, random seed is picked", type=int)
 
     parser.add_option(
+      "--only", type=int, dest="only", default=2**40,
+      help="Only run N tests. Default: %default")
+
+    parser.add_option(
       "--cpx", dest="cpx", default=False,
       action="store_true", help="Complex numbers only")
 
@@ -486,7 +490,7 @@ if __name__ == "__main__":
         rnd_seed = options.rnd_seed
     random.seed(rnd_seed)
 
-    while True:
+    for i in range(options.only):
         if options.rnd_seed is None:
             b = os.urandom(8)
             seed = int.from_bytes(b)
