@@ -555,7 +555,7 @@ if __name__ == "__main__":
             # " --tdlooktwcut " + random.choice(["2", "5"]) +\
 
         delta = random.choice([0.2, 0.4, 0.6])
-        epsilon = random.choice([0.8, 6, 10])
+        epsilon = random.choice([0.8])
         approx_extra = " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) + " " +\
             " --arjun " + random.choice(["0", "1"]) + " "

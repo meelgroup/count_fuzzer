@@ -1,6 +1,0 @@
-c see: https://github.com/marcthurley/sharpSAT/pull/15
-p cnf 4 4
--2 4 0
-3 4 0
--3 -4 0
-3 -4 0
