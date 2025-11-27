@@ -93,11 +93,6 @@ def set_up_parser():
       "--noimag", dest="noimag", default=False, action="store_true",
       help="Set imag to 0. Default: %default")
 
-    parser.add_option(
-      "--keep-bugs-only", dest="keep_bugs_only", default=True,
-        action="store_true",
-        help="Only keep the CNFs that yield bugs, clean up the others. Default: %default")
-
     # sandbox, sampling ,etc
     parser.add_option(
       "--sandbox", dest="sandbox", default=False,
@@ -719,9 +714,8 @@ if __name__ == "__main__":
             exit(0)
 
         print("Checking with file %s finished" % fname)
-        if options.keep_bugs_only:
-            os.unlink(fname)
-            for _, fname2 in simplified: os.unlink(fname2)
+        os.unlink(fname)
+        for _, fname2 in simplified: os.unlink(fname2)
 
 
 
