@@ -575,7 +575,7 @@ if __name__ == "__main__":
         else:
             solvers.extend([
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, False), # mode 7 is floating point, so not exact
+            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, ganak_exact),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -693,7 +693,7 @@ if __name__ == "__main__":
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
-            if weighted is False:
+            if not weighted:
                 if a.count != exact_count.count and a.solver.exact:
                     print("ERROR!")
                     print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
