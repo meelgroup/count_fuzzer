@@ -553,6 +553,7 @@ if __name__ == "__main__":
             # " --hc " + random.choice(["1", "0"]) +\
             # " --tdlook " + random.choice(["1", "0"]) +\
             # " --tdlooktwcut " + random.choice(["2", "5"]) +\
+        ganak_exact = not ("appmct" in ganak_extra)
 
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6])
@@ -560,17 +561,19 @@ if __name__ == "__main__":
             " --delta " + str(delta) + " " +\
             " --arjun " + random.choice(["0", "1"]) + " "
 
+        # ganak modes: --mode                  0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers, 7=mpfr normal numbers [nargs=0..1] [default: 0]
+
         if not weighted:
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
             # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, False),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
             ])
         else:
             solvers.extend([
-            # Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            # Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
+            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
+            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, False), # mode 7 is floating point, so not exact
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -589,7 +592,7 @@ if __name__ == "__main__":
             proj = False
             solvers = [
                 Solver("../ganak/build/ganak --mode 6 --verb 0 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, True),
+                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, ganak_exact),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
