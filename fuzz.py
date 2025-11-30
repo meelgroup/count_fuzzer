@@ -574,12 +574,13 @@ if __name__ == "__main__":
             Solver("../approxmc/build/approxmc " + approx_extra, False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
             # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, True),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
             ])
         else:
             solvers.extend([
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, ganak_exact),
+            # appmc is not working in weighted mode, so always exact
+            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -598,7 +599,8 @@ if __name__ == "__main__":
             proj = False
             solvers = [
                 Solver("../ganak/build/ganak --mode 6 --verb 0 --arjun 0 --td 0", True),
-                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, ganak_exact),
+                # appmc is not working in weighted mode, so always exact
+                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, True),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
