@@ -572,8 +572,7 @@ if __name__ == "__main__":
         if not weighted:
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
-            # Solver("bins/appmc-2024/approxmc --arjun 0", False),
-            # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
             Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
             ])
         else:
