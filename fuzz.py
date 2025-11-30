@@ -544,21 +544,25 @@ if __name__ == "__main__":
             # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
         ]
 
+        delta = random.choice([0.2, 0.4, 0.6])
+        epsilon = random.choice([0.8, 6])
         ganak_exact = True
         ganak_extra = " --td " + random.choice(["1", "0"]) +\
             " --tdoptindep " + random.choice(["1", "0"]) +\
             " --rstfirst " + random.choice(["100", "10000"]) +\
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
+            " --epsilon " + str(epsilon) +\
+            " --delta " + str(delta) +\
+            " --prob " + random.choice(["0", "1"]) +\
             " "
             # " --hc " + random.choice(["1", "0"]) +\
             # " --tdlook " + random.choice(["1", "0"]) +\
             # " --tdlooktwcut " + random.choice(["2", "5"]) +\
+
         if random.choice([True, False]):
             ganak_extra += " --appmct " + random.choice(["0.3", "10000"])
             ganak_exact = False
 
-        delta = random.choice([0.2, 0.4, 0.6])
-        epsilon = random.choice([0.8, 6])
         approx_extra = " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) + " " +\
             " --arjun " + random.choice(["0", "1"]) + " "
@@ -570,7 +574,7 @@ if __name__ == "__main__":
             Solver("../approxmc/build/approxmc " + approx_extra, False),
             # Solver("bins/appmc-2024/approxmc --arjun 0", False),
             # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
+            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, True),
             ])
         else:
             solvers.extend([
