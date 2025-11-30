@@ -545,7 +545,7 @@ if __name__ == "__main__":
         ]
 
         delta = random.choice([0.2, 0.4, 0.6])
-        epsilon = random.choice([0.8, 6])
+        epsilon = random.choice([0.8, 6.0])
         ganak_exact = True
         ganak_extra = " --td " + random.choice(["1", "0"]) +\
             " --tdoptindep " + random.choice(["1", "0"]) +\
@@ -710,8 +710,8 @@ if __name__ == "__main__":
                     print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
                     print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
 
-                    if exact_count.count*1.5 < a.count or \
-                        exact_count.count*0.7 > a.count:
+                    if exact_count.count*(1.0+(1.0+epsilon)) < a.count or \
+                        exact_count.count*(1.0/(1.0+epsilon)) > a.count:
                             exit(-1)
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
