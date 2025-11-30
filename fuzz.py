@@ -559,7 +559,7 @@ if __name__ == "__main__":
             # " --tdlook " + random.choice(["1", "0"]) +\
             # " --tdlooktwcut " + random.choice(["2", "5"]) +\
 
-        if random.choice([True, False]):
+        if random.choice([False, False, False, True]):
             ganak_extra += " --appmct " + random.choice(["0.3", "10000"])
             ganak_exact = False
 
