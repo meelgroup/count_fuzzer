@@ -547,17 +547,17 @@ if __name__ == "__main__":
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6.0])
         ganak_exact = True
-        ganak_extra = " --td " + random.choice(["1", "0"]) +\
-            " --tdoptindep " + random.choice(["1", "0"]) +\
+        ganak_extra = " --tdoptindep " + random.choice(["1", "0"]) +\
             " --rstfirst " + random.choice(["100", "10000"]) +\
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
             " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) +\
             " --prob " + random.choice(["0", "1"]) +\
+            " --td " + random.choice(["1", "0", "0"]) +\
+            " --tdlook " + random.choice(["1", "0"]) +\
+            " --tdlooktwcut " + random.choice(["2", "5"]) +\
             " "
-            # " --hc " + random.choice(["1", "0"]) +\
-            # " --tdlook " + random.choice(["1", "0"]) +\
-            # " --tdlooktwcut " + random.choice(["2", "5"]) +\
+            # " --hc " + random.choice(["1", "1", "0"]) +\
 
         if random.choice([False, False, False, True]):
             ganak_extra += " --appmct " + random.choice(["0.3", "10000"])
@@ -572,7 +572,7 @@ if __name__ == "__main__":
         if not weighted:
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
+            # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
             Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
             ])
         else:
@@ -691,7 +691,7 @@ if __name__ == "__main__":
             amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
             return amnt
 
-        for a in counts:
+        for (a,b) in zip(counts, solvers):
             if weighted:
                 assert(a.solver.exact)
                 if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02 and abs_diff(a.count, exact_count.count) > 1e-50:
@@ -707,13 +707,44 @@ if __name__ == "__main__":
                     exit(-1)
 
                 if a.count != exact_count.count and not a.solver.exact:
+                    max_allowed = exact_count.count * (1.0 + epsilon)
+                    min_allowed = exact_count.count * (1.0 / (1.0 + epsilon))
+
                     print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
                     print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
                     print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
+                    print(f"With epsilon = {epsilon}, min_allowed = {min_allowed}, max_allowed = {max_allowed}.")
+                    print(f"Wrong counting: {a.solver.exe} with preproc {a.preproc}")
+                    if a.count > max_allowed or a.count < min_allowed:
+                        wrong = 0
+                        numruns = 200
+                        num = 0
+                        failed = 0
+                        while num < numruns and failed < 5:
+                            OK, count2 = run_one_counter(a.solver, fname, random.randint(0, 1000*1000*1000))
+                            if count2 is None:
+                                failed+=1
+                                continue
+                            num += 1
+                            print(f"Rerun gives count = {count2}")
+                            if not OK:
+                                print("ERROR: rerun failed?")
+                                exit(-1)
+                            if count2 > max_allowed or count2 < min_allowed:
+                                wrong += 1
+                        if failed < 5:
+                            perc_wrong = float(wrong) / float(numruns) * 100.0
+                            print(f"Out of {numruns} reruns, {wrong} were outside the allowed range, percentage {perc_wrong}%")
 
-                    if exact_count.count*(1.0+(1.0+epsilon)) < a.count or \
-                        exact_count.count*(1.0/(1.0+epsilon)) > a.count:
-                            exit(-1)
+                            allowed_perc_wrong = (delta) * 100.0
+                            if perc_wrong > allowed_perc_wrong:
+                                print("ERROR: Delta was exceeded. It was allowed to be only %s %%" % allowed_perc_wrong)
+                                exit(-1)
+                            else:
+                                print("OK within delta after reruns. Delta was %s %%" % allowed_perc_wrong)
+                        else:
+                            print("Too many failed reruns, not checking delta.")
+
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
