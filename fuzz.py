@@ -561,6 +561,7 @@ if __name__ == "__main__":
             " --td " + random.choice(["1", "0", "0"]) +\
             " --tdlook " + random.choice(["1", "0"]) +\
             " --tdlooktwcut " + random.choice(["2", "5"]) +\
+            " --bitsjobs " + random.choice(["1", "3", "5"]) +\
             " "
             # " --hc " + random.choice(["1", "1", "0"]) +\
 
