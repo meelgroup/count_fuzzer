@@ -115,10 +115,15 @@ def run(command, dir):
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
     p = subprocess.Popen(command, stderr=subprocess.STDOUT,
-          stdout=subprocess.PIPE, universal_newlines=True, cwd=dir,
-          preexec_fn=partial(setlimits, options.maxtime))
+          stdout=subprocess.PIPE, universal_newlines=True, cwd=dir)
 
-    consoleOutput, err = p.communicate()
+    try:
+        consoleOutput, err = p.communicate(timeout=options.maxtime)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        consoleOutput, err = p.communicate()
+        consoleOutput = "TIMEOUT: Process killed after %d seconds\n" % options.maxtime + consoleOutput
+
     if options.verbose:
         print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
             resource.getrlimit(resource.RLIMIT_CPU))
@@ -563,6 +568,9 @@ if __name__ == "__main__":
             ganak_extra += " --appmct " + random.choice(["0.3", "10000"])
             ganak_exact = False
 
+        if ganak_exact and random.choice([False, False, False, True]):
+            ganak_extra += " --threads 4"
+
         approx_extra = " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) + " " +\
             " --arjun " + random.choice(["0", "1"]) + " "
@@ -674,6 +682,9 @@ if __name__ == "__main__":
                                  json.dump(data, fp)
 
         if exact_count is None:
+            if options.rnd_seed is not None:
+                print("Exiting as we only wanted to run one test due to --seed")
+                exit(0)
             os.unlink(fname)
             for _, fname2 in simplified:
                 os.unlink(fname2)
