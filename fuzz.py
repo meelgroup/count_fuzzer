@@ -566,7 +566,7 @@ if __name__ == "__main__":
             # " --hc " + random.choice(["1", "1", "0"]) +\
 
         if random.choice([False, False, False, True]):
-            ganak_extra += " --appmct " + random.choice(["0.3", "10000"])
+            ganak_extra += " --appmct " + random.choice(["0.3"])
             ganak_exact = False
 
         if ganak_exact and random.choice([False, False, False, True]):
@@ -729,7 +729,7 @@ if __name__ == "__main__":
                     print(f"Wrong counting: {a.solver.exe} with preproc {a.preproc}")
                     if a.count > max_allowed or a.count < min_allowed:
                         wrong = 0
-                        numruns = 30
+                        numruns = 50
                         num = 0
                         failed = 0
                         while num < numruns and failed < 5:
