@@ -552,26 +552,26 @@ if __name__ == "__main__":
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6.0])
         ganak_exact = True
-        ganak_extra = " --tdoptindep " + random.choice(["1", "0"]) +\
+        ganak_extra = \
             " --rstfirst " + random.choice(["100", "10000"]) +\
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
             " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) +\
-            " --bce " + random.choice(["1", "0"]) +\
-            " --arjunoraclefindbins" + random.choice(["1", "0"]) +\
             " --puuraautarky " + random.choice(["1", "0"]) +\
             " --puura " + random.choice(["0", "1", "1"]) +\
-            " --puurabackbone" + random.choice(["1", "0"]) +\
             " --arjunsamplcutoff  " + random.choice(["2", "10", "100000"]) +\
-            " --prob " + random.choice(["0", "1"]) +\
             " --td " + random.choice(["1", "0", "0"]) +\
-            " --tdlook " + random.choice(["1", "0"]) +\
             " --tdlooktwcut " + random.choice(["2", "5"]) +\
             " --tditers " + str(random.randint(0,30)) +\
-            " --tdsteps  " + str(random.randint(0, 1000)) +\
+            " --tdsteps " + str(random.randint(0, 1000)) +\
             " --bitsjobs " + random.choice(["1", "3", "5"]) +\
+            " --arjunweakenlim " + random.choice(["8000", "10", "100000"]) +\
             " "
             # " --hc " + random.choice(["1", "1", "0"]) +\
+        binary_options = [ "arjunoraclefindbins" ,"bce" ,"prob" ,"puurabackbone" ,"tdlook "
+                          ,"tdoptindep", "resolvsub", "arjunextendccnr"]
+        for opt in binary_options:
+            ganak_extra += " --" + random.choice(["0", "1"]) + " "
 
         if random.choice([False, False, False, True]):
             ganak_extra += " --appmct " + random.choice(["0.3"])
