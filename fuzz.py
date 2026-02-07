@@ -571,7 +571,7 @@ if __name__ == "__main__":
         binary_options = [ "arjunoraclefindbins" ,"bce" ,"prob" ,"puurabackbone" ,"tdlook "
                           ,"tdoptindep", "resolvsub", "arjunextendccnr"]
         for opt in binary_options:
-            ganak_extra += " --" + random.choice(["0", "1"]) + " "
+            ganak_extra += " --" + opt + " " + random.choice(["0", "1"]) + " "
 
         if random.choice([False, False, False, True]):
             ganak_extra += " --appmct " + random.choice(["0.3"])
