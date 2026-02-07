@@ -557,6 +557,8 @@ if __name__ == "__main__":
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
             " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) +\
+            " --puuraautarky " + random.choice(["1", "0"]) +\
+            " --puura " + random.choice(["0", "1", "1"]) +\
             " --prob " + random.choice(["0", "1"]) +\
             " --td " + random.choice(["1", "0", "0"]) +\
             " --tdlook " + random.choice(["1", "0"]) +\
