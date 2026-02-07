@@ -557,8 +557,12 @@ if __name__ == "__main__":
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
             " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) +\
+            " --bce " + random.choice(["1", "0"]) +\
+            " --arjunoraclefindbins" + random.choice(["1", "0"]) +\
             " --puuraautarky " + random.choice(["1", "0"]) +\
             " --puura " + random.choice(["0", "1", "1"]) +\
+            " --puurabackbone" + random.choice(["1", "0"]) +\
+            " --arjunsamplcutoff  " + random.choice(["2", "10", "100000"]) +\
             " --prob " + random.choice(["0", "1"]) +\
             " --td " + random.choice(["1", "0", "0"]) +\
             " --tdlook " + random.choice(["1", "0"]) +\
