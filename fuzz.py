@@ -307,6 +307,10 @@ def run_one_counter(solver, fname, seed=42):
         toexec = toexec[:len(toexec)-1]
         toexec.extend(["-s", str(seed)])
         toexec.extend([last])
+
+    if "ganak" in solver.exe:
+        if random.randint(1,4) == 4:
+            toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
     out, err = run(toexec, solver.dir)
     if err is None:
         if options.verbose:
@@ -332,12 +336,19 @@ def run_one_counter(solver, fname, seed=42):
         #     print(l)
         if "ERROR Memory out!" in l:
             return True, None
-        if "ERROR" in l:
-            print("ERROR in output: ", l)
+        if "blocks are definitely lost" in l:
+            print("ERROR: Memory leak in solver %s, output was: " % solver.exe)
             for l in out.split("\n"):
                 l = l.strip()
                 print(l)
             return False, None
+        if "ERROR" in l:
+            if ("ERROR SUMMARY" not in l):
+                print("ERROR in output: ", l)
+                for l in out.split("\n"):
+                    l = l.strip()
+                    print(l)
+                return False, None
         if len(l) < 4:
             continue
         if "c s exact arb cpx" in l:
@@ -369,6 +380,9 @@ def run_one_counter(solver, fname, seed=42):
                 num = float(l.split()[5])
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
+            elif "c s exact quadruple float interval [" in l:
+                print("l: ", l)
+                num = float(l.split()[7])
             elif "c s exact quadruple float" in l:
                 num = float(l.split()[5])
             elif "c s exact arb int" in l:
@@ -565,6 +579,7 @@ if __name__ == "__main__":
             " --tditers " + str(random.randint(0,30)) +\
             " --tdsteps " + str(random.randint(0, 1000)) +\
             " --bitsjobs " + random.choice(["1", "3", "5"]) +\
+            " --mpfrprecision " + random.choice(["100", "80", "256"]) +\
             " --arjunweakenlim " + random.choice(["8000", "10", "100000"]) +\
             " "
             # " --hc " + random.choice(["1", "1", "0"]) +\
@@ -597,6 +612,8 @@ if __name__ == "__main__":
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
             # appmc is not working in weighted mode, so always exact
             Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
+            # try interval arithmetic for weighted counting
+            Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
                 # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
                 # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
