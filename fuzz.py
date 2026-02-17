@@ -381,7 +381,7 @@ def run_one_counter(solver, fname, seed=42):
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
             elif "c s exact quadruple float interval [" in l:
-                print("l: ", l)
+                # using left interval bound, TODO: chek the right one as well
                 num = float(l.split()[7])
             elif "c s exact quadruple float" in l:
                 num = float(l.split()[5])
