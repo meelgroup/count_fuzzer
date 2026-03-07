@@ -90,6 +90,10 @@ def set_up_parser():
       action="store_false", help="With this, weights are NOT fully given, and can contain negative values")
 
     parser.add_option(
+      "--zerocomps", dest="zerocomps", default=False,
+      action="store_true", help="With this, weights are MESSY and they often add up to 0")
+
+    parser.add_option(
       "--noimag", dest="noimag", default=False, action="store_true",
       help="Set imag to 0. Default: %default")
 
@@ -134,7 +138,8 @@ def add_weights(fname, projected_vars) :
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if len(line) < 3:continue
+            if len(line) < 3:
+                continue
             if line[0] == "p":
                 line = line.split(" ")
                 assert line[1].strip() == "cnf"
@@ -152,7 +157,11 @@ def add_weights(fname, projected_vars) :
             all_vars.append(i+1)
 
     weights = []
-    if options.messy_weights:
+    if options.zerocomps:
+        for var in all_vars:
+            w = float(random.choice([-1, 1]))
+            weights.append([var, w])
+    elif options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
                 w = float(random.randrange(-10, 10))/10.0
@@ -175,7 +184,8 @@ def add_weights_cpx(fname, projected_vars) :
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if len(line) < 3:continue
+            if len(line) < 3:
+                continue
             if line[0] == "p":
                 line = line.split(" ")
                 assert line[1].strip() == "cnf"
@@ -193,7 +203,12 @@ def add_weights_cpx(fname, projected_vars) :
             all_vars.append(i+1)
 
     weights = []
-    if options.messy_weights:
+    if options.zerocomps:
+        for var in all_vars:
+            w = float(random.choice([-1, 1]))
+            w2 = float(random.choice([-1, 1]))
+            weights.append([var, w, w2])
+    elif options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
                 w = float(random.randrange(-10, 10))/10.0
@@ -599,7 +614,16 @@ if __name__ == "__main__":
             " --delta " + str(delta) + " " +\
             " --arjun " + random.choice(["0", "1"]) + " "
 
-        # ganak modes: --mode                  0=counting, 1=weighted counting, 2=complex numbers, 3=multivariate polynomials over the rational field, 4=parity counting, 5=counting over prime field, 6=mpfr complex numbers, 7=mpfr normal numbers [nargs=0..1] [default: 0]
+
+        # 0=integer counting,
+        # 1=weighted counting over the rationals,
+        # 2=complex rational numbers,
+        # 3=multivariate polynomials over the rational field,
+        # 4=parity counting,
+        # 5=counting over a prime field (see --prime),
+        # 6=mpfr floating point complex numbers (see --mpfrprecision),
+        # 7=mpfr floating point real numbers (see --mpfrprecision),
+        # 8=mpfi intervals
 
         if not weighted:
             solvers.extend([
@@ -609,6 +633,7 @@ if __name__ == "__main__":
             ])
         else:
             solvers.extend([
+            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 1 --td 0", True),
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
             # appmc is not working in weighted mode, so always exact
             Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
