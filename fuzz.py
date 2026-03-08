@@ -584,6 +584,7 @@ if __name__ == "__main__":
         ganak_extra = \
             " --rstfirst " + random.choice(["100", "10000"]) +\
             " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
+            " --arjunoraclemult " +  random.choice(["0.0001", "1", "0"]) +\
             " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) +\
             " --puuraautarky " + random.choice(["1", "0"]) +\
@@ -635,12 +636,10 @@ if __name__ == "__main__":
             solvers.extend([
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 1 --td 0", True),
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            # appmc is not working in weighted mode, so always exact
-            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
-            # try interval arithmetic for weighted counting
-            Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
-                # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
-                # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
+            # Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
+            # Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
+            # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
+            # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
 
         if weighted and proj:
