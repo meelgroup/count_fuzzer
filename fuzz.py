@@ -19,7 +19,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-import json
 import subprocess
 import os
 import time
@@ -29,7 +28,6 @@ import optparse
 import stat
 import shutil
 from collections import namedtuple
-from functools import partial
 
 Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
@@ -225,7 +223,8 @@ def add_weights_cpx(fname, projected_vars) :
         for v,w,w2 in weights2:
             w2 = 0.0
             weights.append([v, w, w2])
-    else: weights = weights2
+    else:
+        weights = weights2
 
     with open(fname, "a") as f:
         for v,w,w2 in weights:
@@ -236,14 +235,16 @@ def add_projection(fname) :
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
-            if len(line) < 3:continue
+            if len(line) < 3:
+                continue
             if line[0] == "p":
                 line = line.split(" ")
                 assert line[1].strip() == "cnf"
                 vars = int(line[2])
 
     all_vars = []
-    for i in range(vars): all_vars.append(i+1)
+    for i in range(vars):
+        all_vars.append(i+1)
     proj = []
     proj_set = {}
     if vars == 0:
@@ -271,9 +272,12 @@ def add_projection(fname) :
 
 def get_type(proj, weighted):
     ty = "0"
-    if proj and not weighted: ty = "1"
-    if not proj and weighted: ty = "2"
-    if proj and weighted: ty = "3"
+    if proj and not weighted:
+        ty = "1"
+    if not proj and weighted:
+        ty = "2"
+    if proj and weighted:
+        ty = "3"
     return ty
 
 def gen_fuzz_call_biere(fuzzer, fname, proj, weighted):
@@ -348,16 +352,16 @@ def run_one_counter(solver, fname, seed=42):
             return True, None
         if "blocks are definitely lost" in l:
             print("ERROR: Memory leak in solver %s, output was: " % solver.exe)
-            for l in out.split("\n"):
-                l = l.strip()
-                print(l)
+            for w in out.split("\n"):
+                w = w.strip()
+                print(w)
             return False, None
         if "ERROR" in l:
             if ("ERROR SUMMARY" not in l):
                 print("ERROR in output: ", l)
-                for l in out.split("\n"):
-                    l = l.strip()
-                    print(l)
+                for w in out.split("\n"):
+                    w = w.strip()
+                    print(w)
                 return False, None
         if len(l) < 4:
             continue
@@ -417,9 +421,10 @@ def run_one_counter(solver, fname, seed=42):
 
     if num is None:
         print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s exact arb frac' or 'c s approx arb int' in output")
-        for l in out.split("\n"):
-            print(l.strip())
-        if ("ganak" in solver.exe or "approx" in solver.exe): return False, None
+        for w in out.split("\n"):
+            print(w.strip())
+        if ("ganak" in solver.exe or "approx" in solver.exe):
+            return False, None
         else :
             print("Not erroring out, it's not our solver")
             return True, None
@@ -430,12 +435,12 @@ def check_header(fname):
     with open(fname, "r") as f:
         num_cls = 0
         max_vars = 0
-        header_cls = 0;
-        header_vars = 0;
+        header_cls = 0
+        header_vars = 0
         for line in f:
             line = line.strip()
             if len(line) == 0:
-                print("Empty line is NOT part of DIMACS, error\n");
+                print("Empty line is NOT part of DIMACS, error\n")
                 return False
             if line[0] == "p":
                 header = line.split()
@@ -452,11 +457,10 @@ def check_header(fname):
 
             num_cls += 1
             line = line.split()
-            for l in line:
-                l = abs(int(l))
-                if l > max_vars:
-                    max_vars = l
-
+            for w in line:
+                w = abs(int(w))
+                if w > max_vars:
+                    max_vars = w
 
         if num_cls != header_cls:
             print("cls in CNF: %d but header said: %d" % (num_cls, header_cls))
@@ -519,12 +523,16 @@ if __name__ == "__main__":
         else:
             seed = options.rnd_seed
         proj :bool = random.choice([True, False])
-        if (options.projected): proj = True
-        if (options.unprojected): proj = False
+        if (options.projected):
+            proj = True
+        if (options.unprojected):
+            proj = False
 
         weighted :bool = random.choice([True, False])
-        if (options.weighted): weighted = True
-        if (options.unweighted): weighted = False
+        if (options.weighted):
+            weighted = True
+        if (options.unweighted):
+            weighted = False
 
         cpx = options.cpx
         if cpx:
@@ -551,7 +559,7 @@ if __name__ == "__main__":
             print("Failed fuzzer file generator call: ", call)
             exit(-1)
         else:
-            print("Generated fuzz file %s with call: %s" % (fname, call));
+            print("Generated fuzz file %s with call: %s" % (fname, call))
 
         projected_vars = None
         if proj:
@@ -664,7 +672,7 @@ if __name__ == "__main__":
         for preproc in preprocs:
             fname2 = unique_file("fuzzTest")
             OK = False
-            if preproc.exe == None:
+            if preproc.exe is None:
                 shutil.copyfile(fname, fname2)
                 OK = True
                 if options.verbose:
@@ -673,8 +681,10 @@ if __name__ == "__main__":
                 OK = run_one_preproc(preproc, fname, fname2)
                 if options.verbose:
                     print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
-            if OK: simplified.append((preproc, fname2))
-            else: os.unlink(fname2)
+            if OK:
+                simplified.append((preproc, fname2))
+            else:
+                os.unlink(fname2)
 
         exact_count = None
         print("Set of solvers is: ", solvers)
@@ -785,7 +795,8 @@ if __name__ == "__main__":
 
         print("Checking with file %s finished" % fname)
         os.unlink(fname)
-        for _, fname2 in simplified: os.unlink(fname2)
+        for _, fname2 in simplified:
+            os.unlink(fname2)
 
 
 
