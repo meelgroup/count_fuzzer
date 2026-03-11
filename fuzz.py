@@ -97,11 +97,6 @@ def set_up_parser():
       "--noimag", dest="noimag", default=False, action="store_true",
       help="Set imag to 0. Default: %default")
 
-    # sandbox, sampling ,etc
-    parser.add_option(
-      "--sandbox", dest="sandbox", default=False,
-      action="store_true", help="Do experiments in the sandbox")
-
     parser.add_option(
       "--sample-approxmc", dest="sample_approxmc", default=False,
         action="store_true",
@@ -159,7 +154,7 @@ def add_weights(fname, projected_vars) :
     weights = []
     if options.zerocomps:
         for var in all_vars:
-            w = float(random.choice([-1, 1]))
+            w = float(random.choice([-2, -1, 1, 2]))
             weights.append([var, w])
     elif options.messy_weights:
         for var in all_vars:
@@ -324,7 +319,7 @@ def run_one_counter(solver, fname, seed=42):
         toexec.extend([last])
 
     if "ganak" in solver.exe:
-        if random.randint(1,4) == 4:
+        if random.randint(1,100) == 100:
             toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
     out, err = run(toexec, solver.dir)
     if err is None:
@@ -501,9 +496,6 @@ if __name__ == "__main__":
         os.mkdir("out")
 
     # Create directories needed to run fuzzer
-    os.makedirs("sandbox/approxmc-results/arjun", exist_ok=True)
-    os.makedirs("sandbox/approxmc-results/nopreproc", exist_ok=True)
-    os.makedirs("sandbox/approxmc-results/bpe", exist_ok=True)
     os.makedirs("tmpdir", exist_ok=True)
     os.makedirs("out", exist_ok=True)
 
@@ -705,32 +697,6 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
-                if not cpx and (count is not None) and count > 10000 and ('approx' in solver.exe) and options.sandbox:
-                    samples = []
-                    preproc_name = "nopreproc"
-                    if preproc.exe is not None:
-                        preproc_name = 'arjun' if 'arjun' in preproc.exe else 'bpe'
-                    print("fname is: ", fname)
-                    new_fname = fname.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
-                    new_fname2 = fname2.replace('out/', f'sandbox/approxmc-results/{preproc_name}/')
-                    shutil.copyfile(fname, new_fname)
-                    shutil.copyfile(fname2, new_fname2)
-                    data = {
-                        'samples': samples,
-                        'epsilon': epsilon,
-                        'delta': delta,
-                        'fname': new_fname,
-                        'fname2': new_fname2,
-                        'preproc': preproc_name,
-                    }
-                    for i in range(options.num_samples):
-                        count = run_one_counter(solver, new_fname2, seed=i)
-                        if count is not None:
-                             print("COUNT:", count)
-                             data['samples'].append((i, int(count)))
-                             with open(f'{new_fname2}.json', 'w') as fp:
-                                 json.dump(data, fp)
-
         if exact_count is None:
             if options.rnd_seed is not None:
                 print("Exiting as we only wanted to run one test due to --seed")
@@ -744,6 +710,8 @@ if __name__ == "__main__":
         def perc_diff(a, b):
             amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
             val_r = abs(b.real) + abs(b.imag)
+            if (a != b and val_r == 0):
+                return 100.0
             val = amnt/val_r
             # print("perc diff is: ", val)
             return val
