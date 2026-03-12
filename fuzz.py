@@ -124,7 +124,7 @@ def run(command, dir):
     if options.verbose:
         print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
             resource.getrlimit(resource.RLIMIT_CPU))
-    return consoleOutput, err
+    return consoleOutput, err, p.returncode
 
 def add_weights(fname, projected_vars) :
     vars = 0
@@ -325,7 +325,7 @@ def run_one_counter(solver, fname, seed=42):
     if "ganak" in solver.exe:
         if random.randint(1,100) == 100:
             toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
-    out, err = run(toexec, solver.dir)
+    out, err, returncode = run(toexec, solver.dir)
     if err is None:
         if options.verbose:
             print("No error.")
@@ -335,6 +335,9 @@ def run_one_counter(solver, fname, seed=42):
     if diff_time > options.maxtime - maxtimediff:
         print("Too much time to solve with %s, aborted!" % solver.exe)
         return True, None
+    if returncode != 0 and not out.startswith("TIMEOUT"):
+        print("Solver crashed with exit code %d (signal %d)" % (returncode, -returncode))
+        return False, None
 
     num = None
     unsat_found = False
@@ -477,7 +480,7 @@ def run_one_preproc(preproc, fname, fname2):
     toexec.append(os.getcwd() + "/" + fname)
     toexec.append(os.getcwd() + "/" + fname2)
     print("Executing preproc ", preproc)
-    out, err = run(toexec, preproc.dir)
+    out, err, _ = run(toexec, preproc.dir)
     if err is None:
         pass
     else:
@@ -595,7 +598,7 @@ if __name__ == "__main__":
             " --tditers " + str(random.randint(0,30)) +\
             " --tdsteps " + str(random.randint(0, 1000)) +\
             " --bitsjobs " + random.choice(["1", "3", "5"]) +\
-            " --mpfrprecision " + random.choice(["100", "80", "256"]) +\
+            " --mpfrprec " + random.choice(["10", "80", "256"]) +\
             " --arjunweakenlim " + random.choice(["8000", "10", "100000"]) +\
             " "
             # " --hc " + random.choice(["1", "1", "0"]) +\
