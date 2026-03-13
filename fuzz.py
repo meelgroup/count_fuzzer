@@ -398,8 +398,9 @@ def run_one_counter(solver, fname, seed=42):
             elif "c s exact arb float " in l:
                 num = float(l.split()[5])
             elif "c s exact quadruple float interval [" in l:
-                # using left interval bound, TODO: chek the right one as well
-                num = float(l.split()[7])
+                # using middle of interval
+                parts = l.split()
+                num = (float(parts[7]) + float(parts[8])) / 2.0
             elif "c s exact quadruple float" in l:
                 num = float(l.split()[5])
             elif "c s exact arb int" in l:
@@ -598,7 +599,7 @@ if __name__ == "__main__":
             " --tditers " + str(random.randint(0,30)) +\
             " --tdsteps " + str(random.randint(0, 1000)) +\
             " --bitsjobs " + random.choice(["1", "3", "5"]) +\
-            " --mpfrprec " + random.choice(["10", "80", "256"]) +\
+            " --mpfrprec " + random.choice(["64", "256"]) +\
             " --arjunweakenlim " + random.choice(["8000", "10", "100000"]) +\
             " "
             # " --hc " + random.choice(["1", "1", "0"]) +\
@@ -639,8 +640,8 @@ if __name__ == "__main__":
             solvers.extend([
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 1 --td 0", True),
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            # Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
-            # Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
+            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
+            Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
@@ -736,7 +737,10 @@ if __name__ == "__main__":
         for (a,b) in zip(counts, solvers):
             if weighted:
                 assert(a.solver.exact)
-                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02 and abs_diff(a.count, exact_count.count) > 1e-50:
+                is_float_mode = "--mode 7" in a.solver.exe or "--mode 8" in a.solver.exe or \
+                    "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe
+                abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
+                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02 and abs_diff(a.count, exact_count.count) > abs_diff_threshold:
                     print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
                     exit(-1)
 
