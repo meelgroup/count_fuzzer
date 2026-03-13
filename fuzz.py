@@ -323,7 +323,7 @@ def run_one_counter(solver, fname, seed=42):
         toexec.extend([last])
 
     if "ganak" in solver.exe:
-        if random.randint(1,100) == 100:
+        if random.randint(1,100) == 30:
             toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
     out, err, returncode = run(toexec, solver.dir)
     if err is None:
