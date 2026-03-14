@@ -312,6 +312,95 @@ def unique_file(fname_begin, fname_end=".cnf", max_num_files=2700):
             exit(-1)
 
 
+def gen_ganak_extra(epsilon, delta):
+    """Generate random ganak options targeting broad code coverage.
+
+    Small values for cache/RDB/vivif thresholds are intentional:
+    they trigger cleanup and maintenance code paths rarely hit on
+    the tiny fuzz instances we generate.
+    """
+    choice_opts = [
+        # Core accuracy params
+        ("epsilon",              [str(epsilon)]),
+        ("delta",                [str(delta)]),
+        # Cache — tiny maxcache forces frequent cache eviction
+        ("maxcache",             ["1", "5", "100"]),
+        ("cache",                ["0", "1"]),
+        ("cachetime",            ["0", "1", "2", "3"]),
+        ("lru",                  ["0", "1"]),
+        # Clause DB reduction — small targets trigger cleanup frequently
+        ("rdbclstarget",         ["50", "500", "10000"]),
+        ("rdbeveryn",            ["100", "1000", "10000"]),
+        ("consolidateeveryn",    ["100", "1000", "30000"]),
+        ("lbd",                  ["1", "2", "3"]),
+        # Restarts
+        ("rstfirst",             ["100", "10000"]),
+        ("restart",              ["0", "1"]),
+        ("rsttype",              ["0", "4", "8"]),
+        ("maxrst",               ["-1", "2", "5"]),
+        ("maxcubesperrst",       ["2", "6"]),
+        # Arjun simplification
+        ("arjuncmsmult",         ["0.0001", "1"]),
+        ("arjunoraclemult",      ["0", "0.0001", "1"]),
+        ("arjunsamplcutoff",     ["2", "10", "100000"]),
+        ("arjunweakenlim",       ["10", "8000", "100000"]),
+        ("arjuniter1",           ["0", "1", "2"]),
+        ("arjuniter2",           ["0", "1", "2"]),
+        ("arjunbackwmaxc",       ["100", "20000"]),
+        ("arjunextendmaxconfl",  ["100", "1000"]),
+        # Tree decomposition — small tditers/tdsteps hits timeout paths
+        ("td",                   ["0", "0", "1"]),
+        ("tdlooktwcut",          ["2", "5", "26"]),
+        ("tditers",              [str(random.randint(0, 30))]),
+        ("tdsteps",              [str(random.randint(0, 1000))]),
+        ("tdlimit",              ["100", "10000", "100000"]),
+        ("tdmaxw",               ["20", "40", "60"]),
+        ("tdminw",               ["3", "7"]),
+        # Vivification — small vivifevery triggers vivif on tiny instances
+        ("vivifevery",           ["10", "100", "10000000"]),
+        ("vivifoutern",          ["1", "3"]),
+        # SBVA
+        ("sbvasteps",            ["0", "1", "100"]),
+        # Decision / polarity heuristics
+        ("polar",                ["0", "1", "2", "3"]),
+        ("decide",               ["0", "1"]),
+        ("vsadsadjust",          ["64", "256", "1024"]),
+        # BuDDy
+        ("buddy",                ["0", "0", "1"]),
+        ("buddymaxcls",          ["3", "6", "10"]),
+        # Precision / threading
+        ("mpfrprec",             ["64", "256"]),
+        ("bitsjobs",             ["1", "3", "5"]),
+    ]
+
+    # Binary (0/1) options
+    binary_opts = [
+        # Arjun
+        "arjunoraclefindbins", "arjunprobe", "arjungates",
+        "arjunextend", "arjunoraclegetlearnt", "arjunextendccnr",
+        # Preprocessing
+        "bce", "prob", "prebackbone", "resolvsub", "extraoracle",
+        # Puura
+        "puura", "puurabackbone", "puuraautarky",
+        # TD
+        "tdlook", "tdoptindep", "tduseadj", "tdcontract",
+        # SAT solver internals
+        "satsolver", "satrst", "satpolarcache", "satvsids",
+        # Vivification / SBVA
+        "vivif", "sbvabreak",
+        # Miscellaneous
+        "initact", "rdbkeepused", "updatelbdcutoff",
+        "allindep", "stripoptindep", "rstcheckcnt", "rstreadjust",
+    ]
+
+    parts = []
+    for flag, choices in choice_opts:
+        parts.extend(["--" + flag, random.choice(choices)])
+    for flag in binary_opts:
+        parts.extend(["--" + flag, random.choice(["0", "1"])])
+    return " ".join(parts) + " "
+
+
 def run_one_counter(solver, fname, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
@@ -589,35 +678,14 @@ if __name__ == "__main__":
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6.0])
         ganak_exact = True
-        ganak_extra = \
-            " --rstfirst " + random.choice(["100", "10000"]) +\
-            " --arjuncmsmult " +  random.choice(["0.0001", "1"]) +\
-            " --arjunoraclemult " +  random.choice(["0.0001", "1", "0"]) +\
-            " --epsilon " + str(epsilon) +\
-            " --delta " + str(delta) +\
-            " --puuraautarky " + random.choice(["1", "0"]) +\
-            " --puura " + random.choice(["0", "1", "1"]) +\
-            " --arjunsamplcutoff  " + random.choice(["2", "10", "100000"]) +\
-            " --td " + random.choice(["1", "0", "0"]) +\
-            " --tdlooktwcut " + random.choice(["2", "5"]) +\
-            " --tditers " + str(random.randint(0,30)) +\
-            " --tdsteps " + str(random.randint(0, 1000)) +\
-            " --bitsjobs " + random.choice(["1", "3", "5"]) +\
-            " --mpfrprec " + random.choice(["64", "256"]) +\
-            " --arjunweakenlim " + random.choice(["8000", "10", "100000"]) +\
-            " "
-            # " --hc " + random.choice(["1", "1", "0"]) +\
-        binary_options = [ "arjunoraclefindbins" ,"bce" ,"prob" ,"puurabackbone" ,"tdlook "
-                          ,"tdoptindep", "resolvsub", "arjunextendccnr"]
-        for opt in binary_options:
-            ganak_extra += " --" + opt + " " + random.choice(["0", "1"]) + " "
+        ganak_extra = gen_ganak_extra(epsilon, delta)
 
         if random.choice([False, False, False, True]):
-            ganak_extra += " --appmct " + random.choice(["0.3"])
+            ganak_extra += " --appmct " + random.choice(["0.3", "0.1"]) + " "
             ganak_exact = False
 
         if ganak_exact and random.choice([False, False, False, True]):
-            ganak_extra += " --threads 4"
+            ganak_extra += " --threads 4 "
 
         approx_extra = " --epsilon " + str(epsilon) +\
             " --delta " + str(delta) + " " +\
@@ -652,7 +720,8 @@ if __name__ == "__main__":
             Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
             Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
             Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
-            Solver("../ganak/build/ganak --mode 9 --verb 0 " + ganak_extra + mpqi_extra, True),
+            # Solver("../ganak/build/ganak --mode 9 --verb 0 " + ganak_extra + mpqi_extra, True),
+
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
