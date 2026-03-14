@@ -413,6 +413,12 @@ def gen_ganak_extra(epsilon, delta, mode):
     return " ".join(parts) + " "
 
 
+def make_ganak_solver(base, epsilon, delta, mode):
+    extra = gen_ganak_extra(epsilon, delta, mode)
+    exact = "--appmct" not in extra
+    return Solver(base + extra, exact)
+
+
 def gen_approxmc_extra(epsilon, delta):
     return " --epsilon %s --delta %s --arjun %s " % (epsilon, delta, random.choice(["0", "1"]))
 
@@ -707,18 +713,16 @@ if __name__ == "__main__":
         # 8=mpfi intervals
         ganak_base = "../ganak/build/ganak --verb 0 "
         if not weighted:
-            _extra0 = gen_ganak_extra(epsilon, delta, mode=0)
-            _exact0 = "--appmct" not in _extra0
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
-            Solver(ganak_base +_extra0, _exact0),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=0),
             ])
         else:
             solvers.extend([
-            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=1), True),
-            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=7), True),
-            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=8), True),
-            # Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=9), True),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=1),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=7),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=8),
+            # make_ganak_solver(ganak_base, epsilon, delta, mode=9),
 
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
@@ -737,8 +741,8 @@ if __name__ == "__main__":
             weighted = True
             proj = False
             solvers = [
-                Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=6), True),
-                Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=2), True),
+                make_ganak_solver(ganak_base, epsilon, delta, mode=6),
+                make_ganak_solver(ganak_base, epsilon, delta, mode=2),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
