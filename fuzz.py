@@ -338,7 +338,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("consolidateeveryn",    ["100", "1000", "30000"]),
         ("lbd",                  ["1", "2", "3"]),
         # Restarts
-        ("rstfirst",             ["100", "10000"]),
+        ("rstfirst",             ["3", "10", "100", "10000"]),
         ("restart",              ["0", "1"]),
         ("rsttype",              ["0", "4", "8"]),
         ("maxrst",               ["-1", "2", "5"]),
@@ -391,9 +391,12 @@ def gen_ganak_extra(epsilon, delta, mode):
         "satsolver", "satrst", "satpolarcache", "satvsids",
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
-        "allindep", "stripoptindep", "rstreadjust",
+        "stripoptindep", "rstreadjust",
         "vivif",
     ]
+    # NOTE: allindep actually changes the meaning of the CNF
+    #       and therefore the count! It cannot be used while fuzzing.
+
     # only for exact counting modes
     if mode in [1, 2, 3, 4, 5, 6]:
         binary_opts.append("rstcheckcnt")
