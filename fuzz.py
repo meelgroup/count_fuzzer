@@ -60,6 +60,10 @@ def set_up_parser():
       help="Only run N tests. Default: %default")
 
     parser.add_option(
+      "--buddy", dest="buddy", default=False,
+      action="store_true", help="Fuzz buddy, too")
+
+    parser.add_option(
       "--cpx", dest="cpx", default=False,
       action="store_true", help="Complex numbers only")
 
@@ -365,9 +369,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("polar",                ["0", "1", "2", "3"]),
         ("decide",               ["0", "1"]),
         ("vsadsadjust",          ["64", "256", "1024"]),
-        # BuDDy
-        ("buddy",                ["0", "0", "1"]),
-        ("buddymaxcls",          ["3", "6", "10"]),
         # Precision / threading
         ("mpfrprec",             ["64", "256"]),
         ("bitsjobs",             ["1", "3", "5"]),
@@ -403,8 +404,11 @@ def gen_ganak_extra(epsilon, delta, mode):
     for flag in binary_opts:
         parts.extend(["--" + flag, random.choice(["0", "1"])])
 
-    if mode == 0 and random.choice([False, False, False, True]):
-        parts.extend(["--appmct", random.choice(["0.3", "0.1"])])
+    if options.buddy and mode == 0:
+        parts.extend(["--buddy", random.choice(["0", "0", "1"]),
+                      "--buddymaxcls", random.choice(["3", "6", "10"])])
+        if random.choice([False, False, False, True]):
+            parts.extend(["--appmct", random.choice(["0.3", "0.1"])])
 
     if mode == 9 and random.randint(0, 2) == 0:
         parts.extend(["--mpqicrosscount", str(random.randint(0, 50)),
