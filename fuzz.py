@@ -312,7 +312,7 @@ def unique_file(fname_begin, fname_end=".cnf", max_num_files=2700):
             exit(-1)
 
 
-def gen_ganak_extra(epsilon, delta):
+def gen_ganak_extra(epsilon, delta, mode):
     """Generate random ganak options targeting broad code coverage.
 
     Small values for cache/RDB/vivif thresholds are intentional:
@@ -371,6 +371,7 @@ def gen_ganak_extra(epsilon, delta):
         # Precision / threading
         ("mpfrprec",             ["64", "256"]),
         ("bitsjobs",             ["1", "3", "5"]),
+        ("threads",              ["1", "1", "4"]),
     ]
 
     # Binary (0/1) options
@@ -378,6 +379,7 @@ def gen_ganak_extra(epsilon, delta):
         # Arjun
         "arjunoraclefindbins", "arjunprobe", "arjungates",
         "arjunextend", "arjunoraclegetlearnt", "arjunextendccnr",
+        "sbvabreak",
         # Preprocessing
         "bce", "prob", "prebackbone", "resolvsub", "extraoracle",
         # Puura
@@ -386,19 +388,33 @@ def gen_ganak_extra(epsilon, delta):
         "tdlook", "tdoptindep", "tduseadj", "tdcontract",
         # SAT solver internals
         "satsolver", "satrst", "satpolarcache", "satvsids",
-        # Vivification / SBVA
-        "vivif", "sbvabreak",
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
-        "allindep", "stripoptindep", "rstcheckcnt", "rstreadjust",
+        "allindep", "stripoptindep", "rstreadjust",
+        "vivif",
     ]
+    # only for exact counting modes
+    if mode in [1, 2, 3, 4, 5, 6]:
+        binary_opts.append("rstcheckcnt")
 
-    parts = []
+    parts = ["--mode", str(mode)]
     for flag, choices in choice_opts:
         parts.extend(["--" + flag, random.choice(choices)])
     for flag in binary_opts:
         parts.extend(["--" + flag, random.choice(["0", "1"])])
+
+    if mode == 0 and random.choice([False, False, False, True]):
+        parts.extend(["--appmct", random.choice(["0.3", "0.1"])])
+
+    if mode == 9 and random.randint(0, 2) == 0:
+        parts.extend(["--mpqicrosscount", str(random.randint(0, 50)),
+                      "--mpqiinitbytes",  str(random.randint(10, 200))])
+
     return " ".join(parts) + " "
+
+
+def gen_approxmc_extra(epsilon, delta):
+    return " --epsilon %s --delta %s --arjun %s " % (epsilon, delta, random.choice(["0", "1"]))
 
 
 def run_one_counter(solver, fname, seed=42):
@@ -677,21 +693,9 @@ if __name__ == "__main__":
 
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6.0])
-        ganak_exact = True
-        ganak_extra = gen_ganak_extra(epsilon, delta)
+        approx_extra = gen_approxmc_extra(epsilon, delta)
 
-        if random.choice([False, False, False, True]):
-            ganak_extra += " --appmct " + random.choice(["0.3", "0.1"]) + " "
-            ganak_exact = False
-
-        if ganak_exact and random.choice([False, False, False, True]):
-            ganak_extra += " --threads 4 "
-
-        approx_extra = " --epsilon " + str(epsilon) +\
-            " --delta " + str(delta) + " " +\
-            " --arjun " + random.choice(["0", "1"]) + " "
-
-
+        # MODES
         # 0=integer counting,
         # 1=weighted counting over the rationals,
         # 2=complex rational numbers,
@@ -701,26 +705,20 @@ if __name__ == "__main__":
         # 6=mpfr floating point complex numbers (see --mpfrprecision),
         # 7=mpfr floating point real numbers (see --mpfrprecision),
         # 8=mpfi intervals
-
+        ganak_base = "../ganak/build/ganak --verb 0 "
         if not weighted:
+            _extra0 = gen_ganak_extra(epsilon, delta, mode=0)
+            _exact0 = "--appmct" not in _extra0
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
-            # Solver("../ganak/build/ganak --mode 0 --verb 0 --arjun 0 --td 0", False),
-            Solver("../ganak/build/ganak --mode 0 --verb 0 " + ganak_extra, ganak_exact),
+            Solver(ganak_base +_extra0, _exact0),
             ])
         else:
-            mpqi_extra = ""
-            if random.randint(0, 2) == 0:
-                # Force crossover to happen on small instances (1 in 3 chance)
-                cc = random.randint(0, 50)
-                ib = random.randint(10, 200)
-                mpqi_extra = " --mpqicrosscount %d --mpqiinitbytes %d" % (cc, ib)
             solvers.extend([
-            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 1 --td 0", True),
-            Solver("../ganak/build/ganak --mode 1 --verb 0 --arjun 0 --td 0", True),
-            Solver("../ganak/build/ganak --mode 7 --verb 0 " + ganak_extra, True),
-            Solver("../ganak/build/ganak --mode 8 --verb 0 " + ganak_extra, True),
-            # Solver("../ganak/build/ganak --mode 9 --verb 0 " + ganak_extra + mpqi_extra, True),
+            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=1), True),
+            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=7), True),
+            Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=8), True),
+            # Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=9), True),
 
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
@@ -739,9 +737,8 @@ if __name__ == "__main__":
             weighted = True
             proj = False
             solvers = [
-                Solver("../ganak/build/ganak --mode 6 --verb 0 --arjun 0 --td 0", True),
-                # appmc is not working in weighted mode, so always exact
-                Solver("../ganak/build/ganak --mode 6 --verb 0 " + ganak_extra, True),
+                Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=6), True),
+                Solver(ganak_base + gen_ganak_extra(epsilon, delta, mode=2), True),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
