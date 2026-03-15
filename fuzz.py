@@ -111,6 +111,11 @@ def set_up_parser():
     parser.add_option(
         "--num-samples", dest="num_samples", type=int, default=3,
         help="How many samples to take for approximate counters. Default: %default")
+
+    parser.add_option(
+      "--threads", dest="threads", type=int, default=None,
+      help="If set, fuzz ONLY with --threads K given to ganak. Default: random")
+
     return parser
 
 
@@ -373,7 +378,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Precision / threading
         ("mpfrprec",             ["64", "256"]),
         ("bitsjobs",             ["1", "3", "5"]),
-        ("threads",              ["1", "1", "4"]),
+        ("threads",              [str(options.threads)] if options.threads is not None else ["1", "1", "4"]),
     ]
 
     # Restarts
