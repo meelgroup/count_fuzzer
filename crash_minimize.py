@@ -32,7 +32,7 @@ def run_and_check_crash(cmd):
     print(f"    Running: {cmd}")
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True,
-                                text=True, timeout=120)
+                                text=True, timeout=20)
     except subprocess.TimeoutExpired:
         print("    -> timeout (treating as no crash)")
         return False
