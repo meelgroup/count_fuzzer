@@ -96,6 +96,10 @@ def set_up_parser():
       action="store_true", help="With this, weights are MESSY and they often add up to 0")
 
     parser.add_option(
+      "--exact", action="store_true", default=False,
+      dest="exact", help="Only exact counting")
+
+    parser.add_option(
       "--noimag", dest="noimag", default=False, action="store_true",
       help="Set imag to 0. Default: %default")
 
@@ -316,6 +320,9 @@ def unique_file(fname_begin, fname_end=".cnf", max_num_files=2700):
             exit(-1)
 
 
+# All meaningful options.
+# * allindep changes the meaning of the CNF
+#   and therefore the count! It cannot be used while fuzzing.
 def gen_ganak_extra(epsilon, delta, mode):
     """Generate random ganak options targeting broad code coverage.
 
@@ -337,12 +344,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("rdbeveryn",            ["100", "1000", "10000"]),
         ("consolidateeveryn",    ["100", "1000", "30000"]),
         ("lbd",                  ["1", "2", "3"]),
-        # Restarts
-        ("rstfirst",             ["3", "10", "100", "10000"]),
-        ("restart",              ["0", "1"]),
-        ("rsttype",              ["0", "4", "8"]),
-        ("maxrst",               ["-1", "2", "5"]),
-        ("maxcubesperrst",       ["2", "6"]),
         # Arjun simplification
         ("arjuncmsmult",         ["0.0001", "1"]),
         ("arjunoraclemult",      ["0", "0.0001", "1"]),
@@ -375,6 +376,16 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("threads",              ["1", "1", "4"]),
     ]
 
+    # Restarts
+    if mode in [0]:
+        choice_opts.extend([
+        ("rstfirst",             ["3", "10", "100", "10000"]),
+        ("restart",              ["0", "1"]),
+        ("rsttype",              ["0", "4", "8"]),
+        ("maxrst",               ["-1", "2", "5"]),
+        ("maxcubesperrst",       ["2", "6"]),
+        ])
+
     # Binary (0/1) options
     binary_opts = [
         # Arjun
@@ -388,17 +399,19 @@ def gen_ganak_extra(epsilon, delta, mode):
         # TD
         "tdlook", "tdoptindep", "tduseadj", "tdcontract",
         # SAT solver internals
-        "satsolver", "satrst", "satpolarcache", "satvsids",
+        "satrst", "satpolarcache", "satvsids",
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
         "stripoptindep", "rstreadjust",
         "vivif",
     ]
-    # NOTE: allindep actually changes the meaning of the CNF
-    #       and therefore the count! It cannot be used while fuzzing.
+
+    # weighted mode needs the sat solver
+    if mode in [0]:
+        binary_opts.append("satsolver")
 
     # only for exact counting modes
-    if mode in [1, 2, 3, 4, 5, 6]:
+    if mode in [0, 1, 2, 3, 4, 5]:
         binary_opts.append("rstcheckcnt")
 
     parts = ["--mode", str(mode)]
@@ -727,13 +740,18 @@ if __name__ == "__main__":
         else:
             solvers.extend([
             make_ganak_solver(ganak_base, epsilon, delta, mode=1),
-            make_ganak_solver(ganak_base, epsilon, delta, mode=7),
-            make_ganak_solver(ganak_base, epsilon, delta, mode=8),
-            # make_ganak_solver(ganak_base, epsilon, delta, mode=9),
-
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
+            if not options.exact:
+                solvers.extend([
+                    make_ganak_solver(ganak_base, epsilon, delta, mode=7),
+                    make_ganak_solver(ganak_base, epsilon, delta, mode=8),
+                    # make_ganak_solver(ganak_base, epsilon, delta, mode=9),
+                ])
+            else:
+                solvers.append(make_ganak_solver(ganak_base, epsilon, delta, mode=1))
+
 
         if weighted and proj:
             solvers.extend([
@@ -748,10 +766,11 @@ if __name__ == "__main__":
             weighted = True
             proj = False
             solvers = [
-                make_ganak_solver(ganak_base, epsilon, delta, mode=6),
                 make_ganak_solver(ganak_base, epsilon, delta, mode=2),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
+            if not options.exact:
+                solvers.append(make_ganak_solver(ganak_base, epsilon, delta, mode=6))
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
