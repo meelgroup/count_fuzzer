@@ -10,8 +10,6 @@ import sys
 import os
 import subprocess
 import tempfile
-import re
-from pathlib import Path
 
 
 def parse_command(cmd_string):
@@ -234,7 +232,7 @@ def minimize_clauses(binary_and_args, original_cnf):
         output_file = original_cnf.replace('.cnf', '_min_clauses.cnf')
         write_cnf_file(output_file, num_vars, current_clauses, special_lines)
 
-        print(f"\nMinimization complete!")
+        print("\nMinimization complete!")
         print(f"  Original clauses: {len(clauses)}")
         print(f"  Removed clauses: {total_removed}")
         print(f"  Remaining clauses: {len(current_clauses)}")
@@ -243,9 +241,9 @@ def minimize_clauses(binary_and_args, original_cnf):
 
         # Verify the minimized file still crashes
         if test_crash(binary_and_args, output_file):
-            print(f"\n✓ Verified: Minimized file still crashes the binary")
+            print("\n✓ Verified: Minimized file still crashes the binary")
         else:
-            print(f"\n✗ WARNING: Minimized file does not crash the binary!")
+            print("\n✗ WARNING: Minimized file does not crash the binary!")
 
     finally:
         # Clean up temporary file
