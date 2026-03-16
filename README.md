@@ -44,6 +44,25 @@ Now run one of:
 When the fuzzer finds a crash or incorrect count, you can use these tools to
 minimize the test case:
 
+### minim_all.py (Recommended)
+Automated minimization pipeline that runs all minimizers in sequence. This is
+the easiest way to minimize a test case - it automatically detects the failure
+type (crash or timeout), backs up the original file, and runs the appropriate
+minimizers in optimal order:
+
+1. Minimizes command-line options (for crashes)
+2. Minimizes weight lines (if present)
+3. Minimizes CNF clauses
+4. Verifies each step preserves the failure
+
+```bash
+./minim_all.py "../ganak/build/ganak --mode 1 --polar 1 file.cnf"
+```
+
+This will produce a fully minimized test case with all three minimization
+techniques applied and verified. The original CNF file is backed up
+automatically.
+
 ### minim_cnf.py
 Minimizes CNF files by removing clauses using delta debugging while preserving
 a crash. Useful for creating minimal reproducible test cases from large
