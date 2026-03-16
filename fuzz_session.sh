@@ -2,7 +2,7 @@
 
 SESSION="fuzzing"
 DIR="/home/soos/development/sat_solvers/count_fuzzer"
-CMD="./fuzz.py --exact"
+CMD="./fuzz.py --exact --threads 1"
 
 # Attach if session already exists
 if tmux has-session -t "$SESSION" 2>/dev/null; then
@@ -16,7 +16,7 @@ tmux new-session -d -s "$SESSION" -c "$DIR" -n "fuzz-1"
 tmux send-keys -t "$SESSION:1" "$CMD" Enter
 
 # Create remaining windows
-for i in $(seq 2 14); do
+for i in $(seq 2 24); do
   tmux new-window -t "$SESSION" -c "$DIR" -n "fuzz-$i"
   tmux send-keys -t "$SESSION:$i" "$CMD" Enter
 done
