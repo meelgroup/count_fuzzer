@@ -46,14 +46,14 @@ minimize the test case:
 
 ### minim_all.py (Recommended)
 Automated minimization pipeline that runs all minimizers in sequence. This is
-the easiest way to minimize a test case - it automatically detects the failure
-type (crash or timeout), backs up the original file, and runs the appropriate
+the easiest way to minimize a test case - it automatically detects the result
+type (crash or count), backs up the original file, and runs the appropriate
 minimizers in optimal order:
 
-1. Minimizes command-line options (for crashes)
+1. Minimizes command-line options (crash or count preserving)
 2. Minimizes weight lines (if present)
-3. Minimizes CNF clauses
-4. Verifies each step preserves the failure
+3. Minimizes CNF clauses using delta debugging
+4. Verifies each step preserves the crash or count
 
 ```bash
 ./minim_all.py "../ganak/build/ganak --mode 1 --polar 1 file.cnf"
@@ -61,19 +61,21 @@ minimizers in optimal order:
 
 This will produce a fully minimized test case with all three minimization
 techniques applied and verified. The original CNF file is backed up
-automatically.
+automatically. Note: Does not handle timeouts, only crashes and counts.
 
 ### minim_cnf.py
-Minimizes CNF files by removing clauses using delta debugging while preserving
-a crash. Useful for creating minimal reproducible test cases from large
-fuzzer-generated files.
+Minimizes CNF files by removing clauses while preserving a crash. Uses delta
+debugging (hierarchical delta debugging algorithm) to efficiently find the
+minimal set of clauses. Starts with coarse-grained removal and progressively
+refines to find the smallest reproducible test case.
 
 ```bash
 ./minim_cnf.py "../ganak/build/ganak --mode 1 --polar 1 file.cnf"
 ```
 
 This will create `file_min_clauses.cnf` with the minimal set of clauses that
-still causes the crash.
+still causes the crash. Delta debugging is much faster than trying to remove
+clauses one-by-one.
 
 ### minim_weights.py
 Minimizes weight lines in CNF files while preserving a crash. Removes
