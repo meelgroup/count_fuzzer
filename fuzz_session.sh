@@ -1,8 +1,21 @@
 #!/bin/bash
+#
+# Create a tmux session with 24 fuzzing windows running fuzz.py
+#
+# Usage:
+#   ./fuzz_session.sh [options]
+#
+# Examples:
+#   ./fuzz_session.sh                    # Run fuzz.py with default options
+#   ./fuzz_session.sh --exact --threads 1  # Run with --exact --threads 1
+#   ./fuzz_session.sh --weighted --proj    # Run weighted projected fuzzing
+#
+# All arguments passed to this script are forwarded to fuzz.py in each window.
+# If the session already exists, it will attach to it instead of creating a new one.
 
 SESSION="fuzzing"
 DIR="/home/soos/development/sat_solvers/count_fuzzer"
-CMD="./fuzz.py --exact --threads 1"
+CMD="./fuzz.py $@"
 
 # Attach if session already exists
 if tmux has-session -t "$SESSION" 2>/dev/null; then
