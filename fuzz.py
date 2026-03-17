@@ -382,14 +382,18 @@ def gen_ganak_extra(epsilon, delta, mode):
     ]
 
     # Restarts
-    if mode in [0]:
-        choice_opts.extend([
-        ("rstfirst",             ["3", "10", "100", "10000"]),
+    # if mode in [0]:
+    choice_opts.extend([
         ("restart",              ["0", "1"]),
+        ("rstfirst",             ["3", "10", "100", "10000"]),
         ("rsttype",              ["0", "4", "8"]),
         ("maxrst",               ["-1", "2", "5"]),
         ("maxcubesperrst",       ["2", "6"]),
-        ])
+        ("cuberesolve",          ["0", "1"]),
+        ("cubeflp",              ["0", "1"]),
+        ("smallcubedisable",     ["0", "1"]),
+        ("tdwrstdecay",          ["1.0", "0.9", "0.5"]),
+    ])
 
     # Binary (0/1) options
     binary_opts = [
