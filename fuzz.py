@@ -307,7 +307,7 @@ def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
     return call
 
 
-def unique_file(fname_begin, fname_end=".cnf", max_num_files=2700):
+def unique_file(fname_begin, fname_end=".cnf", max_num_files=10000):
     counter = 1
     while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
