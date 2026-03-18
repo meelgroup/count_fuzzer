@@ -392,6 +392,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("cuberesolve",          ["0", "1"]),
         ("cubeflp",              ["0", "1"]),
         ("smallcubedisable",     ["0", "1"]),
+        ("extendcubes",          ["0", "1"]),
         ("tdwrstdecay",          ["1.0", "0.9", "0.5"]),
     ])
 
