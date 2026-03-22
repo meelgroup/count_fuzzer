@@ -149,7 +149,7 @@ def backup_file(filepath):
 
 def run_minimizer_script(script_name, cmd):
     """
-    Run one of the minimizer scripts and capture its output.
+    Run one of the minimizer scripts and stream its output in real-time.
     Returns (success, minimized_command)
     """
     script_path = os.path.join(os.path.dirname(__file__), script_name)
@@ -161,44 +161,53 @@ def run_minimizer_script(script_name, cmd):
     print(f"\n{'='*80}")
     print(f"Running {script_name}...")
     print(f"{'='*80}")
+    sys.stdout.flush()
 
-    # Run the minimizer and capture output
+    # Run the minimizer with streaming output
+    process = None
     try:
-        result = subprocess.run(
-            [sys.executable, script_path, cmd],
-            capture_output=True,
+        # Use -u flag to force unbuffered output from Python subprocess
+        process = subprocess.Popen(
+            [sys.executable, "-u", script_path, cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            timeout=600  # 10 minute timeout for minimizers
+            bufsize=1,  # Line buffered
         )
 
-        # Print the minimizer's output
-        print(result.stdout)
-        if result.stderr:
-            print("STDERR:", result.stderr)
+        # Stream output line by line
+        output_lines = []
+        if process.stdout:
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    print(line, end='', flush=True)  # Print immediately with flush
+                    output_lines.append(line)
+        
+        # Wait for process to complete
+        returncode = process.wait(timeout=600)  # 10 minute timeout
 
-        if result.returncode != 0:
-            print(f"WARNING: {script_name} exited with code "
-                  f"{result.returncode}")
+        if returncode != 0:
+            print(f"\nWARNING: {script_name} exited with code {returncode}")
             return False, cmd
 
         # Extract minimized command from output
-        # Look for "Minimized command:" in output
-        for line in result.stdout.splitlines():
+        for i, line in enumerate(output_lines):
             if "Minimized command:" in line:
                 # Next line should be the command
-                idx = result.stdout.splitlines().index(line)
-                if idx + 1 < len(result.stdout.splitlines()):
-                    minimized = result.stdout.splitlines()[idx + 1].strip()
+                if i + 1 < len(output_lines):
+                    minimized = output_lines[i + 1].strip()
                     return True, minimized
 
         # If we didn't find minimized command, assume no change
         return True, cmd
 
     except subprocess.TimeoutExpired:
-        print(f"ERROR: {script_name} timed out after 10 minutes")
+        print(f"\nERROR: {script_name} timed out after 10 minutes")
+        if process:
+            process.kill()
         return False, cmd
     except Exception as e:
-        print(f"ERROR running {script_name}: {e}")
+        print(f"\nERROR running {script_name}: {e}")
         return False, cmd
 
 
@@ -281,13 +290,9 @@ def main():
 
     # Step 2: Minimize command-line options
     print(f"\n{'='*80}")
-    if result_type == "crash":
-        print("STEP 2: Minimizing command-line options (crash)")
-        minimizer = "minim_opts_crash.py"
-    else:  # count
-        print("STEP 2: Minimizing command-line options (count)")
-        minimizer = "minim_opts_count.py"
+    print("STEP 2: Minimizing command-line options")
     print(f"{'='*80}")
+    minimizer = "minim_opts.py"
 
     success, minimized_cmd = run_minimizer_script(minimizer, current_cmd)
 

@@ -18,27 +18,69 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Minimizes a crashing ganak command by stripping options that don't affect
-# the non-zero exit code (i.e., the crash still occurs).
+"""
+Minimizes a ganak command by stripping options while preserving either:
+- A crash (non-zero exit code), or
+- A specific count value (within 0.1% tolerance)
+
+Automatically detects which mode to use based on the initial command result.
+"""
 
 import sys
 import subprocess
 
 
-KEEP_OPTS = {"--mode"}
+KEEP_OPTS = {"--mode", "--verb"}
+COUNT_TOLERANCE = 0.001  # 0.1%
 
 
-def run_and_check_crash(cmd):
+def run_command(cmd, timeout=120):
+    """Run command and return (returncode, output, timed_out)."""
     print(f"    Running: {cmd}")
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True,
-                                text=True, timeout=20)
+                                text=True, timeout=timeout)
+        return result.returncode, result.stdout + result.stderr, False
     except subprocess.TimeoutExpired:
-        print("    -> timeout (treating as no crash)")
+        print("    -> timeout")
+        return -1, "", True
+
+
+def extract_count(output):
+    """Extract count from solver output, returns None if not found."""
+    for line in output.splitlines():
+        line = line.strip()
+        
+        if line.startswith("s mc") or line.startswith("s pmc"):
+            return float(line.split()[2])
+        if "c s exact quadruple float interval [" in line:
+            parts = line.split()
+            return (float(parts[7]) + float(parts[8])) / 2.0
+        if "c s exact quadruple float" in line:
+            return float(line.split()[5])
+        if "c s exact arb frac" in line:
+            parts = line.split()
+            if parts[5] == "[":
+                return (float(parts[6]) + float(parts[7])) / 2.0
+            frac = parts[5].split("/")
+            return float(frac[0]) if len(frac) < 2 else float(frac[0]) / float(frac[1])
+        if "c s exact arb float" in line or "c s exact arb int" in line:
+            return float(line.split()[5])
+        if "c s exact double prec-sci" in line or "s exact double prec-sci" in line:
+            return float(line.split()[5])
+        if "c s approx arb int" in line:
+            return float(line.split()[5])
+    
+    return None
+
+
+def counts_close(a, b):
+    """Check if two counts are within tolerance."""
+    if a is None or b is None:
         return False
-    crashed = result.returncode != 0
-    print(f"    -> exit code {result.returncode} ({'crash' if crashed else 'no crash'})")
-    return crashed
+    if b == 0.0:
+        return abs(a) < 1e-10
+    return abs(a - b) / abs(b) <= COUNT_TOLERANCE
 
 
 def parse_command(cmd_str):
@@ -66,6 +108,7 @@ def parse_command(cmd_str):
 
 
 def build_command(executable, options, input_file):
+    """Build command string from components."""
     parts = [executable]
     for opt, val in options:
         parts.append(opt)
@@ -76,17 +119,55 @@ def build_command(executable, options, input_file):
 
 
 def minimize(cmd_str):
+    """Minimize command options while preserving crash or count."""
     executable, options, input_file = parse_command(cmd_str)
 
     print(f"Original command:\n  {cmd_str}\n")
-    if not run_and_check_crash(cmd_str):
-        print("ERROR: original command does not crash (exit code 0).")
+    
+    # Detect mode: crash or count
+    returncode, output, timed_out = run_command(cmd_str)
+    
+    if timed_out:
+        print("ERROR: Original command timed out.")
         sys.exit(1)
-    print("Original command crashes. Starting minimization...\n")
-
-    current = list(options)
+    
+    # Determine if we're minimizing for crash or count
+    if returncode != 0:
+        mode = "crash"
+        print(f"Mode: CRASH (exit code {returncode})")
+        print("Will minimize while preserving the crash.\n")
+        
+        def property_preserved(cmd):
+            ret, _, timeout = run_command(cmd)
+            if timeout:
+                print("    -> timeout (treating as no crash)")
+                return False
+            crashed = ret != 0
+            print(f"    -> exit code {ret} ({'crash' if crashed else 'no crash'})")
+            return crashed
+    else:
+        # Try to extract count
+        original_count = extract_count(output)
+        if original_count is None:
+            print("ERROR: Command succeeded but could not extract count.")
+            sys.exit(1)
+        
+        mode = "count"
+        print(f"Mode: COUNT (value: {original_count})")
+        print("Will minimize while preserving the count.\n")
+        
+        def property_preserved(cmd):
+            ret, out, timeout = run_command(cmd)
+            if timeout:
+                return False
+            count = extract_count(out)
+            same = counts_close(count, original_count)
+            print(f"    -> count: {count} ({'same' if same else 'different'})")
+            return same
 
     # First pass: remove unnecessary options
+    current = list(options)
+    
     for opt, val in options:
         if opt in KEEP_OPTS:
             continue
@@ -97,11 +178,11 @@ def minimize(cmd_str):
         label = f"{opt} {val}" if val is not None else opt
         print(f"Trying without {label} ...")
 
-        if run_and_check_crash(trial_cmd):
-            print(f"  -> still crashes, dropping {label}\n")
+        if property_preserved(trial_cmd):
+            print(f"  -> property preserved, dropping {label}\n")
             current = trial
         else:
-            print(f"  -> no longer crashes, keeping {label}\n")
+            print(f"  -> property lost, keeping {label}\n")
 
     # Second pass: try to simplify remaining options
     # Try to set/add --td 0
@@ -118,22 +199,22 @@ def minimize(cmd_str):
             trial = current.copy()
             trial[td_idx] = ("--td", "0")
             trial_cmd = build_command(executable, trial, input_file)
-            if run_and_check_crash(trial_cmd):
-                print("  -> still crashes, setting --td 0\n")
+            if property_preserved(trial_cmd):
+                print("  -> property preserved, setting --td 0\n")
                 current = trial
             else:
-                print("  -> no longer crashes, keeping original --td value\n")
+                print("  -> property lost, keeping original --td value\n")
     else:
         # --td is not present, try adding --td 0
         print("Trying to add --td 0 ...")
         trial = current.copy()
         trial.append(("--td", "0"))
         trial_cmd = build_command(executable, trial, input_file)
-        if run_and_check_crash(trial_cmd):
-            print("  -> still crashes, adding --td 0\n")
+        if property_preserved(trial_cmd):
+            print("  -> property preserved, adding --td 0\n")
             current = trial
         else:
-            print("  -> no longer crashes, not adding --td 0\n")
+            print("  -> property lost, not adding --td 0\n")
 
     # Try to set/add --arjun 0
     arjun_idx = None
@@ -149,22 +230,22 @@ def minimize(cmd_str):
             trial = current.copy()
             trial[arjun_idx] = ("--arjun", "0")
             trial_cmd = build_command(executable, trial, input_file)
-            if run_and_check_crash(trial_cmd):
-                print("  -> still crashes, setting --arjun 0\n")
+            if property_preserved(trial_cmd):
+                print("  -> property preserved, setting --arjun 0\n")
                 current = trial
             else:
-                print("  -> no longer crashes, keeping original --arjun value\n")
+                print("  -> property lost, keeping original --arjun value\n")
     else:
         # --arjun is not present, try adding --arjun 0
         print("Trying to add --arjun 0 ...")
         trial = current.copy()
         trial.append(("--arjun", "0"))
         trial_cmd = build_command(executable, trial, input_file)
-        if run_and_check_crash(trial_cmd):
-            print("  -> still crashes, adding --arjun 0\n")
+        if property_preserved(trial_cmd):
+            print("  -> property preserved, adding --arjun 0\n")
             current = trial
         else:
-            print("  -> no longer crashes, not adding --arjun 0\n")
+            print("  -> property lost, not adding --arjun 0\n")
 
     # Try to set --threads 1 --debugthreads 1 if threads is present
     threads_idx = None
@@ -194,11 +275,11 @@ def minimize(cmd_str):
                 trial.insert(threads_idx + 1, ("--debugthreads", "1"))
             
             trial_cmd = build_command(executable, trial, input_file)
-            if run_and_check_crash(trial_cmd):
-                print("  -> still crashes, setting --threads 1 --debugthreads 1\n")
+            if property_preserved(trial_cmd):
+                print("  -> property preserved, setting --threads 1 --debugthreads 1\n")
                 current = trial
             else:
-                print("  -> no longer crashes, keeping original thread settings\n")
+                print("  -> property lost, keeping original thread settings\n")
 
     final_cmd = build_command(executable, current, input_file)
     print("Minimized command:")
@@ -208,6 +289,7 @@ def minimize(cmd_str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: crash_minimize.py '<full ganak command>'")
+        print("Usage: minim_opts.py '<full ganak command>'")
+        print("\nAutomatically detects whether to minimize for crash or count.")
         sys.exit(1)
     minimize(sys.argv[1])

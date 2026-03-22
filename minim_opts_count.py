@@ -122,6 +122,7 @@ def minimize(cmd_str):
 
     current = list(options)
 
+    # First pass: remove unnecessary options
     for opt, val in options:
         if opt in KEEP_OPTS:
             continue
@@ -138,6 +139,80 @@ def minimize(cmd_str):
             current = trial
         else:
             print(f"  -> different count ({count}), keeping {label}\n")
+
+    # Second pass: try to simplify remaining options
+    # Try to set --td 0 if it's present
+    td_idx = None
+    for i, (opt, val) in enumerate(current):
+        if opt == "--td":
+            td_idx = i
+            break
+    
+    if td_idx is not None and current[td_idx][1] != "0":
+        print("Trying to set --td 0 ...")
+        trial = current.copy()
+        trial[td_idx] = ("--td", "0")
+        trial_cmd = build_command(executable, trial, input_file)
+        count = run_and_get_count(trial_cmd)
+        if counts_close(count, original_count):
+            print(f"  -> same count ({count}), setting --td 0\n")
+            current = trial
+        else:
+            print(f"  -> different count ({count}), keeping original --td value\n")
+
+    # Try to set --arjun 0 if it's present
+    arjun_idx = None
+    for i, (opt, val) in enumerate(current):
+        if opt == "--arjun":
+            arjun_idx = i
+            break
+    
+    if arjun_idx is not None and current[arjun_idx][1] != "0":
+        print("Trying to set --arjun 0 ...")
+        trial = current.copy()
+        trial[arjun_idx] = ("--arjun", "0")
+        trial_cmd = build_command(executable, trial, input_file)
+        count = run_and_get_count(trial_cmd)
+        if counts_close(count, original_count):
+            print(f"  -> same count ({count}), setting --arjun 0\n")
+            current = trial
+        else:
+            print(f"  -> different count ({count}), keeping original --arjun value\n")
+
+    # Try to set --threads 1 --debugthreads 1 if threads is present
+    threads_idx = None
+    debugthreads_idx = None
+    for i, (opt, val) in enumerate(current):
+        if opt == "--threads":
+            threads_idx = i
+        if opt == "--debugthreads":
+            debugthreads_idx = i
+    
+    if threads_idx is not None:
+        need_change = current[threads_idx][1] != "1"
+        if debugthreads_idx is not None:
+            need_change = need_change or current[debugthreads_idx][1] != "1"
+        else:
+            # debugthreads not present, need to add it
+            need_change = True
+        
+        if need_change:
+            print("Trying to set --threads 1 --debugthreads 1 ...")
+            trial = current.copy()
+            trial[threads_idx] = ("--threads", "1")
+            if debugthreads_idx is not None:
+                trial[debugthreads_idx] = ("--debugthreads", "1")
+            else:
+                # Insert --debugthreads 1 right after --threads
+                trial.insert(threads_idx + 1, ("--debugthreads", "1"))
+            
+            trial_cmd = build_command(executable, trial, input_file)
+            count = run_and_get_count(trial_cmd)
+            if counts_close(count, original_count):
+                print(f"  -> same count ({count}), setting --threads 1 --debugthreads 1\n")
+                current = trial
+            else:
+                print(f"  -> different count ({count}), keeping original thread settings\n")
 
     final_cmd = build_command(executable, current, input_file)
     print("Minimized command:")
