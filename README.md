@@ -105,6 +105,32 @@ that reproduces the issue.
 ./minim_opts_count.py "../ganak/build/ganak --mode 1 --polar 1 --cache 0 --lru 1 file.cnf"
 ```
 
+### minim_opts.py
+Unified option minimizer that auto-detects whether to preserve a crash or a
+count. Removes unnecessary options, then tries to simplify by setting/adding
+`--td 0`, `--arjun 0`, and `--threads 1 --debugthreads 1`.
+
+```bash
+./minim_opts.py "../ganak/build/ganak --mode 1 --polar 1 file.cnf"
+```
+
+## Preprocessing tools
+
+### propagate.py
+Performs unit propagation on CNF files to simplify them. Repeatedly finds and
+propagates unit clauses (clauses with single literal) until fixpoint. This
+removes satisfied clauses and falsified literals, often significantly reducing
+the CNF size. Useful for simplifying test cases before minimization.
+
+```bash
+./propagate.py input.cnf > simplified.cnf
+cat input.cnf | ./propagate.py > simplified.cnf
+```
+
+All progress information is printed to stderr, while the simplified CNF is
+written to stdout. If the formula becomes UNSAT or SAT during propagation,
+this is detected and reported.
+
 ### Model counters
 ONLY Ganak and ApproxMC are supported, and NO other support is planned to be added.
 You MUST use [SharpVelvet](https://github.com/meelgroup/SharpVelvet) for that.
