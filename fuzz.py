@@ -382,7 +382,6 @@ def gen_ganak_extra(epsilon, delta, mode):
     ]
 
     # Restarts
-    # if mode in [0]:
     choice_opts.extend([
         ("restart",              ["0", "1"]),
         ("rstfirst",             ["3", "10", "100", "10000"]),
