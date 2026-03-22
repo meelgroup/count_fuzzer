@@ -115,7 +115,7 @@ def test_crash(binary_and_args, cnf_file, timeout=10):
         return False
 
 
-def delta_debug_minimize(binary_and_args, tmp_cnf, num_vars, special_lines, clauses):
+def delta_debug_minimize(binary_and_args, tmp_cnf, num_vars, special_lines, clauses, original_cnf):
     """
     Delta debugging algorithm to minimize clauses.
     Returns the minimal set of clauses that still causes a crash.
@@ -162,6 +162,13 @@ def delta_debug_minimize(binary_and_args, tmp_cnf, num_vars, special_lines, clau
                 print(f"    Removed chunk of {current_chunk_size} clauses at position {i}")
                 new_clauses = test_set
                 some_removed = True
+                
+                # Save intermediate file with clause count
+                base_name = original_cnf.replace('.cnf', '')
+                intermediate_file = f"{base_name}-{len(new_clauses)}.cnf"
+                write_cnf_file(intermediate_file, num_vars, new_clauses, special_lines)
+                print(f"      Saved: {intermediate_file}")
+                
                 # Don't increment i, test the same position again
             else:
                 # Need this chunk, move to next
@@ -211,7 +218,7 @@ def minimize_clauses(binary_and_args, original_cnf):
 
             # Try delta debugging minimization
             kept_clauses = delta_debug_minimize(
-                binary_and_args, tmp_cnf, num_vars, special_lines, current_clauses
+                binary_and_args, tmp_cnf, num_vars, special_lines, current_clauses, original_cnf
             )
 
             if len(kept_clauses) == len(current_clauses):
@@ -223,7 +230,12 @@ def minimize_clauses(binary_and_args, original_cnf):
             total_removed += removed_this_round
             current_clauses = kept_clauses
 
+            # Save intermediate result with clause count in filename
+            base_name = original_cnf.replace('.cnf', '')
+            intermediate_file = f"{base_name}-{len(current_clauses)}.cnf"
+            write_cnf_file(intermediate_file, num_vars, current_clauses, special_lines)
             print(f"Round {round_num}: Removed {removed_this_round} clauses, {len(current_clauses)} remaining")
+            print(f"  Saved: {intermediate_file}")
             print()
 
             round_num += 1
