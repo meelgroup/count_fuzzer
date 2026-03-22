@@ -21,6 +21,8 @@
 
 import subprocess
 import os
+import signal
+import sys
 import time
 import random
 import resource
@@ -33,6 +35,17 @@ Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 maxtimediff = 1
+
+current_proc = None
+
+def _cleanup_and_exit(signum, frame):
+    if current_proc is not None and current_proc.poll() is None:
+        current_proc.kill()
+        current_proc.wait()
+    sys.exit(0)
+
+signal.signal(signal.SIGHUP, _cleanup_and_exit)
+signal.signal(signal.SIGTERM, _cleanup_and_exit)
 
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
@@ -120,12 +133,14 @@ def set_up_parser():
 
 
 def run(command, dir):
+    global current_proc
     print("--> Executing: %s in dir %s" % (" ".join(command), dir))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
     p = subprocess.Popen(command, stderr=subprocess.STDOUT,
           stdout=subprocess.PIPE, universal_newlines=True, cwd=dir)
+    current_proc = p
 
     try:
         consoleOutput, err = p.communicate(timeout=options.maxtime)
