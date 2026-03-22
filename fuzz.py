@@ -38,7 +38,7 @@ maxtimediff = 1
 
 current_proc = None
 
-def _cleanup_and_exit(signum, frame):
+def _cleanup_and_exit(_signum, _frame):
     if current_proc is not None and current_proc.poll() is None:
         current_proc.kill()
         current_proc.wait()
@@ -149,6 +149,7 @@ def run(command, dir):
         consoleOutput, err = p.communicate()
         consoleOutput = "TIMEOUT: Process killed after %d seconds\n" % options.maxtime + consoleOutput
 
+    current_proc = None
     if options.verbose:
         print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
             resource.getrlimit(resource.RLIMIT_CPU))
