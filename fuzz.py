@@ -733,14 +733,7 @@ if __name__ == "__main__":
         if cpx:
             add_weights_cpx(fname, projected_vars)
         counts = []
-        solvers = [
-            # Solver("../ganak/build/ganak --verb 0 --buddy 1 --td 0 ", True),
-            # Solver("../ganak/build/ganak --verb 0 --satsolver 0 --arjun 0 --td 0", True),
-            # Solver("../ganak/build/ganak --verb 0 --satsolver 0 --chronobt 0 --arjun 0 --td 0", True),
-            # Solver("../ganak/build/ganak --verb 0 --satrstmult 1 --arjun 0 --td 0", True),
-            # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
-            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-        ]
+        solvers = []
 
         delta = random.choice([0.2, 0.4, 0.6])
         epsilon = random.choice([0.8, 6.0])
@@ -761,6 +754,8 @@ if __name__ == "__main__":
             solvers.extend([
             Solver("../approxmc/build/approxmc " + approx_extra, False),
             make_ganak_solver(ganak_base, epsilon, delta, mode=0),
+            # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
             ])
         else:
             solvers.extend([
