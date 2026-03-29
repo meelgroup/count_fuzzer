@@ -17,7 +17,7 @@
 # All arguments (except --num) are forwarded to fuzz.py in each window.
 # If the session already exists, it will attach to it instead of creating a new one.
 
-SESSION="fuzzing"
+SESSION="fuzzing ganak"
 DIR="/home/soos/development/sat_solvers/count_fuzzer"
 NUM_WINDOWS=24
 
