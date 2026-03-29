@@ -18,7 +18,7 @@
 # If the session already exists, it will attach to it instead of creating a new one.
 
 SESSION="fuzzing ganak"
-DIR="/home/soos/development/sat_solvers/count_fuzzer"
+DIR="$(dirname "$(realpath "$0")")"
 NUM_WINDOWS=24
 
 # Parse --num argument if present
