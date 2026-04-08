@@ -374,6 +374,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("arjuniter2",           ["0", "1", "2"]),
         ("arjunbackwmaxc",       ["100", "20000"]),
         ("arjunextendmaxconfl",  ["100", "1000"]),
+        ("puurabackbonemaxconfl", ["0", "10", "1000", "10000", "-1"]),
         # Tree decomposition — small tditers/tdsteps hits timeout paths
         ("td",                   ["0", "0", "1"]),
         ("tdlooktwcut",          ["2", "5", "26"]),
@@ -395,10 +396,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("mpfrprec",             ["64", "256"]),
         ("bitsjobs",             ["1", "3", "5"]),
         ("threads",              [str(options.threads)] if options.threads is not None else ["1", "1", "4"]),
-    ]
-
-    # Restarts
-    choice_opts.extend([
         ("restart",              ["0", "1"]),
         ("rstfirst",             ["3", "10", "100", "10000"]),
         ("rsttype",              ["0", "4", "8"]),
@@ -409,7 +406,8 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("smallcubedisable",     ["0", "1"]),
         ("extendcubes",          ["0", "1"]),
         ("tdwrstdecay",          ["1.0", "0.9", "0.5"]),
-    ])
+        # ("wlcanon",              ["0", "1", "4", "10", "20", "10000000"]),
+    ]
 
     # Binary (0/1) options
     binary_opts = [
@@ -766,7 +764,7 @@ if __name__ == "__main__":
             if not options.exact:
                 solvers.extend([
                     make_ganak_solver(ganak_base, epsilon, delta, mode=7),
-                    make_ganak_solver(ganak_base, epsilon, delta, mode=8),
+                    # make_ganak_solver(ganak_base, epsilon, delta, mode=8),
                     # make_ganak_solver(ganak_base, epsilon, delta, mode=9),
                 ])
             else:
