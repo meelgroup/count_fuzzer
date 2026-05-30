@@ -426,7 +426,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
         "stripoptindep", "rstreadjust",
-        "vivif",
+        "vivif", "bumpreason",
     ]
 
     # weighted mode needs the sat solver
