@@ -416,7 +416,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         "arjunextend", "arjunoraclegetlearnt", "arjunextendccnr",
         "sbvabreak",
         # Preprocessing
-        "bce", "prob", "prebackbone", "resolvsub", "extraoracle",
+        "prob", "prebackbone", "resolvsub", "extraoracle",
         # Puura
         "puura", "puurabackbone", "puuraautarky",
         # TD
