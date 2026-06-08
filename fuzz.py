@@ -392,10 +392,8 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("polar",                ["0", "1", "2", "3"]),
         ("decide",               ["0", "1"]),
         ("vsadsadjust",          ["64", "256", "1024"]),
-        # Precision / threading
+        # Precision
         ("mpfrprec",             ["64", "256"]),
-        ("bitsjobs",             ["1", "3", "5"]),
-        ("threads",              [str(options.threads)] if options.threads is not None else ["1", "1", "4"]),
         ("restart",              ["0", "1"]),
         ("rstfirst",             ["3", "10", "100", "10000"]),
         ("rsttype",              ["0", "4", "8"]),
@@ -408,6 +406,12 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("tdwrstdecay",          ["1.0", "0.9", "0.5"]),
         # ("wlcanon",              ["0", "1", "4", "10", "20", "10000000"]),
     ]
+
+    if options.threads is not None:
+        choice_opts.extend([
+            ("bitsjobs",             ["1", "3", "5"]),
+            ("threads",              [str(options.threads)]),
+        ])
 
     # Binary (0/1) options
     binary_opts = [
