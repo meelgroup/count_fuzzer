@@ -424,7 +424,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Puura
         "puura", "puurabackbone", "puuraautarky",
         # TD
-        "tdlook", "tdoptindep", "tduseadj", "tdcontract",
+        "tdlook", "tdoptindep", "tduseadj", "tdcontract", "tdnewcentroid",
         # SAT solver internals
         "satrst", "satpolarcache", "satvsids",
         # Miscellaneous
