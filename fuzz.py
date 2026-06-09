@@ -420,7 +420,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         "arjunextend", "arjunoraclegetlearnt", "arjunextendccnr",
         "sbvabreak",
         # Preprocessing
-        "prob", "prebackbone", "resolvsub", "extraoracle",
+        "prebackbone", "resolvsub", "extraoracle",
         # Puura
         "puura", "puurabackbone", "puuraautarky",
         # TD
@@ -430,7 +430,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
         "stripoptindep", "rstreadjust",
-        "vivif", "bumpreason",
+        "vivif", "bumpreason", "prob",
     ]
 
     # weighted mode needs the sat solver
