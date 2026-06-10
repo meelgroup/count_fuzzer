@@ -706,7 +706,7 @@ if __name__ == "__main__":
             weighted = True
 
         fname = unique_file("fuzzTest")
-        print("Seed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking fname: ", fname)
+        print("\033[32mSeed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking fname: ", fname, "\033[0m")
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
@@ -924,12 +924,12 @@ if __name__ == "__main__":
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
                       (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
 
-        print(" --------------------------- \n")
+        print(" ---------------------------")
         if options.rnd_seed is not None:
             print("Exiting as we only wanted to run one test due to --seed")
             exit(0)
 
-        print("Checking with file %s finished" % fname)
+        print("Checking with file %s finished\n" % fname)
         os.unlink(fname)
         for _, fname2 in simplified:
             os.unlink(fname2)
