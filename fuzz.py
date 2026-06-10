@@ -892,7 +892,7 @@ if __name__ == "__main__":
                     print(f"Wrong counting: {a.solver.exe} with preproc {a.preproc}")
                     if a.count > max_allowed or a.count < min_allowed:
                         wrong = 0
-                        numruns = 50
+                        numruns = 100
                         num = 0
                         failed = 0
                         while num < numruns and failed < 5:
