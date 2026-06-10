@@ -134,7 +134,7 @@ def set_up_parser():
 
 def run(command, dir):
     global current_proc
-    print("--> Executing: %s in dir %s" % (" ".join(command), dir))
+    print("\033[35m--> Executing: \033[0m%s in dir %s" % (" ".join(command), dir))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
