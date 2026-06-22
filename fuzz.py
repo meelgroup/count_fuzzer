@@ -405,6 +405,9 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("extendcubes",          ["0", "1"]),
         ("tdwrstdecay",          ["1.0", "0.9", "0.5"]),
         # ("wlcanon",              ["0", "1", "4", "10", "20", "10000000"]),
+        # # Kitten
+        # ("kittengateticks", ["0", "1", "10000"]),
+        # ("kittengatelimit", ["0", "1", "20000"]),
     ]
 
     if options.threads is not None:
