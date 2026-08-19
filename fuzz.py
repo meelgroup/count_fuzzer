@@ -557,7 +557,9 @@ def run_one_counter(solver, fname, seed=42):
                 # using middle of interval
                 parts = l.split()
                 num = (float(parts[7]) + float(parts[8])) / 2.0
-            elif "c s exact quadruple float" in l:
+            elif "c s exact octuple float" in l or \
+                    "c s exact quadruple float" in l or \
+                    "c s exact double float" in l:
                 num = float(l.split()[5])
             elif "c s exact arb int" in l:
                 num = int(l.split()[5])
@@ -578,7 +580,7 @@ def run_one_counter(solver, fname, seed=42):
             elif "c s approx arb int" in l:
                 num = float(l.split()[5])
             else:
-                print("ERROR")
+                print("ERROR, couldn't parse line: ", l)
                 exit(-1)
     if unsat_found:
         return True, 0
