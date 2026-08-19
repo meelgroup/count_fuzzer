@@ -117,11 +117,6 @@ def set_up_parser():
       help="Set imag to 0. Default: %default")
 
     parser.add_option(
-      "--sample-approxmc", dest="sample_approxmc", default=False,
-        action="store_true",
-        help="Query ApproxMC for different seeds and store the counts. Default: %default")
-
-    parser.add_option(
         "--num-samples", dest="num_samples", type=int, default=3,
         help="How many samples to take for approximate counters. Default: %default")
 
