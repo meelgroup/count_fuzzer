@@ -479,6 +479,51 @@ def gen_ganak_extra(epsilon, delta, mode):
     return " ".join(parts) + " "
 
 
+def gen_arjun_extra(weighted):
+    """Generate random arjun options for the standalone preproc binary.
+
+    --allindep is excluded: it changes the meaning of the CNF and so the
+    count. --renumber is excluded: 0 is a hard error with "c p no-touch".
+    """
+    choice_opts = [
+        # Independent-set minimization
+        ("maxc",            ["100", "20000"]),
+        ("simp",            ["0", "1", "2", "3"]),
+        ("nogatebelow",     ["0.0", "0.01", "0.5"]),
+        # Puura
+        ("iter1",           ["0", "1", "2"]),
+        ("iter2",           ["0", "1", "2"]),
+        ("iter1grow",       ["0", "4", "16"]),
+        ("iter2grow",       ["0", "4", "16"]),
+        ("bveresolvmaxsz",  ["-1", "4", "20"]),
+        ("weakenlim",       ["10", "8000", "100000"]),
+        ("puurastrategy",   ["0", "1", "2", "3", "4", "5", "6", "7"]),
+        ("oraclemult",      ["0", "0.0001", "1"]),
+        ("findbins",        ["0", "1", "2"]),
+        ("cmsmult",         ["-1", "0.0001", "1"]),
+        # SBVA
+        ("sbva",            ["0", "1", "100"]),
+        ("sbvaclcut",       ["2", "4", "20"]),
+        ("sbvalitcut",      ["2", "5", "20"]),
+        ("sbvamaxnewvars",  ["0", "5", "100"]),
+    ]
+
+    binary_opts = [
+        "backward", "extend", "autarky", "prebackbone",
+        "bve", "bvepresimp", "probe", "intree", "distill", "gaussj",
+        "gates", "orgate", "irreggate", "itegate", "xorgate",
+        "oraclesparsify", "oraclevivif", "oraclevivifgetl", "oracleextra",
+        "sbvabreak", "red",
+    ]
+
+    parts = ["--verb", "0", "--mode", "1" if weighted else "0"]
+    for flag, choices in choice_opts:
+        parts.extend(["--" + flag, random.choice(choices)])
+    for flag in binary_opts:
+        parts.extend(["--" + flag, random.choice(["0", "1"])])
+    return " ".join(parts)
+
+
 def make_ganak_solver(base, epsilon, delta, mode):
     extra = gen_ganak_extra(epsilon, delta, mode)
     exact = "--appmct" not in extra
@@ -907,7 +952,7 @@ if __name__ == "__main__":
         # arjun has no complex-number field
         if not cpx:
             preprocs.insert(0, Preproc(
-                "../arjun/build/arjun --verb 0 --mode %d" % (1 if weighted else 0), None))
+                "../arjun/build/arjun " + gen_arjun_extra(weighted), None))
 
         simplified = []
         for preproc in preprocs:
