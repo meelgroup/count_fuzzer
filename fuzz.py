@@ -29,6 +29,7 @@ import resource
 import optparse
 import stat
 import shutil
+import re
 from collections import namedtuple
 
 Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
@@ -254,8 +255,7 @@ def add_weights_cpx(fname, projected_vars) :
         for v,w,w2 in weights:
             f.write("c p weight %d %lf %lf 0\n" % (v, w, w2))
 
-def add_projection(fname) :
-    vars = 0
+def get_nvars(fname):
     with open(fname, "r") as f:
         for line in f:
             line = line.strip()
@@ -264,7 +264,26 @@ def add_projection(fname) :
             if line[0] == "p":
                 line = line.split(" ")
                 assert line[1].strip() == "cnf"
-                vars = int(line[2])
+                return int(line[2])
+    return 0
+
+# "c p no-touch" is the prefix 1..k, and all of it must also be in "c p show"
+def pick_num_no_touch(nvars):
+    if nvars < 2 or random.choice([True, False]):
+        return 0
+    return random.randint(1, max(1, int(nvars/4)))
+
+def add_no_touch(fname, num_no_touch):
+    if num_no_touch == 0:
+        return
+    with open(fname, "a") as f:
+        f.write("c p no-touch ")
+        for i in range(num_no_touch):
+            f.write("%d " % (i+1))
+        f.write("0\n")
+
+def add_projection(fname, num_no_touch) :
+    vars = get_nvars(fname)
 
     all_vars = []
     for i in range(vars):
@@ -283,6 +302,8 @@ def add_projection(fname) :
         num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
     for i in range(num):
         proj_set[random.choice(all_vars)] = 1
+    for i in range(num_no_touch):
+        proj_set[i+1] = 1
 
     for a,_ in proj_set.items():
         proj.append(a)
@@ -637,13 +658,85 @@ def check_header(fname):
             return False
     return True
 
-def run_one_preproc(preproc, fname, fname2):
+# Arjun must keep the no-touch vars as vars 1..k, in the sampling set
+def check_no_touch_preserved(fname2, num_no_touch):
+    if num_no_touch == 0:
+        return True
+    nvars = get_nvars(fname2)
+    found = None
+    show = None
+    with open(fname2, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("c p no-touch"):
+                found = [int(x) for x in line.split()[3:-1]]
+            if line.startswith("c p show"):
+                show = set(int(x) for x in line.split()[3:-1])
+    want = list(range(1, num_no_touch+1))
+    if found != want:
+        print("ERROR: no-touch header in %s is %s but should be %s" % (fname2, found, want))
+        return False
+    if nvars < num_no_touch:
+        print("ERROR: %s has only %d vars, but %d are no-touch" % (fname2, nvars, num_no_touch))
+        return False
+    missing = [v for v in want if v not in show]
+    if missing:
+        print("ERROR: no-touch vars %s of %s are not in 'c p show'" % (missing, fname2))
+        return False
+    return True
+
+def add_units(fname, fname2, units):
+    with open(fname, "r") as f:
+        lines = f.readlines()
+    with open(fname2, "w") as f:
+        for line in lines:
+            if line.strip().startswith("p cnf"):
+                parts = line.split()
+                f.write("p cnf %s %d\n" % (parts[2], int(parts[3]) + len(units)))
+            else:
+                f.write(line)
+        for l in units:
+            f.write("%d 0\n" % l)
+
+# the count must be preserved under EVERY assignment of the no-touch vars
+def check_no_touch_counts(solver, fname, fname2, num_no_touch):
+    if num_no_touch == 0:
+        return True
+    if num_no_touch <= 3:
+        assigns = [[(v+1) * (1 if (i >> v) & 1 else -1) for v in range(num_no_touch)]
+                   for i in range(2**num_no_touch)]
+    else:
+        assigns = [[(v+1) * random.choice([1, -1]) for v in range(num_no_touch)]
+                   for _ in range(4)]
+    for units in assigns:
+        cond = unique_file("fuzzTest")
+        cond2 = unique_file("fuzzTest")
+        add_units(fname, cond, units)
+        add_units(fname2, cond2, units)
+        OK, c1 = run_one_counter(solver, cond)
+        OK2, c2 = run_one_counter(solver, cond2)
+        os.unlink(cond)
+        os.unlink(cond2)
+        if not OK or not OK2:
+            print("ERROR: counter failed on no-touch conditioned files")
+            return False
+        if c1 is None or c2 is None:
+            continue
+        if c1 != c2:
+            print("ERROR: conditioned on no-touch %s: orig count %s but simplified count %s"
+                  % (units, c1, c2))
+            print("       orig: %s simplified: %s" % (fname, fname2))
+            return False
+        print("OK, no-touch conditioned on %s: both count %s" % (units, c1))
+    return True
+
+def run_one_preproc(preproc, fname, fname2, num_no_touch):
     curr_time = time.time()
     toexec = preproc.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
     toexec.append(os.getcwd() + "/" + fname2)
     print("Executing preproc ", preproc)
-    out, err, _ = run(toexec, preproc.dir)
+    out, err, returncode = run(toexec, preproc.dir)
     if err is None:
         pass
     else:
@@ -651,9 +744,18 @@ def run_one_preproc(preproc, fname, fname2):
         print("output was: ", out)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
-        print("Too much time to preproc with %s, aborted!" % solver.exe)
+        print("Too much time to preproc with %s, aborted!" % preproc.exe)
         return False
+    if out.startswith("TIMEOUT"):
+        print("Preproc %s timed out, skipping" % preproc.exe)
+        return False
+    if returncode != 0:
+        print("ERROR: preproc %s crashed with exit code %d, output was:" % (preproc.exe, returncode))
+        print(out)
+        exit(-1)
     assert check_header(fname2)
+    if not check_no_touch_preserved(fname2, num_no_touch):
+        exit(-1)
     return True
 
 if __name__ == "__main__":
@@ -727,9 +829,13 @@ if __name__ == "__main__":
         else:
             print("Generated fuzz file %s with call: %s" % (fname, call))
 
+        num_no_touch = 0
+        if not cpx:
+            num_no_touch = pick_num_no_touch(get_nvars(fname))
         projected_vars = None
         if proj:
-            projected_vars = add_projection(fname)
+            projected_vars = add_projection(fname, num_no_touch)
+        add_no_touch(fname, num_no_touch)
         if not cpx and weighted:
             add_weights(fname, projected_vars)
         if cpx:
@@ -796,10 +902,12 @@ if __name__ == "__main__":
 
         preprocs = [
             # Preproc("./run.sh", "./bins/bpe-april2016/"),
-            # Preproc("./run.sh", "./bins/arjun-withind/"),
-            # Preproc("./run.sh", "./bins/arjun-withind-extend/"),
             Preproc(None, None)
         ]
+        # arjun has no complex-number field
+        if not cpx:
+            preprocs.insert(0, Preproc(
+                "../arjun/build/arjun --verb 0 --mode %d" % (1 if weighted else 0), None))
 
         simplified = []
         for preproc in preprocs:
@@ -811,7 +919,7 @@ if __name__ == "__main__":
                 if options.verbose:
                     print("Copied file %s to %s for the empty preproc" % (fname, fname2))
             else:
-                OK = run_one_preproc(preproc, fname, fname2)
+                OK = run_one_preproc(preproc, fname, fname2, num_no_touch)
                 if options.verbose:
                     print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
             if OK:
@@ -831,7 +939,13 @@ if __name__ == "__main__":
                         ("ganak" not in solver.exe and "approx" not in solver.exe):
                     # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
                     continue
-                OK, count = run_one_counter(solver, fname2)
+                s = solver
+                if preproc.exe is not None and "arjun" in preproc.exe:
+                    # arjun's output has show < optshow, which arjun's backward
+                    # pass (re-run inside the counter) refuses
+                    e = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
+                    s = solver._replace(exe=e)
+                OK, count = run_one_counter(s, fname2)
                 if not OK:
                     print("Error running ", solver)
                     exit(-1)
@@ -840,6 +954,14 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
+        if num_no_touch > 0 and not weighted and not cpx:
+            checker = Solver(ganak_base + " --arjun 0 ", True)
+            for preproc, fname2 in simplified:
+                if preproc.exe is None:
+                    continue
+                if not check_no_touch_counts(checker, fname, fname2, num_no_touch):
+                    exit(-1)
+
         if exact_count is None:
             if options.rnd_seed is not None:
                 print("Exiting as we only wanted to run one test due to --seed")
