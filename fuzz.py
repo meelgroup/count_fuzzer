@@ -493,6 +493,26 @@ def gen_approxmc_extra(epsilon, delta):
     return f" --epsilon {epsilon} --delta {delta} --arjun {random.choice(['0', '1'])} "
 
 
+def parse_frac(s):
+    """"a", "a/b" -> float"""
+    num, _, den = s.partition("/")
+    if den: return float(num)/float(den)
+    return float(num)
+
+
+# "a/b + f/gi", spaces and denominators both optional
+cpx_frac_re = re.compile(r"^([+-]?[\d.]+(?:/[\d.]+)?)([+-])([+-]?[\d.]+(?:/[\d.]+)?)i$")
+
+
+def parse_frac_complex(s):
+    """"a/b + f/gi" -> complex, or None if it doesn't parse"""
+    match = cpx_frac_re.match("".join(s.split()))
+    if match is None: return None
+    imag = parse_frac(match.group(3))
+    if match.group(2) == "-": imag = -imag
+    return complex(parse_frac(match.group(1)), imag)
+
+
 def run_one_counter(solver, cnf_path, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
@@ -547,7 +567,6 @@ def run_one_counter(solver, cnf_path, seed=42):
             # c s exact arb cpx 1.2650e+02 + -6.3250e+01i
             real = float(line.split()[5].strip())
             imag = float(line.split()[7].strip()[:-1])
-            print("Complex number is: ", real, " ## ", imag)
             count = complex(real, imag)
             continue
         if line[0] == 'c' and line[:3] != "c s":
@@ -562,10 +581,19 @@ def run_one_counter(solver, cnf_path, seed=42):
                     count = complex(0, 0)
                 else:
                     # c s exact double prec-sci 0+0i
-                    real = float(line.split()[5].strip())
-                    imag = float(line.split()[7].strip()[:-1])
-                    print("Complex number is: ", real, " ## ", imag)
-                    count = complex(real, imag)
+                    if "float" in line or "double" in line:
+                        real = float(line.split()[5].strip())
+                        imag = float(line.split()[7].strip()[:-1])
+                        count = complex(real, imag)
+                    elif "frac" in line:
+                        # c s exact arb frac 3/2 + -1i
+                        count = parse_frac_complex(line.split("frac", 1)[1])
+                        if count is None:
+                            print("ERROR, couldn't parse cpx frac line: ", line)
+                            sys.exit(-1)
+                    else:
+                        print("ERROR, couldn't parse cpx line: ", line)
+                        sys.exit(-1)
             elif line[:4] == "s mc" or line[:5] == "s pmc":
                 count = int(line.split()[2])
             elif "c s exact arb int" in line:
@@ -586,14 +614,9 @@ def run_one_counter(solver, cnf_path, seed=42):
                 parts = line.split()
                 if parts[5] == "[":
                     # mpqi rolled over to interval: [ left right ]
-                    count = (float(parts[6]) + float(parts[7])) / 2.0
+                    count = (parse_frac(parts[6]) + parse_frac(parts[7])) / 2.0
                 else:
-                    frac = parts[5].split("/")
-                    numerator = int(frac[0])
-                    if len(frac) < 2:
-                        count = float(numerator)
-                    else:
-                        count = float(numerator) / float(frac[1])
+                    count = parse_frac(parts[5])
             elif "s exact double prec-sci" in line:
                 count = float(line.split()[5])
             elif "c s approx arb int" in line:
@@ -902,7 +925,7 @@ if __name__ == "__main__":
                 if not ok:
                     print("Error running ", solver)
                     sys.exit(-1)
-                print("got back: ", ok, " , ", count)
+                print("Result: ", ok, " , ", count)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
@@ -917,7 +940,7 @@ if __name__ == "__main__":
                 os.unlink(simp_path)
             continue
 
-        print("counts is: ", counts)
+        # print("counts is: ", counts)
         for got, _ in zip(counts, solvers):
             if weighted:
                 assert(got.solver.exact)
