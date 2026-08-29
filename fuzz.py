@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from collections import namedtuple
+from dataclasses import dataclass, field
 
 Solver = namedtuple("Solver", "exe exact cwd", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe cwd", defaults=[None, None])
@@ -758,9 +759,9 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         sys.exit(-1)
     return True
 
-def cleanup(cnf_path, simplified):
-    os.unlink(cnf_path)
-    for _, simp_path in simplified:
+def cleanup(t):
+    os.unlink(t.cnf_path)
+    for _, simp_path in t.simplified:
         os.unlink(simp_path)
 
 
@@ -768,6 +769,314 @@ def exit_if_single_seed():
     if options.rnd_seed is not None:
         print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
         sys.exit(0)
+
+
+@dataclass
+class FuzzTest:
+    seed: int
+    proj: bool = False
+    weighted: bool = False
+    cpx: bool = False
+    cnf_path: str = None
+    num_no_touch: int = 0
+    projected_vars: list = None
+    epsilon: float = 0.0
+    delta: float = 0.0
+    solvers: list = field(default_factory=list)
+    simplified: list = field(default_factory=list)
+    runs: list = field(default_factory=list)
+    desc_width: int = 0
+    idx_width: int = 0
+    counts: list = field(default_factory=list)
+    exact_count: Count = None
+
+
+def pick_test_params(t):
+    proj :bool = random.choice([True, False])
+    if (options.projected):
+        proj = True
+    if (options.unprojected):
+        proj = False
+
+    weighted :bool = random.choice([True, False])
+    if options.weighted:
+        weighted = True
+    if options.unweighted:
+        weighted = False
+
+    cpx :bool = random.choice([True, False, False])
+    t.proj, t.weighted, t.cpx = proj, weighted, cpx
+
+
+def generate_cnf(t):
+    proj, weighted, cpx = t.proj, t.weighted, t.cpx
+    cnf_path = unique_file("fuzzTest")
+    print(f"{GREEN}=== Seed: {t.seed}  projected: {proj}  weighted: {weighted}  cpx: {cpx}  file: {cnf_path}{NC}")
+
+    # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
+    # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
+    # Majority vote + if count is small, we can count 1-by-1.
+    # Mate TODO: add other binaries from competition, add CNF checker
+    # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
+    call = random.choice([
+        gen_fuzz_call_biere("./biere-fuzz", cnf_path, proj, weighted),
+        gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", cnf_path, proj, weighted)])
+    # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
+    # print("TODO: ./cnftranslate out.dnf out.cnf");
+
+    print(f"{MAGENTA}--> Calling: {NC}{call}")
+    status = subprocess.call(call, shell=True)
+    if status != 0:
+        print("Failed fuzzer file generator call: ", call)
+        sys.exit(-1)
+    else:
+        print(f"{MAGENTA}--> Generated fuzz file{NC} {cnf_path} with call: {call}")
+
+    num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
+    if options.disable_no_touch:
+        num_no_touch = 0
+    projected_vars = None
+    if proj:
+        projected_vars = add_projection(cnf_path, num_no_touch)
+    add_no_touch(cnf_path, num_no_touch)
+    if not cpx and weighted:
+        add_weights(cnf_path, projected_vars)
+    if cpx:
+        add_weights_cpx(cnf_path, projected_vars)
+    t.cnf_path, t.num_no_touch, t.projected_vars = cnf_path, num_no_touch, projected_vars
+
+
+# MODES
+# 0=integer counting,
+# 1=weighted counting over the rationals,
+# 2=complex rational numbers,
+# 3=multivariate polynomials over the rational field,
+# 4=parity counting,
+# 5=counting over a prime field (see --prime),
+# 6=mpfr floating point complex numbers (see --mpfrprecision),
+# 7=mpfr floating point real numbers (see --mpfrprecision),
+# 8=mpfi intervals
+def build_solvers(t):
+    weighted, proj, cpx = t.weighted, t.proj, t.cpx
+    solvers = []
+
+    delta = random.choice([0.2, 0.4, 0.6])
+    epsilon = random.choice([0.8, 6.0])
+    approx_extra = gen_approxmc_extra(epsilon, delta)
+
+    ganak_base = "../ganak/build/ganak --verb 0 "
+    if cpx:
+        # complex counting ignores the drawn proj/weighted: the CNF already
+        # has its complex weights, and only these two modes can read them
+        weighted = True
+        proj = False
+        solvers = [
+            make_ganak_solver(ganak_base, epsilon, delta, mode=2),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=6),
+            # Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
+            ]
+    elif not weighted:
+        solvers.extend([
+        Solver("../approxmc/build/approxmc " + approx_extra, False),
+        make_ganak_solver(ganak_base, epsilon, delta, mode=0),
+        # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
+        # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
+        ])
+    else:
+        solvers.extend([
+        make_ganak_solver(ganak_base, epsilon, delta, mode=1),
+        make_ganak_solver(ganak_base, epsilon, delta, mode=7),
+        # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
+        # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
+        ])
+
+        if proj:
+            solvers.extend([
+                # Solver("../gpmc2023/gpmc -mode=3", True),
+            ])
+        else:
+            solvers.extend([
+                # Solver("../gpmc2023/gpmc -mode=1", True),
+            ])
+
+    t.solvers, t.weighted, t.proj = solvers, weighted, proj
+    t.epsilon, t.delta = epsilon, delta
+
+
+def run_preprocs(t):
+    cnf_path, weighted, cpx, num_no_touch = t.cnf_path, t.weighted, t.cpx, t.num_no_touch
+    preprocs = [
+        Preproc( "../arjun/build/arjun " + gen_arjun_extra(weighted, cpx), None),
+        Preproc(None, None)
+    ]
+
+    simplified = []
+    for preproc in preprocs:
+        simp_path = unique_file("fuzzTest")
+        ok = False
+        if preproc.exe is None:
+            shutil.copyfile(cnf_path, simp_path)
+            ok = True
+            if options.verbose:
+                print(f"Copied file {cnf_path} to {simp_path} for the empty preproc")
+        else:
+            ok = run_one_preproc(preproc, cnf_path, simp_path, num_no_touch)
+            if options.verbose:
+                print(f"Generated file {simp_path} by preproc {preproc.exe} which preprocessed {cnf_path}")
+        if ok:
+            simplified.append((preproc, simp_path))
+        else:
+            os.unlink(simp_path)
+    t.simplified = simplified
+
+
+def print_plan(t):
+    solvers, simplified = t.solvers, t.simplified
+    print(f"{MAGENTA}--> Solvers to run ({len(solvers)}):{NC}")
+    for i, solver in enumerate(solvers, 1):
+        print(f"      [{i}] {solver_desc(solver)}")
+        if options.verbose: print(f"          {' '.join(solver.exe.split())}")
+    print(f"{MAGENTA}--> Preprocessors ({len(simplified)}):{NC}")
+    preproc_width = max(len(short_exe(pp.exe)) for pp, _ in simplified)
+    for preproc, simp_path in simplified:
+        print(f"      {short_exe(preproc.exe):<{preproc_width}} -> {simp_path}")
+    if len(solvers) == 1:
+        print("ERROR, it makes no sense to run a single solver, exiting")
+        sys.exit(-1)
+
+
+def build_runs(t):
+    solvers, simplified = t.solvers, t.simplified
+    # only GANAK and ApproxMC understand arjun's "MUST MULTIPLY BY"
+    runs = [(solver, preproc, simp_path)
+            for solver in solvers
+            for preproc, simp_path in simplified
+            if preproc.exe is None or "arjun" not in preproc.exe
+            or "ganak" in solver.exe or "approx" in solver.exe]
+
+    # pad to the widest name so the counts line up in a column
+    t.runs = runs
+    t.desc_width = max(len(run_desc(so, pp)) for so, pp, _ in runs)
+    t.idx_width = len(str(len(runs)))
+
+
+def do_runs(t):
+    runs, cpx = t.runs, t.cpx
+    desc_width, idx_width = t.desc_width, t.idx_width
+    counts = []
+    exact_count = None
+    for run_idx, (solver, preproc, simp_path) in enumerate(runs, 1):
+        tag = f"[{run_idx:>{idx_width}}/{len(runs)}] {run_desc(solver, preproc):<{desc_width}}"
+        print(f"{MAGENTA}--> Counting:{NC} {tag} on {simp_path}")
+        to_run = solver
+        if preproc.exe is not None and "arjun" in preproc.exe:
+            # arjun's output has show < optshow, which arjun's backward
+            # pass (re-run inside the counter) refuses
+            exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
+            to_run = solver._replace(exe=exe)
+        ok, count = run_one_counter(to_run, simp_path, cpx)
+        if not ok:
+            print(f"{RED}ERROR running {tag}{NC}")
+            sys.exit(-1)
+        if count is None:
+            print(f"    {YELLOW}{tag}  NO COUNT (timed out/aborted){NC}")
+        else:
+            print(f"    {tag}  count = {CYAN}{count}{NC}")
+        if count is not None and solver.exact and preproc.exe is None:
+            exact_count = Count(solver, preproc, count)
+        if count is not None:
+            counts.append(Count(solver, preproc, count))
+    t.counts, t.exact_count = counts, exact_count
+
+
+def check_approx(t, got):
+    exact_count, cnf_path, cpx = t.exact_count, t.cnf_path, t.cpx
+    desc_width, epsilon, delta = t.desc_width, t.epsilon, t.delta
+    max_allowed = exact_count.count * (1.0 + epsilon)
+    min_allowed = exact_count.count * (1.0 / (1.0 + epsilon))
+
+    oob = got.count > max_allowed or got.count < min_allowed
+    col = RED if oob else YELLOW
+    print(f"    {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
+          f"  vs exact {exact_count.count}"
+          f"  {col}(factor {exact_count.count / float(got.count)} off){NC}")
+    print(f"    allowed with epsilon={epsilon}: [{min_allowed}, {max_allowed}] -> "
+          f"{RED + 'OUT OF RANGE' + NC if oob else 'in range'}")
+    if not oob:
+        return
+
+    num_wrong = 0
+    num_reruns = 100
+    num_done = 0
+    num_failed = 0
+    while num_done < num_reruns and num_failed < 5:
+        ok, rerun_count = run_one_counter(got.solver, cnf_path, cpx, random.randint(0, 1000*1000*1000))
+        if rerun_count is None:
+            num_failed += 1
+            continue
+        num_done += 1
+        print(f"Rerun gives count = {rerun_count}")
+        if not ok:
+            print(f"{RED}ERROR: rerun failed?{NC}")
+            sys.exit(-1)
+        if rerun_count > max_allowed or rerun_count < min_allowed:
+            num_wrong += 1
+    if num_failed < 5:
+        perc_wrong = float(num_wrong) / float(num_reruns) * 100.0
+        print(f"Out of {num_reruns} reruns, {num_wrong} were outside the allowed range, percentage {perc_wrong}%")
+
+        allowed_perc_wrong = (delta) * 100.0
+        if perc_wrong > allowed_perc_wrong:
+            print(f"{RED}ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %{NC}")
+            sys.exit(-1)
+        else:
+            print(f"{GREEN}OK within delta after reruns. Delta was {allowed_perc_wrong} %{NC}")
+    else:
+        print("Too many failed reruns, not checking delta.")
+
+
+def compare_counts(t):
+    counts, solvers, weighted = t.counts, t.solvers, t.weighted
+    exact_count, cnf_path, desc_width = t.exact_count, t.cnf_path, t.desc_width
+    for got, _ in zip(counts, solvers):
+        if weighted:
+            assert(got.solver.exact)
+            is_float_mode = "--mode 7" in got.solver.exe or "--mode 8" in got.solver.exe or "--mode 9" in got.solver.exe or \
+                "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
+            abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
+            if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
+                report_mismatch(got, exact_count, cnf_path, desc_width, "weighted ")
+
+        if not weighted:
+            if got.count != exact_count.count and got.solver.exact:
+                report_mismatch(got, exact_count, cnf_path, desc_width)
+
+            if got.count != exact_count.count and not got.solver.exact:
+                check_approx(t, got)
+
+        print(f"{GREEN}OK{NC}  {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
+              f"  matches {run_desc(exact_count.solver, exact_count.preproc)}")
+
+
+def one_test(seed):
+    t = FuzzTest(seed=seed)
+    pick_test_params(t)
+    generate_cnf(t)
+    build_solvers(t)
+    run_preprocs(t)
+    print_plan(t)
+    build_runs(t)
+    do_runs(t)
+
+    if t.exact_count is None:
+        exit_if_single_seed()
+        cleanup(t)
+        return
+
+    compare_counts(t)
+    print(f"{GREEN}=== Checking with file {t.cnf_path} finished{NC}")
+    exit_if_single_seed()
+    cleanup(t)
 
 
 if __name__ == "__main__":
@@ -788,246 +1097,10 @@ if __name__ == "__main__":
         rnd_seed = options.rnd_seed
     random.seed(rnd_seed)
 
-    for i in range(options.only):
+    for _ in range(options.only):
         if options.rnd_seed is None:
             seed = int.from_bytes(os.urandom(8))
             random.seed(seed)
         else:
             seed = options.rnd_seed
-        proj :bool = random.choice([True, False])
-        if (options.projected):
-            proj = True
-        if (options.unprojected):
-            proj = False
-
-        weighted :bool = random.choice([True, False])
-        if options.weighted:
-            weighted = True
-        if options.unweighted:
-            weighted = False
-
-        cpx :bool = random.choice([True, False, False])
-        cnf_path = unique_file("fuzzTest")
-        print(f"{GREEN}=== Seed: {seed}  projected: {proj}  weighted: {weighted}  cpx: {cpx}  file: {cnf_path}{NC}")
-
-        # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
-        # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
-        # Majority vote + if count is small, we can count 1-by-1.
-        # Mate TODO: add other binaries from competition, add CNF checker
-        # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
-        call = random.choice([
-            gen_fuzz_call_biere("./biere-fuzz", cnf_path, proj, weighted),
-            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", cnf_path, proj, weighted)])
-        # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
-        # print("TODO: ./cnftranslate out.dnf out.cnf");
-
-        print(f"{MAGENTA}--> Calling: {NC}{call}")
-        status = subprocess.call(call, shell=True)
-        if status != 0:
-            print("Failed fuzzer file generator call: ", call)
-            sys.exit(-1)
-        else:
-            print(f"{MAGENTA}--> Generated fuzz file{NC} {cnf_path} with call: {call}")
-
-        num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
-        if options.disable_no_touch:
-            num_no_touch = 0
-        projected_vars = None
-        if proj:
-            projected_vars = add_projection(cnf_path, num_no_touch)
-        add_no_touch(cnf_path, num_no_touch)
-        if not cpx and weighted:
-            add_weights(cnf_path, projected_vars)
-        if cpx:
-            add_weights_cpx(cnf_path, projected_vars)
-        counts = []
-        solvers = []
-
-        delta = random.choice([0.2, 0.4, 0.6])
-        epsilon = random.choice([0.8, 6.0])
-        approx_extra = gen_approxmc_extra(epsilon, delta)
-
-        # MODES
-        # 0=integer counting,
-        # 1=weighted counting over the rationals,
-        # 2=complex rational numbers,
-        # 3=multivariate polynomials over the rational field,
-        # 4=parity counting,
-        # 5=counting over a prime field (see --prime),
-        # 6=mpfr floating point complex numbers (see --mpfrprecision),
-        # 7=mpfr floating point real numbers (see --mpfrprecision),
-        # 8=mpfi intervals
-        ganak_base = "../ganak/build/ganak --verb 0 "
-        if not weighted:
-            solvers.extend([
-            Solver("../approxmc/build/approxmc " + approx_extra, False),
-            make_ganak_solver(ganak_base, epsilon, delta, mode=0),
-            # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
-            # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
-            ])
-        else:
-            solvers.extend([
-            make_ganak_solver(ganak_base, epsilon, delta, mode=1),
-            make_ganak_solver(ganak_base, epsilon, delta, mode=7),
-            # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
-            # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
-            ])
-
-        if weighted and proj:
-            solvers.extend([
-                # Solver("../gpmc2023/gpmc -mode=3", True),
-            ])
-        if weighted and not proj:
-            solvers.extend([
-                # Solver("../gpmc2023/gpmc -mode=1", True),
-            ])
-
-        if cpx:
-            weighted = True
-            proj = False
-            solvers = [
-                make_ganak_solver(ganak_base, epsilon, delta, mode=2),
-                make_ganak_solver(ganak_base, epsilon, delta, mode=6),
-                # Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
-                ]
-
-        preprocs = [
-            Preproc( "../arjun/build/arjun " + gen_arjun_extra(weighted, cpx), None),
-            Preproc(None, None)
-        ]
-
-        simplified = []
-        for preproc in preprocs:
-            simp_path = unique_file("fuzzTest")
-            ok = False
-            if preproc.exe is None:
-                shutil.copyfile(cnf_path, simp_path)
-                ok = True
-                if options.verbose:
-                    print(f"Copied file {cnf_path} to {simp_path} for the empty preproc")
-            else:
-                ok = run_one_preproc(preproc, cnf_path, simp_path, num_no_touch)
-                if options.verbose:
-                    print(f"Generated file {simp_path} by preproc {preproc.exe} which preprocessed {cnf_path}")
-            if ok:
-                simplified.append((preproc, simp_path))
-            else:
-                os.unlink(simp_path)
-
-        exact_count = None
-        print(f"{MAGENTA}--> Solvers to run ({len(solvers)}):{NC}")
-        for i, solver in enumerate(solvers, 1):
-            print(f"      [{i}] {solver_desc(solver)}")
-            if options.verbose: print(f"          {' '.join(solver.exe.split())}")
-        print(f"{MAGENTA}--> Preprocessors ({len(simplified)}):{NC}")
-        preproc_width = max(len(short_exe(pp.exe)) for pp, _ in simplified)
-        for preproc, simp_path in simplified:
-            print(f"      {short_exe(preproc.exe):<{preproc_width}} -> {simp_path}")
-        if len(solvers) == 1:
-            print("ERROR, it makes no sense to run a single solver, exiting")
-            sys.exit(-1)
-
-        # only GANAK and ApproxMC understand arjun's "MUST MULTIPLY BY"
-        runs = [(solver, preproc, simp_path)
-                for solver in solvers
-                for preproc, simp_path in simplified
-                if preproc.exe is None or "arjun" not in preproc.exe
-                or "ganak" in solver.exe or "approx" in solver.exe]
-
-        # pad to the widest name so the counts line up in a column
-        desc_width = max(len(run_desc(so, pp)) for so, pp, _ in runs)
-        idx_width = len(str(len(runs)))
-
-        for run_idx, (solver, preproc, simp_path) in enumerate(runs, 1):
-            tag = f"[{run_idx:>{idx_width}}/{len(runs)}] {run_desc(solver, preproc):<{desc_width}}"
-            print(f"{MAGENTA}--> Counting:{NC} {tag} on {simp_path}")
-            to_run = solver
-            if preproc.exe is not None and "arjun" in preproc.exe:
-                # arjun's output has show < optshow, which arjun's backward
-                # pass (re-run inside the counter) refuses
-                exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
-                to_run = solver._replace(exe=exe)
-            ok, count = run_one_counter(to_run, simp_path, cpx)
-            if not ok:
-                print(f"{RED}ERROR running {tag}{NC}")
-                sys.exit(-1)
-            if count is None:
-                print(f"    {YELLOW}{tag}  NO COUNT (timed out/aborted){NC}")
-            else:
-                print(f"    {tag}  count = {CYAN}{count}{NC}")
-            if count is not None and solver.exact and preproc.exe is None:
-                exact_count = Count(solver, preproc, count)
-            if count is not None:
-                counts.append(Count(solver, preproc, count))
-
-        if exact_count is None:
-            exit_if_single_seed()
-            cleanup(cnf_path, simplified)
-            continue
-
-        # print("counts is: ", counts)
-        for got, _ in zip(counts, solvers):
-            if weighted:
-                assert(got.solver.exact)
-                is_float_mode = "--mode 7" in got.solver.exe or "--mode 8" in got.solver.exe or "--mode 9" in got.solver.exe or \
-                    "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
-                abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
-                if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
-                    report_mismatch(got, exact_count, cnf_path, desc_width, "weighted ")
-
-            if not weighted:
-                if got.count != exact_count.count and got.solver.exact:
-                    report_mismatch(got, exact_count, cnf_path, desc_width)
-
-                if got.count != exact_count.count and not got.solver.exact:
-                    max_allowed = exact_count.count * (1.0 + epsilon)
-                    min_allowed = exact_count.count * (1.0 / (1.0 + epsilon))
-
-                    oob = got.count > max_allowed or got.count < min_allowed
-                    col = RED if oob else YELLOW
-                    print(f"    {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
-                          f"  vs exact {exact_count.count}"
-                          f"  {col}(factor {exact_count.count / float(got.count)} off){NC}")
-                    print(f"    allowed with epsilon={epsilon}: [{min_allowed}, {max_allowed}] -> "
-                          f"{RED + 'OUT OF RANGE' + NC if oob else 'in range'}")
-                    if oob:
-                        num_wrong = 0
-                        num_reruns = 100
-                        num_done = 0
-                        num_failed = 0
-                        while num_done < num_reruns and num_failed < 5:
-                            ok, rerun_count = run_one_counter(got.solver, cnf_path, cpx, random.randint(0, 1000*1000*1000))
-                            if rerun_count is None:
-                                num_failed += 1
-                                continue
-                            num_done += 1
-                            print(f"Rerun gives count = {rerun_count}")
-                            if not ok:
-                                print(f"{RED}ERROR: rerun failed?{NC}")
-                                sys.exit(-1)
-                            if rerun_count > max_allowed or rerun_count < min_allowed:
-                                num_wrong += 1
-                        if num_failed < 5:
-                            perc_wrong = float(num_wrong) / float(num_reruns) * 100.0
-                            print(f"Out of {num_reruns} reruns, {num_wrong} were outside the allowed range, percentage {perc_wrong}%")
-
-                            allowed_perc_wrong = (delta) * 100.0
-                            if perc_wrong > allowed_perc_wrong:
-                                print(f"{RED}ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %{NC}")
-                                sys.exit(-1)
-                            else:
-                                print(f"{GREEN}OK within delta after reruns. Delta was {allowed_perc_wrong} %{NC}")
-                        else:
-                            print("Too many failed reruns, not checking delta.")
-
-
-            print(f"{GREEN}OK{NC}  {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
-                  f"  matches {run_desc(exact_count.solver, exact_count.preproc)}")
-
-        print(f"{GREEN}=== Checking with file {cnf_path} finished{NC}")
-        exit_if_single_seed()
-        cleanup(cnf_path, simplified)
-
-
-
-
+        one_test(seed)
