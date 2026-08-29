@@ -18,17 +18,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-import subprocess
+import optparse
 import os
+import random
+import re
+import resource
+import shutil
 import signal
+import stat
+import subprocess
 import sys
 import time
-import random
-import resource
-import optparse
-import stat
-import shutil
-import re
 from collections import namedtuple
 
 Solver = namedtuple("Solver", "exe exact cwd", defaults=[None, True, None])
