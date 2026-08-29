@@ -758,6 +758,18 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         sys.exit(-1)
     return True
 
+def cleanup(cnf_path, simplified):
+    os.unlink(cnf_path)
+    for _, simp_path in simplified:
+        os.unlink(simp_path)
+
+
+def exit_if_single_seed():
+    if options.rnd_seed is not None:
+        print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
+        sys.exit(0)
+
+
 if __name__ == "__main__":
     if os.path.isfile("out"):
         print("ERROR: file 'out' exists, but we need a directory named 'out'")
@@ -949,12 +961,8 @@ if __name__ == "__main__":
                 counts.append(Count(solver, preproc, count))
 
         if exact_count is None:
-            if options.rnd_seed is not None:
-                print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
-                sys.exit(0)
-            os.unlink(cnf_path)
-            for _, simp_path in simplified:
-                os.unlink(simp_path)
+            exit_if_single_seed()
+            cleanup(cnf_path, simplified)
             continue
 
         # print("counts is: ", counts)
@@ -1017,13 +1025,8 @@ if __name__ == "__main__":
                   f"  matches {run_desc(exact_count.solver, exact_count.preproc)}")
 
         print(f"{GREEN}=== Checking with file {cnf_path} finished{NC}")
-        if options.rnd_seed is not None:
-            print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
-            sys.exit(0)
-
-        os.unlink(cnf_path)
-        for _, simp_path in simplified:
-            os.unlink(simp_path)
+        exit_if_single_seed()
+        cleanup(cnf_path, simplified)
 
 
 
