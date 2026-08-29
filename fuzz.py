@@ -807,9 +807,9 @@ class FuzzTest:
     proj: bool = False
     weighted: bool = False
     cpx: bool = False
-    cnf_path: str = None
+    cnf_path: str|None = None
     num_no_touch: int = 0
-    projected_vars: list = None
+    projected_vars: list|None = None
     epsilon: float = 0.0
     delta: float = 0.0
     solvers: list = field(default_factory=list)
@@ -818,7 +818,7 @@ class FuzzTest:
     desc_width: int = 0
     idx_width: int = 0
     counts: list = field(default_factory=list)
-    exact_count: Count = None
+    exact_count: Count|None = None
 
 
 def pick_test_params(t):
