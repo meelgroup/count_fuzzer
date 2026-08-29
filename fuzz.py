@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 # Copyright (C) 2022  Anna Latour
 #                     Mate Soos
@@ -50,7 +49,7 @@ signal.signal(signal.SIGTERM, _cleanup_and_exit)
 
 def setlimits(max_cpu_time):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
-    print("Setting resource limit in child (pid %d)" % os.getpid())
+    print(f"Setting resource limit in child (pid {os.getpid()})")
     resource.setrlimit(resource.RLIMIT_CPU, (max_cpu_time, max_cpu_time))
 
 
@@ -130,9 +129,9 @@ def set_up_parser():
 
 def run(command, cwd):
     global current_proc
-    print("\033[35m--> Executing: \033[0m%s in dir %s" % (" ".join(command), cwd))
+    print(f"\033[35m--> Executing: \033[0m{' '.join(command)} in dir {cwd}")
     if options.verbose:
-        print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
+        print(f"CPU limit of parent (pid {os.getpid()})", resource.getrlimit(resource.RLIMIT_CPU))
 
     proc = subprocess.Popen(command, stderr=subprocess.STDOUT,
           stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd)
@@ -147,15 +146,15 @@ def run(command, cwd):
 
     current_proc = None
     if options.verbose:
-        print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
+        print(f"CPU limit of parent (pid {os.getpid()}) after child finished executing",
             resource.getrlimit(resource.RLIMIT_CPU))
     return out, err, proc.returncode
 
 def add_weights(cnf_path, projected_vars) :
     nvars = get_nvars(cnf_path)
     if nvars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
-        exit(-1)
+        print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
+        sys.exit(-1)
 
     if projected_vars is not None:
         all_vars = list(projected_vars)
@@ -187,8 +186,8 @@ def add_weights(cnf_path, projected_vars) :
 def add_weights_cpx(cnf_path, projected_vars) :
     nvars = get_nvars(cnf_path)
     if nvars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
-        exit(-1)
+        print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
+        sys.exit(-1)
 
     if projected_vars is not None:
         all_vars = list(projected_vars)
@@ -254,8 +253,8 @@ def add_no_touch(cnf_path, num_no_touch):
 def add_projection(cnf_path, num_no_touch) :
     nvars = get_nvars(cnf_path)
     if nvars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
-        exit(-1)
+        print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
+        sys.exit(-1)
 
     all_vars = list(range(1, nvars+1))
     if random.choice([True, False]):
@@ -317,8 +316,8 @@ def unique_file(prefix, suffix=".cnf", max_num_files=10000):
 
         counter += 1
         if counter > max_num_files:
-            print("Cannot create unique_file, last try was: %s" % path)
-            exit(-1)
+            print(f"Cannot create unique_file, last try was: {path}")
+            sys.exit(-1)
 
 
 # All meaningful options.
@@ -517,10 +516,10 @@ def run_one_counter(solver, cnf_path, seed=42):
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
-        print("Too much time to solve with %s, aborted!" % solver.exe)
+        print(f"Too much time to solve with {solver.exe}, aborted!")
         return True, None
     if returncode != 0 and not out.startswith("TIMEOUT"):
-        print("Solver crashed with exit code %d (signal %d)" % (returncode, -returncode))
+        print(f"Solver crashed with exit code {returncode} (signal {-returncode})")
         return False, None
 
     count = None
@@ -538,7 +537,7 @@ def run_one_counter(solver, cnf_path, seed=42):
         if "ERROR Memory out!" in line:
             return True, None
         if "blocks are definitely lost" in line:
-            print("ERROR: Memory leak in solver %s, output was: " % solver.exe)
+            print(f"ERROR: Memory leak in solver {solver.exe}, output was: ")
             for out_line in out.split("\n"):
                 print(out_line.strip())
             return False, None
@@ -563,7 +562,7 @@ def run_one_counter(solver, cnf_path, seed=42):
             if count is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
-                exit(-1)
+                sys.exit(-1)
             if cpx:
                 if unsat_found:
                     count = complex(0, 0)
@@ -607,7 +606,7 @@ def run_one_counter(solver, cnf_path, seed=42):
                 count = float(line.split()[5])
             else:
                 print("ERROR, couldn't parse line: ", line)
-                exit(-1)
+                sys.exit(-1)
     if unsat_found:
         return True, 0
 
@@ -654,11 +653,11 @@ def check_header(cnf_path):
                     max_vars = var
 
         if num_cls != header_cls:
-            print("cls in CNF: %d but header said: %d" % (num_cls, header_cls))
+            print(f"cls in CNF: {num_cls} but header said: {header_cls}")
             return False
 
         if max_vars > header_vars:
-            print("max vars was: %d but header said: %d" % (max_vars, header_vars))
+            print(f"max vars was: {max_vars} but header said: {header_vars}")
             return False
     return True
 
@@ -682,14 +681,14 @@ def check_no_touch_preserved(simp_path, num_no_touch):
 
     want_no_touch = list(range(1, num_no_touch+1))
     if no_touch != want_no_touch:
-        print("ERROR: no-touch header in %s is %s but should be %s" % (simp_path, no_touch, want_no_touch))
+        print(f"ERROR: no-touch header in {simp_path} is {no_touch} but should be {want_no_touch}")
         return False
     if nvars < num_no_touch:
-        print("ERROR: %s has only %d vars, but %d are no-touch" % (simp_path, nvars, num_no_touch))
+        print(f"ERROR: {simp_path} has only {nvars} vars, but {num_no_touch} are no-touch")
         return False
     missing = [v for v in want_no_touch if v not in show_vars]
     if missing:
-        print("ERROR: no-touch vars %s of %s are not in 'c p show'" % (missing, simp_path))
+        print(f"ERROR: no-touch vars {missing} of {simp_path} are not in 'c p show'")
         return False
     return True
 
@@ -720,24 +719,24 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         print("output was: ", out)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
-        print("Too much time to preproc with %s, aborted!" % preproc.exe)
+        print(f"Too much time to preproc with {preproc.exe}, aborted!")
         return False
     if out.startswith("TIMEOUT"):
-        print("Preproc %s timed out, skipping" % preproc.exe)
+        print(f"Preproc {preproc.exe} timed out, skipping")
         return False
     if returncode != 0:
-        print("ERROR: preproc %s crashed with exit code %d, output was:" % (preproc.exe, returncode))
+        print(f"ERROR: preproc {preproc.exe} crashed with exit code {returncode}, output was:")
         print(out)
-        exit(-1)
+        sys.exit(-1)
     assert check_header(out_path)
     if not check_no_touch_preserved(out_path, num_no_touch):
-        exit(-1)
+        sys.exit(-1)
     return True
 
 if __name__ == "__main__":
     if os.path.exists("out") and  os.path.isfile("out"):
         print("ERROR: file 'out' exists, but we need a directory named 'out'")
-        exit(-1)
+        sys.exit(-1)
 
     if not os.path.isdir("out"):
         print("Directory for outputs, 'out' not present, creating it.")
@@ -799,9 +798,9 @@ if __name__ == "__main__":
         status = subprocess.call(call, shell=True)
         if status != 0:
             print("Failed fuzzer file generator call: ", call)
-            exit(-1)
+            sys.exit(-1)
         else:
-            print("Generated fuzz file %s with call: %s" % (cnf_path, call))
+            print(f"Generated fuzz file {cnf_path} with call: {call}")
 
         num_no_touch = 0
         if not cpx:
@@ -891,11 +890,11 @@ if __name__ == "__main__":
                 shutil.copyfile(cnf_path, simp_path)
                 ok = True
                 if options.verbose:
-                    print("Copied file %s to %s for the empty preproc" % (cnf_path, simp_path))
+                    print(f"Copied file {cnf_path} to {simp_path} for the empty preproc")
             else:
                 ok = run_one_preproc(preproc, cnf_path, simp_path, num_no_touch)
                 if options.verbose:
-                    print("Generated file %s by preproc %s which preprocessed %s" % (simp_path, preproc.exe, cnf_path))
+                    print(f"Generated file {simp_path} by preproc {preproc.exe} which preprocessed {cnf_path}")
             if ok:
                 simplified.append((preproc, simp_path))
             else:
@@ -905,7 +904,7 @@ if __name__ == "__main__":
         print("Set of solvers is: ", solvers)
         if len(solvers) == 1:
             print("ERROR, it makes no sense to run a single solver, exiting")
-            exit(-1)
+            sys.exit(-1)
 
         for solver in solvers:
             for preproc, simp_path in simplified:
@@ -922,7 +921,7 @@ if __name__ == "__main__":
                 ok, count = run_one_counter(to_run, simp_path)
                 if not ok:
                     print("Error running ", solver)
-                    exit(-1)
+                    sys.exit(-1)
                 print("got back: ", ok, " , ", count)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
@@ -932,7 +931,7 @@ if __name__ == "__main__":
         if exact_count is None:
             if options.rnd_seed is not None:
                 print("Exiting as we only wanted to run one test due to --seed")
-                exit(0)
+                sys.exit(0)
             os.unlink(cnf_path)
             for _, simp_path in simplified:
                 os.unlink(simp_path)
@@ -946,16 +945,16 @@ if __name__ == "__main__":
                     "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
                 if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
-                    print("ERROR: One weighted count is %s, but other count is %s" % (got.count, exact_count.count))
-                    exit(-1)
+                    print(f"ERROR: One weighted count is {got.count}, but other count is {exact_count.count}")
+                    sys.exit(-1)
 
             if not weighted:
                 if got.count != exact_count.count and got.solver.exact:
                     print("ERROR!")
-                    print("%s with preproc %s counted: %s" %(got.solver, got.preproc, got.count))
-                    print("%s with preproc %s counted: %s" %(
-                        exact_count.solver, exact_count.preproc, exact_count.count))
-                    exit(-1)
+                    print(f"{got.solver} with preproc {got.preproc} counted: {got.count}")
+                    print(f"{exact_count.solver} with preproc {exact_count.preproc} counted: "
+                          f"{exact_count.count}")
+                    sys.exit(-1)
 
                 if got.count != exact_count.count and not got.solver.exact:
                     max_allowed = exact_count.count * (1.0 + epsilon)
@@ -980,7 +979,7 @@ if __name__ == "__main__":
                             print(f"Rerun gives count = {rerun_count}")
                             if not ok:
                                 print("ERROR: rerun failed?")
-                                exit(-1)
+                                sys.exit(-1)
                             if rerun_count > max_allowed or rerun_count < min_allowed:
                                 num_wrong += 1
                         if num_failed < 5:
@@ -989,23 +988,23 @@ if __name__ == "__main__":
 
                             allowed_perc_wrong = (delta) * 100.0
                             if perc_wrong > allowed_perc_wrong:
-                                print("ERROR: Delta was exceeded. It was allowed to be only %s %%" % allowed_perc_wrong)
-                                exit(-1)
+                                print(f"ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %")
+                                sys.exit(-1)
                             else:
-                                print("OK within delta after reruns. Delta was %s %%" % allowed_perc_wrong)
+                                print(f"OK within delta after reruns. Delta was {allowed_perc_wrong} %")
                         else:
                             print("Too many failed reruns, not checking delta.")
 
 
-            print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
-                      (got.count, got.solver.exe, got.preproc, exact_count.solver, exact_count.preproc))
+            print(f"OK, count is {got.count}. Solve {got.solver.exe} with preproc {got.preproc} "
+                  f"matches solver {exact_count.solver} count with preproc {exact_count.preproc}")
 
         print(" ---------------------------")
         if options.rnd_seed is not None:
             print("Exiting as we only wanted to run one test due to --seed")
-            exit(0)
+            sys.exit(0)
 
-        print("Checking with file %s finished\n" % cnf_path)
+        print(f"Checking with file {cnf_path} finished\n")
         os.unlink(cnf_path)
         for _, simp_path in simplified:
             os.unlink(simp_path)
