@@ -142,7 +142,7 @@ def run(command, cwd):
     except subprocess.TimeoutExpired:
         proc.kill()
         out, err = proc.communicate()
-        out = "TIMEOUT: Process killed after %d seconds\n" % options.maxtime + out
+        out = f"TIMEOUT: Process killed after {options.maxtime} seconds\n" + out
 
     current_proc = None
     if options.verbose:
@@ -181,7 +181,7 @@ def add_weights(cnf_path, projected_vars) :
 
     with open(cnf_path, "a") as f:
         for lit, weight in weights:
-            f.write("c p weight %d %lf 0\n" % (lit, weight))
+            f.write(f"c p weight {lit} {weight:f} 0\n")
 
 def add_weights_cpx(cnf_path, projected_vars) :
     nvars = get_nvars(cnf_path)
@@ -221,7 +221,7 @@ def add_weights_cpx(cnf_path, projected_vars) :
 
     with open(cnf_path, "a") as f:
         for lit, real, imag in weights:
-            f.write("c p weight %d %lf %lf 0\n" % (lit, real, imag))
+            f.write(f"c p weight {lit} {real:f} {imag:f} 0\n")
 
 def get_nvars(cnf_path):
     with open(cnf_path, "r") as f:
@@ -247,7 +247,7 @@ def add_no_touch(cnf_path, num_no_touch):
     with open(cnf_path, "a") as f:
         f.write("c p no-touch ")
         for i in range(num_no_touch):
-            f.write("%d " % (i+1))
+            f.write(f"{i+1} ")
         f.write("0\n")
 
 def add_projection(cnf_path, num_no_touch) :
@@ -274,7 +274,7 @@ def add_projection(cnf_path, num_no_touch) :
     with open(cnf_path, "a") as f:
         f.write("c p show ")
         for var in proj:
-            f.write("%d " % var)
+            f.write(f"{var} ")
         f.write("0\n")
     return proj
 
@@ -291,14 +291,14 @@ def get_type(proj, weighted):
 def gen_fuzz_call_biere(fuzzer, out_path, proj, weighted):
     seed = random.randint(0, 1000*1000*1000)
     cnf_type = get_type(proj, weighted)
-    call = "{0} {1} {2} > {3}".format(fuzzer, seed, cnf_type, out_path)
+    call = f"{fuzzer} {seed} {cnf_type} > {out_path}"
     return call
 
 
 def gen_fuzz_call_brummayer(fuzzer, out_path, proj, weighted):
     seed = random.randint(0, 1000*1000*1000)
     cnf_type = get_type(proj, weighted)
-    call = "{0} -s {1} -T {2} > {3}".format(fuzzer, seed, cnf_type, out_path)
+    call = f"{fuzzer} -s {seed} -T {cnf_type} > {out_path}"
     return call
 
 
@@ -494,7 +494,7 @@ def make_ganak_solver(base, epsilon, delta, mode):
 
 
 def gen_approxmc_extra(epsilon, delta):
-    return " --epsilon %s --delta %s --arjun %s " % (epsilon, delta, random.choice(["0", "1"]))
+    return f" --epsilon {epsilon} --delta {delta} --arjun {random.choice(['0', '1'])} "
 
 
 def run_one_counter(solver, cnf_path, seed=42):
