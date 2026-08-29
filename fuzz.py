@@ -676,6 +676,10 @@ def check_no_touch_preserved(simp_path, num_no_touch):
                 no_touch = [int(x) for x in line.split()[3:-1]]
             if line.startswith("c p show"):
                 show_vars = set(int(x) for x in line.split()[3:-1])
+    if show_vars is None:
+        # no "c p show" means every var is in the sampling set
+        show_vars = set(range(1, nvars+1))
+
     want_no_touch = list(range(1, num_no_touch+1))
     if no_touch != want_no_touch:
         print("ERROR: no-touch header in %s is %s but should be %s" % (simp_path, no_touch, want_no_touch))
@@ -688,6 +692,19 @@ def check_no_touch_preserved(simp_path, num_no_touch):
         print("ERROR: no-touch vars %s of %s are not in 'c p show'" % (missing, simp_path))
         return False
     return True
+
+
+def perc_diff(got, want):
+    diff = abs(got.real-want.real) + abs(got.imag-want.imag)
+    magnitude = abs(want.real) + abs(want.imag)
+    if (got != want and magnitude == 0):
+        return 100.0
+    return diff/magnitude
+
+
+def abs_diff(got, want):
+    return abs(got.real-want.real) + abs(got.imag-want.imag)
+
 
 def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     curr_time = time.time()
@@ -713,6 +730,8 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         print(out)
         exit(-1)
     assert check_header(out_path)
+    if not check_no_touch_preserved(out_path, num_no_touch):
+        exit(-1)
     return True
 
 if __name__ == "__main__":
@@ -909,13 +928,6 @@ if __name__ == "__main__":
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
-        if num_no_touch > 0 and not weighted and not cpx:
-            checker = Solver(ganak_base + " --arjun 0 ", True)
-            for preproc, simp_path in simplified:
-                if preproc.exe is None:
-                    continue
-                if not check_no_touch_counts(checker, cnf_path, simp_path, num_no_touch):
-                    exit(-1)
 
         if exact_count is None:
             if options.rnd_seed is not None:
@@ -927,16 +939,6 @@ if __name__ == "__main__":
             continue
 
         print("counts is: ", counts)
-        def perc_diff(got, want):
-            diff = abs(got.real-want.real) + abs(got.imag-want.imag)
-            magnitude = abs(want.real) + abs(want.imag)
-            if (got != want and magnitude == 0):
-                return 100.0
-            return diff/magnitude
-
-        def abs_diff(got, want):
-            return abs(got.real-want.real) + abs(got.imag-want.imag)
-
         for got, _ in zip(counts, solvers):
             if weighted:
                 assert(got.solver.exact)
