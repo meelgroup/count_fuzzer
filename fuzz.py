@@ -505,9 +505,8 @@ def run_one_counter(solver, cnf_path, seed=42):
         cnf_arg = toexec.pop()
         toexec.extend(["-s", str(seed), cnf_arg])
 
-    if "ganak" in solver.exe:
-        if random.randint(1,100) == 30:
-            toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
+    if "ganak" in solver.exe and random.randint(1,100) == 30:
+        toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
     out, err, returncode = run(toexec, solver.cwd)
     if err is None:
         if options.verbose:
@@ -541,12 +540,11 @@ def run_one_counter(solver, cnf_path, seed=42):
             for out_line in out.split("\n"):
                 print(out_line.strip())
             return False, None
-        if "ERROR" in line:
-            if ("ERROR SUMMARY" not in line):
-                print("ERROR in output: ", line)
-                for out_line in out.split("\n"):
-                    print(out_line.strip())
-                return False, None
+        if "ERROR" in line and "ERROR SUMMARY" not in line:
+            print("ERROR in output: ", line)
+            for out_line in out.split("\n"):
+                print(out_line.strip())
+            return False, None
         if len(line) < 4:
             continue
         if "c s exact arb cpx" in line:
@@ -575,7 +573,7 @@ def run_one_counter(solver, cnf_path, seed=42):
             elif line[:4] == "s mc" or line[:5] == "s pmc":
                 count = int(line.split()[2])
             elif "c s exact arb int" in line:
-                count = float(line.split()[5])
+                count = int(line.split()[5])
             elif "c s exact arb float " in line:
                 count = float(line.split()[5])
             elif "c s exact quadruple float interval [" in line:
@@ -603,7 +601,7 @@ def run_one_counter(solver, cnf_path, seed=42):
             elif "s exact double prec-sci" in line:
                 count = float(line.split()[5])
             elif "c s approx arb int" in line:
-                count = float(line.split()[5])
+                count = int(line.split()[5])
             else:
                 print("ERROR, couldn't parse line: ", line)
                 sys.exit(-1)
