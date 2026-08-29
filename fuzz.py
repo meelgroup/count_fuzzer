@@ -77,8 +77,8 @@ def set_up_parser():
       action="store_true", help="Fuzz buddy, too")
 
     parser.add_option(
-      "--cpx", dest="cpx", default=False,
-      action="store_true", help="Complex numbers only")
+      "--disable-no-touch", dest="disable_no_touch", default=False,
+      action="store_true", help="Don't use no-touch")
 
     parser.add_option(
       "--weighted", dest="weighted", default=False,
@@ -109,14 +109,6 @@ def set_up_parser():
       action="store_true", help="With this, weights are MESSY and they often add up to 0")
 
     parser.add_option(
-      "--exact", action="store_true", default=False,
-      dest="exact", help="Only exact counting")
-
-    parser.add_option(
-      "--noimag", dest="noimag", default=False, action="store_true",
-      help="Set imag to 0. Default: %default")
-
-    parser.add_option(
         "--num-samples", dest="num_samples", type=int, default=3,
         help="How many samples to take for approximate counters. Default: %default")
 
@@ -129,7 +121,8 @@ def set_up_parser():
 
 def run(command, cwd):
     global current_proc
-    print(f"\033[35m--> Executing: \033[0m{' '.join(command)} in dir {cwd}")
+    if options.verbose:
+        print(f"\033[35m--> Executing: \033[0m{' '.join(command)} in dir {cwd}")
     if options.verbose:
         print(f"CPU limit of parent (pid {os.getpid()})", resource.getrlimit(resource.RLIMIT_CPU))
 
@@ -216,9 +209,6 @@ def add_weights_cpx(cnf_path, projected_vars) :
             weights.append([var, real, imag])
             weights.append([-var, 1.0-real, 1-imag])
 
-    if options.noimag:
-        weights = [[lit, real, 0.0] for lit, real, _ in weights]
-
     with open(cnf_path, "a") as f:
         for lit, real, imag in weights:
             f.write(f"c p weight {lit} {real:f} {imag:f} 0\n")
@@ -249,6 +239,7 @@ def add_no_touch(cnf_path, num_no_touch):
         for i in range(num_no_touch):
             f.write(f"{i+1} ")
         f.write("0\n")
+    print(f"\033[35m--> Added no-touch header\033[0m to {cnf_path} for vars 1..{num_no_touch}")
 
 def add_projection(cnf_path, num_no_touch) :
     nvars = get_nvars(cnf_path)
@@ -708,7 +699,9 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     toexec = preproc.exe.split()
     toexec.append(os.getcwd() + "/" + in_path)
     toexec.append(os.getcwd() + "/" + out_path)
-    print("Executing preproc ", preproc)
+
+    print(f"\033[35m--> Executing preproc: \033[0m{' '.join(toexec)} in dir {preproc.cwd}")
+    # print("Executing preproc ", preproc)
     out, err, returncode = run(toexec, preproc.cwd)
     if err is None:
         pass
@@ -768,16 +761,12 @@ if __name__ == "__main__":
             proj = False
 
         weighted :bool = random.choice([True, False])
-        if (options.weighted):
+        if options.weighted:
             weighted = True
-        if (options.unweighted):
+        if options.unweighted:
             weighted = False
 
-        cpx = options.cpx
-        if cpx:
-            proj = False
-            weighted = True
-
+        cpx :bool = random.choice([True, False, False])
         cnf_path = unique_file("fuzzTest")
         print("\033[32mSeed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking file: ", cnf_path, "\033[0m")
 
@@ -792,17 +781,18 @@ if __name__ == "__main__":
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
-        print("Calling: ", call)
+        print(f"\033[35m--> Calling: \033[0m{call}")
         status = subprocess.call(call, shell=True)
         if status != 0:
             print("Failed fuzzer file generator call: ", call)
             sys.exit(-1)
         else:
-            print(f"Generated fuzz file {cnf_path} with call: {call}")
+            print(f"\033[35m--> Generated fuzz file\033[0m {cnf_path} with call: {call}")
 
         num_no_touch = 0
-        if not cpx:
-            num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
+        num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
+        if options.disable_no_touch:
+            num_no_touch = 0
         projected_vars = None
         if proj:
             projected_vars = add_projection(cnf_path, num_no_touch)
@@ -839,18 +829,10 @@ if __name__ == "__main__":
         else:
             solvers.extend([
             make_ganak_solver(ganak_base, epsilon, delta, mode=1),
+            make_ganak_solver(ganak_base, epsilon, delta, mode=7),
             # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
             # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
             ])
-            if not options.exact:
-                solvers.extend([
-                    make_ganak_solver(ganak_base, epsilon, delta, mode=7),
-                    # make_ganak_solver(ganak_base, epsilon, delta, mode=8),
-                    # make_ganak_solver(ganak_base, epsilon, delta, mode=9),
-                ])
-            else:
-                solvers.append(make_ganak_solver(ganak_base, epsilon, delta, mode=1))
-
 
         if weighted and proj:
             solvers.extend([
@@ -866,19 +848,14 @@ if __name__ == "__main__":
             proj = False
             solvers = [
                 make_ganak_solver(ganak_base, epsilon, delta, mode=2),
+                make_ganak_solver(ganak_base, epsilon, delta, mode=6),
                 Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
-            if not options.exact:
-                solvers.append(make_ganak_solver(ganak_base, epsilon, delta, mode=6))
 
         preprocs = [
-            # Preproc("./run.sh", "./bins/bpe-april2016/"),
+            Preproc( "../arjun/build/arjun " + gen_arjun_extra(weighted), None),
             Preproc(None, None)
         ]
-        # arjun has no complex-number field
-        if not cpx:
-            preprocs.insert(0, Preproc(
-                "../arjun/build/arjun " + gen_arjun_extra(weighted), None))
 
         simplified = []
         for preproc in preprocs:
