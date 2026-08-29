@@ -520,10 +520,10 @@ def run_desc(solver, preproc):
     return f"{short_exe(solver.exe)}{approx} + {short_exe(preproc.exe)}"
 
 
-def report_mismatch(got, ref, cnf_path, name_w, kind=""):
+def report_mismatch(got, ref, cnf_path, desc_width, kind=""):
     print(f"{RED}ERROR: {kind}counts disagree for {cnf_path}:{NC}")
-    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
-    print(f"    {run_desc(ref.solver, ref.preproc):<{name_w}}  count = "
+    print(f"    {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}")
+    print(f"    {run_desc(ref.solver, ref.preproc):<{desc_width}}  count = "
           f"{CYAN}{ref.count}{NC}   (used as reference)")
     sys.exit(-1)
 
@@ -920,9 +920,9 @@ if __name__ == "__main__":
             print(f"      [{i}] {solver_desc(solver)}")
             if options.verbose: print(f"          {' '.join(solver.exe.split())}")
         print(f"{MAGENTA}--> Preprocessors ({len(simplified)}):{NC}")
-        pp_w = max(len(short_exe(pp.exe)) for pp, _ in simplified)
+        preproc_width = max(len(short_exe(pp.exe)) for pp, _ in simplified)
         for preproc, simp_path in simplified:
-            print(f"      {short_exe(preproc.exe):<{pp_w}} -> {simp_path}")
+            print(f"      {short_exe(preproc.exe):<{preproc_width}} -> {simp_path}")
         if len(solvers) == 1:
             print("ERROR, it makes no sense to run a single solver, exiting")
             sys.exit(-1)
@@ -935,11 +935,11 @@ if __name__ == "__main__":
                 or "ganak" in solver.exe or "approx" in solver.exe]
 
         # pad to the widest name so the counts line up in a column
-        name_w = max(len(run_desc(so, pp)) for so, pp, _ in runs)
-        idx_w = len(str(len(runs)))
+        desc_width = max(len(run_desc(so, pp)) for so, pp, _ in runs)
+        idx_width = len(str(len(runs)))
 
         for run_idx, (solver, preproc, simp_path) in enumerate(runs, 1):
-            tag = f"[{run_idx:>{idx_w}}/{len(runs)}] {run_desc(solver, preproc):<{name_w}}"
+            tag = f"[{run_idx:>{idx_width}}/{len(runs)}] {run_desc(solver, preproc):<{desc_width}}"
             print(f"{MAGENTA}--> Counting:{NC} {tag} on {simp_path}")
             to_run = solver
             if preproc.exe is not None and "arjun" in preproc.exe:
@@ -973,11 +973,11 @@ if __name__ == "__main__":
                     "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
                 if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
-                    report_mismatch(got, exact_count, cnf_path, name_w, "weighted ")
+                    report_mismatch(got, exact_count, cnf_path, desc_width, "weighted ")
 
             if not weighted:
                 if got.count != exact_count.count and got.solver.exact:
-                    report_mismatch(got, exact_count, cnf_path, name_w)
+                    report_mismatch(got, exact_count, cnf_path, desc_width)
 
                 if got.count != exact_count.count and not got.solver.exact:
                     max_allowed = exact_count.count * (1.0 + epsilon)
@@ -985,7 +985,7 @@ if __name__ == "__main__":
 
                     oob = got.count > max_allowed or got.count < min_allowed
                     col = RED if oob else YELLOW
-                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}"
+                    print(f"    {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
                           f"  vs exact {exact_count.count}"
                           f"  {col}(factor {exact_count.count / float(got.count)} off){NC}")
                     print(f"    allowed with epsilon={epsilon}: [{min_allowed}, {max_allowed}] -> "
@@ -1021,7 +1021,7 @@ if __name__ == "__main__":
                             print("Too many failed reruns, not checking delta.")
 
 
-            print(f"{GREEN}OK{NC}  {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}"
+            print(f"{GREEN}OK{NC}  {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}"
                   f"  matches {run_desc(exact_count.solver, exact_count.preproc)}")
 
         print(f"{GREEN}=== Checking with file {cnf_path} finished{NC}")
