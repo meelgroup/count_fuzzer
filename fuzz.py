@@ -528,7 +528,7 @@ def report_mismatch(got, ref, cnf_path, name_w, kind=""):
     sys.exit(-1)
 
 
-def run_one_counter(solver, cnf_path, seed=42):
+def run_one_counter(solver, cnf_path, cpx, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
     toexec.append(os.getcwd() + "/" + cnf_path)
@@ -935,7 +935,7 @@ if __name__ == "__main__":
                 # pass (re-run inside the counter) refuses
                 exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
                 to_run = solver._replace(exe=exe)
-            ok, count = run_one_counter(to_run, simp_path)
+            ok, count = run_one_counter(to_run, simp_path, cpx)
             if not ok:
                 print(f"{RED}ERROR running {tag}{NC}")
                 sys.exit(-1)
@@ -988,7 +988,7 @@ if __name__ == "__main__":
                         num_done = 0
                         num_failed = 0
                         while num_done < num_reruns and num_failed < 5:
-                            ok, rerun_count = run_one_counter(got.solver, cnf_path, random.randint(0, 1000*1000*1000))
+                            ok, rerun_count = run_one_counter(got.solver, cnf_path, cpx, random.randint(0, 1000*1000*1000))
                             if rerun_count is None:
                                 num_failed += 1
                                 continue
