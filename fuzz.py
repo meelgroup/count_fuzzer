@@ -211,7 +211,7 @@ def add_weights_cpx(cnf_path, projected_vars) :
 
     with open(cnf_path, "a") as f:
         for lit, real, imag in weights:
-            f.write(f"c p weight {lit} {real:f} {imag:f} 0\n")
+            f.write(f"c p weight {lit} {real:f} + {imag:f}i 0\n")
 
 def get_nvars(cnf_path):
     with open(cnf_path, "r") as f:
@@ -433,7 +433,7 @@ def gen_ganak_extra(epsilon, delta, mode):
     return " ".join(parts) + " "
 
 
-def gen_arjun_extra(weighted):
+def gen_arjun_extra(weighted, cpx):
     """Generate random arjun options for the standalone preproc binary.
 
     --allindep is excluded: it changes the meaning of the CNF and so the
@@ -470,7 +470,12 @@ def gen_arjun_extra(weighted):
         "sbvabreak", "red",
     ]
 
-    parts = ["--verb", "0", "--mode", "1" if weighted else "0"]
+    parts = ["--verb", "0"]
+    if cpx:
+        parts.extend(["--mode", "2"])
+    else:
+        parts.extend(["--mode", "1" if weighted else "0"])
+
     for flag, choices in choice_opts:
         parts.extend(["--" + flag, random.choice(choices)])
     for flag in binary_opts:
@@ -853,7 +858,7 @@ if __name__ == "__main__":
                 ]
 
         preprocs = [
-            Preproc( "../arjun/build/arjun " + gen_arjun_extra(weighted), None),
+            Preproc( "../arjun/build/arjun " + gen_arjun_extra(weighted, cpx), None),
             Preproc(None, None)
         ]
 
