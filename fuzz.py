@@ -22,7 +22,6 @@ import optparse
 import os
 import random
 import re
-import resource
 import shutil
 import signal
 import stat
@@ -55,12 +54,6 @@ def _cleanup_and_exit(_signum, _frame):
 
 signal.signal(signal.SIGHUP, _cleanup_and_exit)
 signal.signal(signal.SIGTERM, _cleanup_and_exit)
-
-def setlimits(max_cpu_time):
-    # Set maximum CPU time to 1 second in child process, after fork() but before exec()
-    print(f"Setting resource limit in child (pid {os.getpid()})")
-    resource.setrlimit(resource.RLIMIT_CPU, (max_cpu_time, max_cpu_time))
-
 
 def set_up_parser():
     usage = "usage: %prog [options] "
@@ -132,37 +125,32 @@ def run(command, cwd):
     global current_proc
     if options.verbose:
         print(f"{MAGENTA}--> Executing: {NC}{' '.join(command)} in dir {cwd}")
-    if options.verbose:
-        print(f"CPU limit of parent (pid {os.getpid()})", resource.getrlimit(resource.RLIMIT_CPU))
 
     proc = subprocess.Popen(command, stderr=subprocess.STDOUT,
           stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd)
     current_proc = proc
 
     try:
-        out, err = proc.communicate(timeout=options.maxtime)
+        out, _ = proc.communicate(timeout=options.maxtime)
     except subprocess.TimeoutExpired:
         proc.kill()
-        out, err = proc.communicate()
+        out, _ = proc.communicate()
         out = f"TIMEOUT: Process killed after {options.maxtime} seconds\n" + out
 
     current_proc = None
-    if options.verbose:
-        print(f"CPU limit of parent (pid {os.getpid()}) after child finished executing",
-            resource.getrlimit(resource.RLIMIT_CPU))
-    return out, err, proc.returncode
+    return out, proc.returncode
 
-def add_weights(cnf_path, projected_vars) :
+def weighted_vars(cnf_path, projected_vars):
     nvars = get_nvars(cnf_path)
     if nvars == 0:
         print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
         sys.exit(-1)
-
     if projected_vars is not None:
-        all_vars = list(projected_vars)
-    else:
-        all_vars = list(range(1, nvars+1))
+        return list(projected_vars)
+    return list(range(1, nvars+1))
 
+def add_weights(cnf_path, projected_vars) :
+    all_vars = weighted_vars(cnf_path, projected_vars)
     weights = []
     if options.zerocomps:
         for var in all_vars:
@@ -186,16 +174,7 @@ def add_weights(cnf_path, projected_vars) :
             f.write(f"c p weight {lit} {weight:f} 0\n")
 
 def add_weights_cpx(cnf_path, projected_vars) :
-    nvars = get_nvars(cnf_path)
-    if nvars == 0:
-        print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
-        sys.exit(-1)
-
-    if projected_vars is not None:
-        all_vars = list(projected_vars)
-    else:
-        all_vars = list(range(1, nvars+1))
-
+    all_vars = weighted_vars(cnf_path, projected_vars)
     weights = []
     if options.zerocomps:
         for var in all_vars:
@@ -541,6 +520,14 @@ def run_desc(solver, preproc):
     return f"{short_exe(solver.exe)}{approx} + {short_exe(preproc.exe)}"
 
 
+def report_mismatch(got, ref, cnf_path, name_w, kind=""):
+    print(f"{RED}ERROR: {kind}counts disagree for {cnf_path}:{NC}")
+    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
+    print(f"    {run_desc(ref.solver, ref.preproc):<{name_w}}  count = "
+          f"{CYAN}{ref.count}{NC}   (used as reference)")
+    sys.exit(-1)
+
+
 def run_one_counter(solver, cnf_path, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
@@ -551,12 +538,7 @@ def run_one_counter(solver, cnf_path, seed=42):
 
     if "ganak" in solver.exe and random.randint(1,100) == 30:
         toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
-    out, err, returncode = run(toexec, solver.cwd)
-    if err is None:
-        if options.verbose:
-            print("No error.")
-    else:
-        print("Error string is: ", err)
+    out, returncode = run(toexec, solver.cwd)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
         print(f"{YELLOW}--> Too much time to solve with {solver_desc(solver)}, aborted!{NC}")
@@ -636,8 +618,6 @@ def run_one_counter(solver, cnf_path, seed=42):
                     "c s exact quadruple float" in line or \
                     "c s exact double float" in line:
                 count = float(line.split()[5])
-            elif "c s exact arb int" in line:
-                count = int(line.split()[5])
             elif "c s exact arb frac" in line:
                 parts = line.split()
                 if parts[5] == "[":
@@ -761,12 +741,7 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     else:
         print(f"{MAGENTA}--> Executing preproc:{NC} {short_exe(preproc.exe)} {in_path} -> {out_path}")
     # print("Executing preproc ", preproc)
-    out, err, returncode = run(toexec, preproc.cwd)
-    if err is None:
-        pass
-    else:
-        print("Error string is: ", err)
-        print("output was: ", out)
+    out, returncode = run(toexec, preproc.cwd)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
         print(f"{YELLOW}--> Too much time to preproc with {short_exe(preproc.exe)}, aborted!{NC}")
@@ -784,17 +759,11 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     return True
 
 if __name__ == "__main__":
-    if os.path.exists("out") and  os.path.isfile("out"):
+    if os.path.isfile("out"):
         print("ERROR: file 'out' exists, but we need a directory named 'out'")
         sys.exit(-1)
-
-    if not os.path.isdir("out"):
-        print("Directory for outputs, 'out' not present, creating it.")
-        os.mkdir("out")
-
-    # Create directories needed to run fuzzer
-    os.makedirs("tmpdir", exist_ok=True)
     os.makedirs("out", exist_ok=True)
+    os.makedirs("tmpdir", exist_ok=True)
 
     # parse options
     parser = set_up_parser()
@@ -848,7 +817,6 @@ if __name__ == "__main__":
         else:
             print(f"{MAGENTA}--> Generated fuzz file{NC} {cnf_path} with call: {call}")
 
-        num_no_touch = 0
         num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
         if options.disable_no_touch:
             num_no_touch = 0
@@ -997,19 +965,11 @@ if __name__ == "__main__":
                     "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
                 if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
-                    print(f"{RED}ERROR: weighted counts disagree for {cnf_path}:{NC}")
-                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
-                    print(f"    {run_desc(exact_count.solver, exact_count.preproc):<{name_w}}  count = "
-                          f"{CYAN}{exact_count.count}{NC}   (used as reference)")
-                    sys.exit(-1)
+                    report_mismatch(got, exact_count, cnf_path, name_w, "weighted ")
 
             if not weighted:
                 if got.count != exact_count.count and got.solver.exact:
-                    print(f"{RED}ERROR: counts disagree for {cnf_path}:{NC}")
-                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
-                    print(f"    {run_desc(exact_count.solver, exact_count.preproc):<{name_w}}  count = "
-                          f"{CYAN}{exact_count.count}{NC}   (used as reference)")
-                    sys.exit(-1)
+                    report_mismatch(got, exact_count, cnf_path, name_w)
 
                 if got.count != exact_count.count and not got.solver.exact:
                     max_allowed = exact_count.count * (1.0 + epsilon)
