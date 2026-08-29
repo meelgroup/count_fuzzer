@@ -502,16 +502,46 @@ def parse_frac_complex(s):
     return complex(parse_frac(match.group(1)), imag)
 
 
+# ganak --mode, verbatim from "ganak --help"
+MODE_NAMES = {
+    0:  "integer counting",
+    1:  "weighted counting over the rationals",
+    2:  "complex rational numbers",
+    3:  "multivariate polynomials over the rational field",
+    4:  "parity counting",
+    5:  "counting over a prime field (see --prime)",
+    6:  "mpfr floating point complex numbers (see --mpfrprec)",
+    7:  "mpfr floating point real numbers (see --mpfrprec)",
+    13: "multivariate Laurent polynomials (see --npolyvars)",
+}
+
+# These count in floating point, so two of them agree only approximately.
+FLOAT_MODES = {6, 7}
+
+
+def mode_of(exe):
+    """command line -> its --mode as an int, or None"""
+    match = re.search(r"--?mode[= ](\d+)", exe)
+    return int(match.group(1)) if match else None
+
+
+def any_float_mode(*solvers):
+    return any(mode_of(s.exe) in FLOAT_MODES for s in solvers)
+
+
 def short_exe(exe):
     """long command line -> "ganak mode=2", "arjun", "no-preproc" """
     if exe is None: return "no-preproc"
     name = os.path.basename(exe.split()[0])
-    mode = re.search(r"--?mode[= ](\d+)", exe)
-    return f"{name} mode={mode.group(1)}" if mode else name
+    mode = mode_of(exe)
+    return f"{name} mode={mode}" if mode is not None else name
 
 
 def solver_desc(solver):
     desc = short_exe(solver.exe) + ("" if solver.exact else " (approx)")
+    mode = mode_of(solver.exe)
+    if "ganak" in solver.exe and mode in MODE_NAMES:
+        desc += f"  [{MODE_NAMES[mode]}]"
     if solver.cwd is not None: desc += f" in {solver.cwd}"
     return desc
 
@@ -846,16 +876,6 @@ def generate_cnf(t):
     t.cnf_path, t.num_no_touch, t.projected_vars = cnf_path, num_no_touch, projected_vars
 
 
-# MODES
-# 0=integer counting,
-# 1=weighted counting over the rationals,
-# 2=complex rational numbers,
-# 3=multivariate polynomials over the rational field,
-# 4=parity counting,
-# 5=counting over a prime field (see --prime),
-# 6=mpfr floating point complex numbers (see --mpfrprecision),
-# 7=mpfr floating point real numbers (see --mpfrprecision),
-# 8=mpfi intervals
 def build_solvers(t):
     weighted, proj, cpx = t.weighted, t.proj, t.cpx
     solvers = []
@@ -1041,9 +1061,7 @@ def compare_counts(t):
     for got, _ in zip(counts, solvers):
         if weighted:
             assert(got.solver.exact)
-            is_float_mode = "--mode 7" in got.solver.exe or "--mode 8" in got.solver.exe or "--mode 9" in got.solver.exe or \
-                "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
-            abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
+            abs_diff_threshold = 1e-10 if any_float_mode(got.solver, exact_count.solver) else 1e-50
             if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
                 report_mismatch(got, exact_count, cnf_path, desc_width, "weighted ")
 
