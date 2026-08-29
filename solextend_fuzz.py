@@ -34,6 +34,7 @@ import re
 Solver = namedtuple("Solver", "exe dir", defaults=[None, None])
 Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
 
+
 def setlimits(t):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
     print("Setting resource limit in child (pid %d)" % os.getpid())
@@ -96,6 +97,7 @@ def gen_fuzz_call_biere(fuzzer, fname):
     call = "{0} {1} > {2}".format(fuzzer, seed, fname)
     return call
 
+
 def gen_fuzz_call_brummayer(fuzzer, fname):
     seed = random.randint(0, 1000000)
     call = "{0} -s {1} > {2}".format(fuzzer, seed, fname)
@@ -103,7 +105,7 @@ def gen_fuzz_call_brummayer(fuzzer, fname):
 
 
 def unique_file(fname_begin, fname_end=".cnf"):
-    max_num_files=300
+    max_num_files = 300
     counter = 1
     while True:
         fname = "out/" + fname_begin + '_' + str(counter) + fname_end
@@ -119,6 +121,7 @@ def unique_file(fname_begin, fname_end=".cnf"):
         if counter > max_num_files:
             print("Cannot create unique_file, last try was: %s" % fname)
             exit(-1)
+
 
 def parse_solution_from_output(output_lines):
     if len(output_lines) == 0:
@@ -190,7 +193,8 @@ def parse_solution_from_output(output_lines):
 
     return sat, solution
 
-def run_one_solver(solver, fname : str):
+
+def run_one_solver(solver, fname: str):
     curr_time = time.time()
     toexec = solver.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
@@ -208,16 +212,17 @@ def run_one_solver(solver, fname : str):
 
     return parse_solution_from_output(out.split("\n"))
 
+
 def check_header(fname):
     with open(fname, "r") as f:
         num_cls = 0
         max_vars = 0
-        header_cls = 0;
-        header_vars = 0;
+        header_cls = 0
+        header_vars = 0
         for line in f:
             line = line.strip()
             if len(line) == 0:
-                print("Empty line is NOT part of DIMACS, error\n");
+                print("Empty line is NOT part of DIMACS, error\n")
                 return False
             if line[0] == "p":
                 header = line.split()
@@ -234,11 +239,10 @@ def check_header(fname):
 
             num_cls += 1
             line = line.split()
-            for l in line:
-                l = abs(int(l))
-                if l > max_vars:
-                    max_vars = l
-
+            for tok in line:
+                lit = abs(int(tok))
+                if lit > max_vars:
+                    max_vars = lit
 
         if num_cls != header_cls:
             print("cls in CNF: %d but header said: %d" % (num_cls, header_cls))
@@ -275,6 +279,7 @@ def check_regular_clause(line, solution):
     print("Error: clause '%s' not satisfied." % line.strip())
     raise NameError("Error: clause '%s' not satisfied." % line)
 
+
 def check_xor_clause(line, solution):
     line = line.lstrip('x')
     lits = line.split()
@@ -289,6 +294,7 @@ def check_xor_clause(line, solution):
     if final is False:
         print("Error: xor-clause '%s' not satisfied." % line.strip())
         raise NameError("Error: xor-clause '%s' not satisfied." % line)
+
 
 def test_found_solution(solution, fname):
     print("Verifying solution.")
@@ -319,11 +325,11 @@ def test_found_solution(solution, fname):
     print("Verified %d original xor&regular clauses" % clauses)
 
 
-def write_sol_to_file(solution, fname : str) :
+def write_sol_to_file(solution, fname: str):
     with open(fname, "w") as f:
         f.write("s SATISFIABLE\n")
         v_line = "v "
-        for a,b in solution.items():
+        for a, b in solution.items():
             if b:
                 v_line += "%d " % a
             else:
@@ -347,7 +353,7 @@ def postproc(solution, reconstruct):
     return ret
 
 
-def run_one_preproc(preproc, fname : str, fname2 : str, reconstruct : str):
+def run_one_preproc(preproc, fname: str, fname2: str, reconstruct: str):
     curr_time = time.time()
     toexec = preproc.exe.split()
     toexec.append(os.getcwd() + "/" + fname)
@@ -367,8 +373,9 @@ def run_one_preproc(preproc, fname : str, fname2 : str, reconstruct : str):
     assert check_header(fname2)
     return True
 
+
 if __name__ == "__main__":
-    if os.path.exists("out") and  os.path.isfile("out"):
+    if os.path.exists("out") and os.path.isfile("out"):
         print("ERROR: file 'out' exists, but we need a directory named 'out'")
         exit(-1)
 
@@ -403,7 +410,7 @@ if __name__ == "__main__":
             print("Failed fuzzer file generator call: ", call)
             exit(-1)
         else:
-            print("Generated fuzz file %s with call: %s" % (fname, call));
+            print("Generated fuzz file %s with call: %s" % (fname, call))
 
         solvers = [
             Solver(options.cadical, "./"),
@@ -421,7 +428,8 @@ if __name__ == "__main__":
             OK = run_one_preproc(preproc, fname, fname2, reconstruct)
             if OK:
                 print("Generated CNF file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
-                print("Generated reconstruction %s by preproc %s which preprocessed %s" % (reconstruct, preproc.exe, fname))
+                print("Generated reconstruction %s by preproc %s which preprocessed %s"
+                      % (reconstruct, preproc.exe, fname))
                 simplified.append((preproc, fname2, reconstruct))
             else:
                 os.unlink(fname2)
@@ -443,4 +451,3 @@ if __name__ == "__main__":
             pass
             os.unlink(fname2)
             os.unlink(reconstruct)
-

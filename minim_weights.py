@@ -128,7 +128,7 @@ def minimize_weights(binary_and_args, original_cnf):
         output_file = original_cnf.replace('.cnf', '_min_weights.cnf')
         write_cnf_file(output_file, non_weight_lines, current_weights)
 
-        print(f"\nMinimization complete!")
+        print("\nMinimization complete!")
         print(f"  Original weights: {len(weight_lines)}")
         print(f"  Removed weights: {removed_count}")
         print(f"  Remaining weights: {len(current_weights)}")

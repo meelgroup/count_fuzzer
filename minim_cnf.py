@@ -127,7 +127,7 @@ def delta_debug_minimize(binary_and_args, tmp_cnf, num_vars, special_lines, clau
     # Test if crash occurs with empty set
     write_cnf_file(tmp_cnf, num_vars, [], special_lines)
     if test_crash(binary_and_args, tmp_cnf):
-        print(f"  Crash occurs with no clauses!")
+        print("  Crash occurs with no clauses!")
         return []
 
     # Test if we can find a minimal subset using binary search
@@ -162,13 +162,13 @@ def delta_debug_minimize(binary_and_args, tmp_cnf, num_vars, special_lines, clau
                 print(f"    Removed chunk of {current_chunk_size} clauses at position {i}")
                 new_clauses = test_set
                 some_removed = True
-                
+
                 # Save intermediate file with clause count
                 base_name = original_cnf.replace('.cnf', '')
                 intermediate_file = f"{base_name}-{len(new_clauses)}.cnf"
                 write_cnf_file(intermediate_file, num_vars, new_clauses, special_lines)
                 print(f"      Saved: {intermediate_file}")
-                
+
                 # Don't increment i, test the same position again
             else:
                 # Need this chunk, move to next

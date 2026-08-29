@@ -107,7 +107,7 @@ def parse_command(cmd_string):
 def check_result_type(cmd):
     """
     Determine if command crashes, times out, or produces a count.
-    Returns: ("crash", exitcode, output) or ("count", count_value, output) 
+    Returns: ("crash", exitcode, output) or ("count", count_value, output)
              or ("timeout", None, output) or ("unknown", None, output)
     """
     print(f"Checking result for: {cmd}")
@@ -182,7 +182,7 @@ def run_minimizer_script(script_name, cmd):
                 if line:
                     print(line, end='', flush=True)  # Print immediately with flush
                     output_lines.append(line)
-        
+
         # Wait for process to complete
         returncode = process.wait(timeout=600)  # 10 minute timeout
 

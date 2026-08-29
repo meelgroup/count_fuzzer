@@ -50,7 +50,7 @@ def extract_count(output):
     """Extract count from solver output, returns None if not found."""
     for line in output.splitlines():
         line = line.strip()
-        
+
         if line.startswith("s mc") or line.startswith("s pmc"):
             return float(line.split()[2])
         if "c s exact quadruple float interval [" in line:
@@ -70,7 +70,7 @@ def extract_count(output):
             return float(line.split()[5])
         if "c s approx arb int" in line:
             return float(line.split()[5])
-    
+
     return None
 
 
@@ -123,20 +123,19 @@ def minimize(cmd_str):
     executable, options, input_file = parse_command(cmd_str)
 
     print(f"Original command:\n  {cmd_str}\n")
-    
+
     # Detect mode: crash or count
     returncode, output, timed_out = run_command(cmd_str)
-    
+
     if timed_out:
         print("ERROR: Original command timed out.")
         sys.exit(1)
-    
+
     # Determine if we're minimizing for crash or count
     if returncode != 0:
-        mode = "crash"
         print(f"Mode: CRASH (exit code {returncode})")
         print("Will minimize while preserving the crash.\n")
-        
+
         def property_preserved(cmd):
             ret, _, timeout = run_command(cmd)
             if timeout:
@@ -151,11 +150,10 @@ def minimize(cmd_str):
         if original_count is None:
             print("ERROR: Command succeeded but could not extract count.")
             sys.exit(1)
-        
-        mode = "count"
+
         print(f"Mode: COUNT (value: {original_count})")
         print("Will minimize while preserving the count.\n")
-        
+
         def property_preserved(cmd):
             ret, out, timeout = run_command(cmd)
             if timeout:
@@ -167,7 +165,7 @@ def minimize(cmd_str):
 
     # First pass: remove unnecessary options
     current = list(options)
-    
+
     for opt, val in options:
         if opt in KEEP_OPTS:
             continue
@@ -191,7 +189,7 @@ def minimize(cmd_str):
         if opt == "--td":
             td_idx = i
             break
-    
+
     if td_idx is not None:
         # --td is present, try setting it to 0 if it isn't already
         if current[td_idx][1] != "0":
@@ -222,7 +220,7 @@ def minimize(cmd_str):
         if opt == "--arjun":
             arjun_idx = i
             break
-    
+
     if arjun_idx is not None:
         # --arjun is present, try setting it to 0 if it isn't already
         if current[arjun_idx][1] != "0":
@@ -255,7 +253,7 @@ def minimize(cmd_str):
             threads_idx = i
         if opt == "--debugthreads":
             debugthreads_idx = i
-    
+
     if threads_idx is not None:
         need_change = current[threads_idx][1] != "1"
         if debugthreads_idx is not None:
@@ -263,7 +261,7 @@ def minimize(cmd_str):
         else:
             # debugthreads not present, need to add it
             need_change = True
-        
+
         if need_change:
             print("Trying to set --threads 1 --debugthreads 1 ...")
             trial = current.copy()
@@ -273,7 +271,7 @@ def minimize(cmd_str):
             else:
                 # Insert --debugthreads 1 right after --threads
                 trial.insert(threads_idx + 1, ("--debugthreads", "1"))
-            
+
             trial_cmd = build_command(executable, trial, input_file)
             if property_preserved(trial_cmd):
                 print("  -> property preserved, setting --threads 1 --debugthreads 1\n")

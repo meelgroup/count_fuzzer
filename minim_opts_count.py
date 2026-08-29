@@ -147,7 +147,7 @@ def minimize(cmd_str):
         if opt == "--td":
             td_idx = i
             break
-    
+
     if td_idx is not None and current[td_idx][1] != "0":
         print("Trying to set --td 0 ...")
         trial = current.copy()
@@ -166,7 +166,7 @@ def minimize(cmd_str):
         if opt == "--arjun":
             arjun_idx = i
             break
-    
+
     if arjun_idx is not None and current[arjun_idx][1] != "0":
         print("Trying to set --arjun 0 ...")
         trial = current.copy()
@@ -187,7 +187,7 @@ def minimize(cmd_str):
             threads_idx = i
         if opt == "--debugthreads":
             debugthreads_idx = i
-    
+
     if threads_idx is not None:
         need_change = current[threads_idx][1] != "1"
         if debugthreads_idx is not None:
@@ -195,7 +195,7 @@ def minimize(cmd_str):
         else:
             # debugthreads not present, need to add it
             need_change = True
-        
+
         if need_change:
             print("Trying to set --threads 1 --debugthreads 1 ...")
             trial = current.copy()
@@ -205,7 +205,7 @@ def minimize(cmd_str):
             else:
                 # Insert --debugthreads 1 right after --threads
                 trial.insert(threads_idx + 1, ("--debugthreads", "1"))
-            
+
             trial_cmd = build_command(executable, trial, input_file)
             count = run_and_get_count(trial_cmd)
             if counts_close(count, original_count):

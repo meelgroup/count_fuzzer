@@ -14,7 +14,7 @@ This tool takes a CNF file and performs unit propagation until fixpoint:
 Usage:
     ./propagate.py [--verb] input.cnf > output.cnf
     cat input.cnf | ./propagate.py [--verb] > output.cnf
-    
+
 Options:
     --verb    Verbose mode: print detailed propagation progress
 """
@@ -101,7 +101,7 @@ def propagate_literal(clauses, lit):
 
         # If clause contains negated literal, remove it from clause
         if -lit in clause:
-            new_clause = [l for l in clause if l != -lit]
+            new_clause = [x for x in clause if x != -lit]
             # Only add non-empty clauses
             if new_clause:
                 new_clauses.append(new_clause)
@@ -236,16 +236,16 @@ def check_satisfiability(cnf_lines):
     """
     import subprocess
     import os
-    
+
     cms_path = "../cryptominisat/build/cryptominisat5"
-    
+
     if not os.path.exists(cms_path):
         return None  # Solver not found, skip check
-    
+
     try:
         # Join lines back into a string to feed via stdin
         cnf_input = ''.join(cnf_lines)
-        
+
         result = subprocess.run(
             [cms_path, "--verb=0", "/dev/stdin"],
             input=cnf_input,
@@ -253,7 +253,7 @@ def check_satisfiability(cnf_lines):
             text=True,
             timeout=30
         )
-        
+
         # Check for UNSAT in output
         if "s UNSATISFIABLE" in result.stdout:
             return False
@@ -261,7 +261,7 @@ def check_satisfiability(cnf_lines):
             return True
         else:
             return None  # Unknown result
-            
+
     except subprocess.TimeoutExpired:
         return None  # Timeout, skip check
     except Exception:
@@ -270,13 +270,13 @@ def check_satisfiability(cnf_lines):
 
 def main():
     global VERBOSE
-    
+
     # Parse arguments
     args = sys.argv[1:]
     if '--verb' in args:
         VERBOSE = True
         args.remove('--verb')
-    
+
     if len(args) > 1:
         print(__doc__, file=sys.stderr)
         sys.exit(1)
@@ -313,7 +313,7 @@ def main():
     if VERBOSE:
         print("Checking satisfiability with CryptoMiniSat...", file=sys.stderr)
     sat_result = check_satisfiability(lines)
-    
+
     if sat_result is False:
         # Formula is UNSAT according to SAT solver - ALWAYS show warning
         print(file=sys.stderr)
@@ -334,7 +334,7 @@ def main():
     else:
         if VERBOSE:
             print("CryptoMiniSat check skipped or failed", file=sys.stderr)
-    
+
     if VERBOSE:
         print(file=sys.stderr)
 
@@ -374,7 +374,7 @@ def main():
               file=sys.stderr)
         print(file=sys.stderr)
         print("Writing simplified CNF to stdout...", file=sys.stderr)
-        
+
     write_dimacs(header_lines, result_clauses, assignments)
 
 

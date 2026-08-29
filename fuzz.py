@@ -47,14 +47,17 @@ maxtimediff = 1
 
 current_proc = None
 
+
 def _cleanup_and_exit(_signum, _frame):
     if current_proc is not None and current_proc.poll() is None:
         current_proc.kill()
         current_proc.wait()
     sys.exit(0)
 
+
 signal.signal(signal.SIGHUP, _cleanup_and_exit)
 signal.signal(signal.SIGTERM, _cleanup_and_exit)
+
 
 def set_up_parser():
     usage = "usage: %prog [options] "
@@ -141,6 +144,7 @@ def run(command, cwd):
     current_proc = None
     return out, proc.returncode
 
+
 def weighted_vars(cnf_path, projected_vars):
     nvars = get_nvars(cnf_path)
     if nvars == 0:
@@ -150,7 +154,8 @@ def weighted_vars(cnf_path, projected_vars):
         return list(projected_vars)
     return list(range(1, nvars+1))
 
-def add_weights(cnf_path, projected_vars) :
+
+def add_weights(cnf_path, projected_vars):
     all_vars = weighted_vars(cnf_path, projected_vars)
     weights = []
     if options.zerocomps:
@@ -174,7 +179,8 @@ def add_weights(cnf_path, projected_vars) :
         for lit, weight in weights:
             f.write(f"c p weight {lit} {weight:f} 0\n")
 
-def add_weights_cpx(cnf_path, projected_vars) :
+
+def add_weights_cpx(cnf_path, projected_vars):
     all_vars = weighted_vars(cnf_path, projected_vars)
     weights = []
     if options.zerocomps:
@@ -202,6 +208,7 @@ def add_weights_cpx(cnf_path, projected_vars) :
         for lit, real, imag in weights:
             f.write(f"c p weight {lit} {real:f} + {imag:f}i 0\n")
 
+
 def get_nvars(cnf_path):
     with open(cnf_path, "r") as f:
         for line in f:
@@ -214,11 +221,13 @@ def get_nvars(cnf_path):
                 return int(line[2])
     return 0
 
+
 # "c p no-touch" is the prefix 1..k, and all of it must also be in "c p show"
 def pick_num_no_touch(nvars):
     if nvars < 2 or random.choice([True, False]):
         return 0
     return random.randint(1, max(1, int(nvars/4)))
+
 
 def add_no_touch(cnf_path, num_no_touch):
     if num_no_touch == 0:
@@ -230,7 +239,8 @@ def add_no_touch(cnf_path, num_no_touch):
         f.write("0\n")
     print(f"{MAGENTA}--> Added no-touch header{NC} to {cnf_path} for vars 1..{num_no_touch}")
 
-def add_projection(cnf_path, num_no_touch) :
+
+def add_projection(cnf_path, num_no_touch):
     nvars = get_nvars(cnf_path)
     if nvars == 0:
         print(f"ERROR: Can't find 'p cnf' in file {cnf_path}")
@@ -258,6 +268,7 @@ def add_projection(cnf_path, num_no_touch) :
         f.write("0\n")
     return proj
 
+
 def get_type(proj, weighted):
     cnf_type = "0"
     if proj and not weighted:
@@ -267,6 +278,7 @@ def get_type(proj, weighted):
     if proj and weighted:
         cnf_type = "3"
     return cnf_type
+
 
 def gen_fuzz_call_biere(fuzzer, out_path, proj, weighted):
     seed = random.randint(0, 1000*1000*1000)
@@ -485,7 +497,8 @@ def gen_approxmc_extra(epsilon, delta):
 def parse_frac(s):
     """"a", "a/b" -> float"""
     num, _, den = s.partition("/")
-    if den: return float(num)/float(den)
+    if den:
+        return float(num)/float(den)
     return float(num)
 
 
@@ -496,9 +509,11 @@ cpx_frac_re = re.compile(r"^([+-]?[\d.]+(?:/[\d.]+)?)([+-])([+-]?[\d.]+(?:/[\d.]
 def parse_frac_complex(s):
     """"a/b + f/gi" -> complex, or None if it doesn't parse"""
     match = cpx_frac_re.match("".join(s.split()))
-    if match is None: return None
+    if match is None:
+        return None
     imag = parse_frac(match.group(3))
-    if match.group(2) == "-": imag = -imag
+    if match.group(2) == "-":
+        imag = -imag
     return complex(parse_frac(match.group(1)), imag)
 
 
@@ -531,7 +546,8 @@ def any_float_mode(*solvers):
 
 def short_exe(exe):
     """long command line -> "ganak mode=2", "arjun", "no-preproc" """
-    if exe is None: return "no-preproc"
+    if exe is None:
+        return "no-preproc"
     name = os.path.basename(exe.split()[0])
     mode = mode_of(exe)
     return f"{name} mode={mode}" if mode is not None else name
@@ -542,7 +558,8 @@ def solver_desc(solver):
     mode = mode_of(solver.exe)
     if "ganak" in solver.exe and mode in MODE_NAMES:
         desc += f"  [{MODE_NAMES[mode]}]"
-    if solver.cwd is not None: desc += f" in {solver.cwd}"
+    if solver.cwd is not None:
+        desc += f" in {solver.cwd}"
     return desc
 
 
@@ -567,7 +584,7 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
         cnf_arg = toexec.pop()
         toexec.extend(["-s", str(seed), cnf_arg])
 
-    if "ganak" in solver.exe and random.randint(1,100) == 30:
+    if "ganak" in solver.exe and random.randint(1, 100) == 30:
         toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
     out, returncode = run(toexec, solver.cwd)
     diff_time = time.time() - curr_time
@@ -612,7 +629,8 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
             continue
         if line[0] == 'c' and line[:3] != "c s":
             continue
-        if line[:4] == "s mc" or line[:13] == "c s exact arb" or line[:5] == "s pmc" or "s approx arb int" in line or "c s exact" in line:
+        if (line[:4] == "s mc" or line[:13] == "c s exact arb" or line[:5] == "s pmc"
+                or "s approx arb int" in line or "c s exact" in line):
             if count is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
@@ -667,16 +685,18 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
         return True, 0
 
     if count is None:
-        print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s exact arb frac' or 'c s approx arb int' in output")
+        print("ERROR, could not find 's mc', 'c s exact arb int', 'c s exact arb frac'"
+              " or 'c s approx arb int' in output")
         for out_line in out.split("\n"):
             print(out_line.strip())
         if ("ganak" in solver.exe or "approx" in solver.exe):
             return False, None
-        else :
+        else:
             print("Not erroring out, it's not our solver")
             return True, None
 
     return True, count
+
 
 def check_header(cnf_path):
     with open(cnf_path, "r") as f:
@@ -716,6 +736,7 @@ def check_header(cnf_path):
             print(f"max vars was: {max_vars} but header said: {header_vars}")
             return False
     return True
+
 
 # Arjun must keep the no-touch vars as vars 1..k, in the sampling set
 def check_no_touch_preserved(simp_path, num_no_touch):
@@ -789,6 +810,7 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         sys.exit(-1)
     return True
 
+
 def cleanup(t):
     os.unlink(t.cnf_path)
     for _, simp_path in t.simplified:
@@ -807,9 +829,9 @@ class FuzzTest:
     proj: bool = False
     weighted: bool = False
     cpx: bool = False
-    cnf_path: str|None = None
+    cnf_path: str | None = None
     num_no_touch: int = 0
-    projected_vars: list|None = None
+    projected_vars: list | None = None
     epsilon: float = 0.0
     delta: float = 0.0
     solvers: list = field(default_factory=list)
@@ -818,7 +840,7 @@ class FuzzTest:
     desc_width: int = 0
     idx_width: int = 0
     counts: list = field(default_factory=list)
-    exact_count: Count|None = None
+    exact_count: Count | None = None
 
 
 def pick_test_params(t):
@@ -900,8 +922,10 @@ def build_solvers(t):
         t.solvers.extend([
         make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=1),
         make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=7),
-        # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet", True, "./bins/exactmc-2023"),
-        # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ", True, "./bins/sharpsat-td-precise/bin/")
+        # Solver("./KCBox ExactMC --heur minfill --competition --weighted --memo 4  --mpf_prec 20 --quiet",
+        #        True, "./bins/exactmc-2023"),
+        # Solver("./sharpSAT -WE -decot 1 -decow 1 -tmpdir tmpdir -cs 5 --prec 20 ",
+        #        True, "./bins/sharpsat-td-precise/bin/")
         ])
 
         if t.proj:
@@ -916,7 +940,7 @@ def build_solvers(t):
 
 def run_preprocs(t):
     preprocs = [
-        Preproc( "../arjun/build/arjun " + gen_arjun_extra(t.weighted, t.cpx), None),
+        Preproc("../arjun/build/arjun " + gen_arjun_extra(t.weighted, t.cpx), None),
         Preproc(None, None)
     ]
 
@@ -942,7 +966,8 @@ def print_plan(t):
     print(f"{MAGENTA}--> Solvers to run ({len(t.solvers)}):{NC}")
     for i, solver in enumerate(t.solvers, 1):
         print(f"      [{i}] {solver_desc(solver)}")
-        if options.verbose: print(f"          {' '.join(solver.exe.split())}")
+        if options.verbose:
+            print(f"          {' '.join(solver.exe.split())}")
     print(f"{MAGENTA}--> Preprocessors ({len(t.simplified)}):{NC}")
     preproc_width = max(len(short_exe(pp.exe)) for pp, _ in t.simplified)
     for preproc, simp_path in t.simplified:
@@ -1038,9 +1063,10 @@ def compare_counts(t):
     ref = t.exact_count
     for got, _ in zip(t.counts, t.solvers):
         if t.weighted:
-            assert(got.solver.exact)
+            assert (got.solver.exact)
             abs_diff_threshold = 1e-10 if any_float_mode(got.solver, ref.solver) else 1e-50
-            if got.count != ref.count and perc_diff(got.count, ref.count) > 0.02 and abs_diff(got.count, ref.count) > abs_diff_threshold:
+            if (got.count != ref.count and perc_diff(got.count, ref.count) > 0.02
+                    and abs_diff(got.count, ref.count) > abs_diff_threshold):
                 report_mismatch(got, ref, t.cnf_path, t.desc_width, "weighted ")
 
         if not t.weighted:
