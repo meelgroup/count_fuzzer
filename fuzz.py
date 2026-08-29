@@ -32,8 +32,8 @@ import shutil
 import re
 from collections import namedtuple
 
-Solver = namedtuple("Solver", "exe exact dir", defaults=[None, True, None])
-Preproc = namedtuple("Preproc", "exe dir", defaults=[None, None])
+Solver = namedtuple("Solver", "exe exact cwd", defaults=[None, True, None])
+Preproc = namedtuple("Preproc", "exe cwd", defaults=[None, None])
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
 maxtimediff = 1
 
@@ -48,10 +48,10 @@ def _cleanup_and_exit(_signum, _frame):
 signal.signal(signal.SIGHUP, _cleanup_and_exit)
 signal.signal(signal.SIGTERM, _cleanup_and_exit)
 
-def setlimits(t):
+def setlimits(max_cpu_time):
     # Set maximum CPU time to 1 second in child process, after fork() but before exec()
     print("Setting resource limit in child (pid %d)" % os.getpid())
-    resource.setrlimit(resource.RLIMIT_CPU, (t, t))
+    resource.setrlimit(resource.RLIMIT_CPU, (max_cpu_time, max_cpu_time))
 
 
 def set_up_parser():
@@ -128,135 +128,104 @@ def set_up_parser():
     return parser
 
 
-def run(command, dir):
+def run(command, cwd):
     global current_proc
-    print("\033[35m--> Executing: \033[0m%s in dir %s" % (" ".join(command), dir))
+    print("\033[35m--> Executing: \033[0m%s in dir %s" % (" ".join(command), cwd))
     if options.verbose:
         print("CPU limit of parent (pid %d)" % os.getpid(), resource.getrlimit(resource.RLIMIT_CPU))
 
-    p = subprocess.Popen(command, stderr=subprocess.STDOUT,
-          stdout=subprocess.PIPE, universal_newlines=True, cwd=dir)
-    current_proc = p
+    proc = subprocess.Popen(command, stderr=subprocess.STDOUT,
+          stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd)
+    current_proc = proc
 
     try:
-        consoleOutput, err = p.communicate(timeout=options.maxtime)
+        out, err = proc.communicate(timeout=options.maxtime)
     except subprocess.TimeoutExpired:
-        p.kill()
-        consoleOutput, err = p.communicate()
-        consoleOutput = "TIMEOUT: Process killed after %d seconds\n" % options.maxtime + consoleOutput
+        proc.kill()
+        out, err = proc.communicate()
+        out = "TIMEOUT: Process killed after %d seconds\n" % options.maxtime + out
 
     current_proc = None
     if options.verbose:
         print("CPU limit of parent (pid %d) after child finished executing" % os.getpid(),
             resource.getrlimit(resource.RLIMIT_CPU))
-    return consoleOutput, err, p.returncode
+    return out, err, proc.returncode
 
-def add_weights(fname, projected_vars) :
-    vars = 0
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if len(line) < 3:
-                continue
-            if line[0] == "p":
-                line = line.split(" ")
-                assert line[1].strip() == "cnf"
-                vars = int(line[2])
-    if vars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % fname)
+def add_weights(cnf_path, projected_vars) :
+    nvars = get_nvars(cnf_path)
+    if nvars == 0:
+        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
         exit(-1)
 
-    all_vars = []
     if projected_vars is not None:
         all_vars = list(projected_vars)
     else:
-        all_vars = []
-        for i in range(vars):
-            all_vars.append(i+1)
+        all_vars = list(range(1, nvars+1))
 
     weights = []
     if options.zerocomps:
         for var in all_vars:
-            w = float(random.choice([-2, -1, 1, 2]))
-            weights.append([var, w])
+            weights.append([var, float(random.choice([-2, -1, 1, 2]))])
     elif options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
-                w = float(random.randrange(-10, 10))/10.0
-                weights.append([var, w])
+                pos_w = float(random.randrange(-10, 10))/10.0
+                weights.append([var, pos_w])
             if random.choice([True, False]):
-                w2 = float(random.randrange(-10, 10))/10.0
-                weights.append([-var, w2])
+                neg_w = float(random.randrange(-10, 10))/10.0
+                weights.append([-var, neg_w])
     else:
         for var in all_vars:
-            w = float(random.randrange(0, 10))/10.0
-            weights.append([var, w])
-            weights.append([-var, 1.0-w])
+            pos_w = float(random.randrange(0, 10))/10.0
+            weights.append([var, pos_w])
+            weights.append([-var, 1.0-pos_w])
 
-    with open(fname, "a") as f:
-        for v,w in weights:
-            f.write("c p weight %d %lf 0\n" % (v, w))
+    with open(cnf_path, "a") as f:
+        for lit, weight in weights:
+            f.write("c p weight %d %lf 0\n" % (lit, weight))
 
-def add_weights_cpx(fname, projected_vars) :
-    vars = 0
-    with open(fname, "r") as f:
-        for line in f:
-            line = line.strip()
-            if len(line) < 3:
-                continue
-            if line[0] == "p":
-                line = line.split(" ")
-                assert line[1].strip() == "cnf"
-                vars = int(line[2])
-    if vars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % fname)
+def add_weights_cpx(cnf_path, projected_vars) :
+    nvars = get_nvars(cnf_path)
+    if nvars == 0:
+        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
         exit(-1)
 
-    all_vars = []
     if projected_vars is not None:
         all_vars = list(projected_vars)
     else:
-        all_vars = []
-        for i in range(vars):
-            all_vars.append(i+1)
+        all_vars = list(range(1, nvars+1))
 
     weights = []
     if options.zerocomps:
         for var in all_vars:
-            w = float(random.choice([-1, 1]))
-            w2 = float(random.choice([-1, 1]))
-            weights.append([var, w, w2])
+            real = float(random.choice([-1, 1]))
+            imag = float(random.choice([-1, 1]))
+            weights.append([var, real, imag])
     elif options.messy_weights:
         for var in all_vars:
             if random.choice([True, False]):
-                w = float(random.randrange(-10, 10))/10.0
-                w2 = float(random.randrange(-10, 10))/10.0
-                weights.append([var, w, w2])
-                w = float(random.randrange(-10, 10))/10.0
-                w2 = float(random.randrange(-10, 10))/10.0
-                weights.append([-var, w, w2])
+                real = float(random.randrange(-10, 10))/10.0
+                imag = float(random.randrange(-10, 10))/10.0
+                weights.append([var, real, imag])
+                real = float(random.randrange(-10, 10))/10.0
+                imag = float(random.randrange(-10, 10))/10.0
+                weights.append([-var, real, imag])
     else:
         for var in all_vars:
-            w = float(random.randrange(0, 10))/10.0
-            w2 = float(random.randrange(0, 10))/10.0
-            weights.append([var, w, w2])
-            weights.append([-var, 1.0-w, 1-w2])
+            real = float(random.randrange(0, 10))/10.0
+            imag = float(random.randrange(0, 10))/10.0
+            weights.append([var, real, imag])
+            weights.append([-var, 1.0-real, 1-imag])
 
-    weights2 = list(weights)
-    weights = []
     if options.noimag:
-        for v,w,w2 in weights2:
-            w2 = 0.0
-            weights.append([v, w, w2])
-    else:
-        weights = weights2
+        weights = [[lit, real, 0.0] for lit, real, _ in weights]
 
-    with open(fname, "a") as f:
-        for v,w,w2 in weights:
-            f.write("c p weight %d %lf %lf 0\n" % (v, w, w2))
+    with open(cnf_path, "a") as f:
+        for lit, real, imag in weights:
+            f.write("c p weight %d %lf %lf 0\n" % (lit, real, imag))
 
-def get_nvars(fname):
-    with open(fname, "r") as f:
+def get_nvars(cnf_path):
+    with open(cnf_path, "r") as f:
         for line in f:
             line = line.strip()
             if len(line) < 3:
@@ -273,87 +242,82 @@ def pick_num_no_touch(nvars):
         return 0
     return random.randint(1, max(1, int(nvars/4)))
 
-def add_no_touch(fname, num_no_touch):
+def add_no_touch(cnf_path, num_no_touch):
     if num_no_touch == 0:
         return
-    with open(fname, "a") as f:
+    with open(cnf_path, "a") as f:
         f.write("c p no-touch ")
         for i in range(num_no_touch):
             f.write("%d " % (i+1))
         f.write("0\n")
 
-def add_projection(fname, num_no_touch) :
-    vars = get_nvars(fname)
-
-    all_vars = []
-    for i in range(vars):
-        all_vars.append(i+1)
-    proj = []
-    proj_set = {}
-    if vars == 0:
-        print("ERROR: Can't find 'p cnf' in file %s" % fname)
+def add_projection(cnf_path, num_no_touch) :
+    nvars = get_nvars(cnf_path)
+    if nvars == 0:
+        print("ERROR: Can't find 'p cnf' in file %s" % cnf_path)
         exit(-1)
 
+    all_vars = list(range(1, nvars+1))
     if random.choice([True, False]):
-        num : int = random.randint(int(len(all_vars)/15), int(len(all_vars)/5))
+        num_proj = random.randint(int(len(all_vars)/15), int(len(all_vars)/5))
         if random.choice([True, False]):
-            num = min(2, len(all_vars))
+            num_proj = min(2, len(all_vars))
     else:
-        num : int = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
-    for i in range(num):
+        num_proj = random.randint(int(len(all_vars)/4), int(len(all_vars)/3))
+
+    proj_set = {}
+    for _ in range(num_proj):
         proj_set[random.choice(all_vars)] = 1
     for i in range(num_no_touch):
         proj_set[i+1] = 1
+    proj = list(proj_set)
 
-    for a,_ in proj_set.items():
-        proj.append(a)
-
-    with open(fname, "a") as f:
+    with open(cnf_path, "a") as f:
         f.write("c p show ")
-        for a in proj:
-            f.write("%d " % a)
+        for var in proj:
+            f.write("%d " % var)
         f.write("0\n")
     return proj
 
 def get_type(proj, weighted):
-    ty = "0"
+    cnf_type = "0"
     if proj and not weighted:
-        ty = "1"
+        cnf_type = "1"
     if not proj and weighted:
-        ty = "2"
+        cnf_type = "2"
     if proj and weighted:
-        ty = "3"
-    return ty
+        cnf_type = "3"
+    return cnf_type
 
-def gen_fuzz_call_biere(fuzzer, fname, proj, weighted):
+def gen_fuzz_call_biere(fuzzer, out_path, proj, weighted):
     seed = random.randint(0, 1000*1000*1000)
-    ty = get_type(proj, weighted)
-    call = "{0} {1} {2} > {3}".format(fuzzer, seed, ty, fname)
+    cnf_type = get_type(proj, weighted)
+    call = "{0} {1} {2} > {3}".format(fuzzer, seed, cnf_type, out_path)
     return call
 
 
-def gen_fuzz_call_brummayer(fuzzer, fname, proj, weighted):
+def gen_fuzz_call_brummayer(fuzzer, out_path, proj, weighted):
     seed = random.randint(0, 1000*1000*1000)
-    ty = get_type(proj, weighted)
-    call = "{0} -s {1} -T {2} > {3}".format(fuzzer, seed, ty, fname)
+    cnf_type = get_type(proj, weighted)
+    call = "{0} -s {1} -T {2} > {3}".format(fuzzer, seed, cnf_type, out_path)
     return call
 
 
-def unique_file(fname_begin, fname_end=".cnf", max_num_files=10000):
+def unique_file(prefix, suffix=".cnf", max_num_files=10000):
     counter = 1
     while True:
-        fname = "out/" + fname_begin + '_' + str(counter) + fname_end
+        path = "out/" + prefix + '_' + str(counter) + suffix
         try:
             fd = os.open(
-                fname, os.O_CREAT | os.O_EXCL, stat.S_IREAD | stat.S_IWRITE)
+                path, os.O_CREAT | os.O_EXCL, stat.S_IREAD | stat.S_IWRITE)
             os.fdopen(fd).close()
-            return str(fname)
+            return str(path)
         except OSError:
             pass
 
         counter += 1
         if counter > max_num_files:
-            print("Cannot create unique_file, last try was: %s" % fname)
+            print("Cannot create unique_file, last try was: %s" % path)
             exit(-1)
 
 
@@ -534,20 +498,18 @@ def gen_approxmc_extra(epsilon, delta):
     return " --epsilon %s --delta %s --arjun %s " % (epsilon, delta, random.choice(["0", "1"]))
 
 
-def run_one_counter(solver, fname, seed=42):
+def run_one_counter(solver, cnf_path, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
-    toexec.append(os.getcwd() + "/" + fname)
+    toexec.append(os.getcwd() + "/" + cnf_path)
     if not solver.exact:
-        last = toexec[len(toexec)-1]
-        toexec = toexec[:len(toexec)-1]
-        toexec.extend(["-s", str(seed)])
-        toexec.extend([last])
+        cnf_arg = toexec.pop()
+        toexec.extend(["-s", str(seed), cnf_arg])
 
     if "ganak" in solver.exe:
         if random.randint(1,100) == 30:
             toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
-    out, err, returncode = run(toexec, solver.dir)
+    out, err, returncode = run(toexec, solver.cwd)
     if err is None:
         if options.verbose:
             print("No error.")
@@ -561,110 +523,108 @@ def run_one_counter(solver, fname, seed=42):
         print("Solver crashed with exit code %d (signal %d)" % (returncode, -returncode))
         return False, None
 
-    num = None
+    count = None
     unsat_found = False
-    for l in out.split("\n"):
-        l = l.strip()
+    for line in out.split("\n"):
+        line = line.strip()
         if options.verbose:
-            print(l)
-        if "s UNSATIS" in l:
+            print(line)
+        if "s UNSATIS" in line:
             unsat_found = True
-        if "Assertion " in l and "failed" in l:
+        if "Assertion " in line and "failed" in line:
             return False, None
-        # if "sat call" in l:
-        #     print(l)
-        if "ERROR Memory out!" in l:
+        # if "sat call" in line:
+        #     print(line)
+        if "ERROR Memory out!" in line:
             return True, None
-        if "blocks are definitely lost" in l:
+        if "blocks are definitely lost" in line:
             print("ERROR: Memory leak in solver %s, output was: " % solver.exe)
-            for w in out.split("\n"):
-                w = w.strip()
-                print(w)
+            for out_line in out.split("\n"):
+                print(out_line.strip())
             return False, None
-        if "ERROR" in l:
-            if ("ERROR SUMMARY" not in l):
-                print("ERROR in output: ", l)
-                for w in out.split("\n"):
-                    w = w.strip()
-                    print(w)
+        if "ERROR" in line:
+            if ("ERROR SUMMARY" not in line):
+                print("ERROR in output: ", line)
+                for out_line in out.split("\n"):
+                    print(out_line.strip())
                 return False, None
-        if len(l) < 4:
+        if len(line) < 4:
             continue
-        if "c s exact arb cpx" in l:
+        if "c s exact arb cpx" in line:
             # c s exact arb cpx 1.2650e+02 + -6.3250e+01i
-            real = float(l.split()[5].strip())
-            imag = float(l.split()[7].strip()[:-1])
+            real = float(line.split()[5].strip())
+            imag = float(line.split()[7].strip()[:-1])
             print("Complex number is: ", real, " ## ", imag)
-            num = complex(real, imag)
+            count = complex(real, imag)
             continue
-        if l[0] == 'c' and l[:3] != "c s":
+        if line[0] == 'c' and line[:3] != "c s":
             continue
-        if l[:4] == "s mc" or l[:13] == "c s exact arb" or l[:5] == "s pmc" or "s approx arb int" in l or "c s exact" in l:
-            if num is not None:
+        if line[:4] == "s mc" or line[:13] == "c s exact arb" or line[:5] == "s pmc" or "s approx arb int" in line or "c s exact" in line:
+            if count is not None:
                 print("ERROR: Two 's mc' lines in output!!")
                 # TODO: print command that got executed
                 exit(-1)
             if cpx:
                 if unsat_found:
-                    num = complex(0, 0)
+                    count = complex(0, 0)
                 else:
                     # c s exact double prec-sci 0+0i
-                    real = float(l.split()[5].strip())
-                    imag = float(l.split()[7].strip()[:-1])
+                    real = float(line.split()[5].strip())
+                    imag = float(line.split()[7].strip()[:-1])
                     print("Complex number is: ", real, " ## ", imag)
-                    num = complex(real, imag)
-            elif l[:4] == "s mc" or l[:5] == "s pmc":
-                num = int(l.split()[2])
-            elif "c s exact arb int" in l:
-                num = float(l.split()[5])
-            elif "c s exact arb float " in l:
-                num = float(l.split()[5])
-            elif "c s exact quadruple float interval [" in l:
+                    count = complex(real, imag)
+            elif line[:4] == "s mc" or line[:5] == "s pmc":
+                count = int(line.split()[2])
+            elif "c s exact arb int" in line:
+                count = float(line.split()[5])
+            elif "c s exact arb float " in line:
+                count = float(line.split()[5])
+            elif "c s exact quadruple float interval [" in line:
                 # using middle of interval
-                parts = l.split()
-                num = (float(parts[7]) + float(parts[8])) / 2.0
-            elif "c s exact octuple float" in l or \
-                    "c s exact quadruple float" in l or \
-                    "c s exact double float" in l:
-                num = float(l.split()[5])
-            elif "c s exact arb int" in l:
-                num = int(l.split()[5])
-            elif "c s exact arb frac" in l:
-                parts = l.split()
+                parts = line.split()
+                count = (float(parts[7]) + float(parts[8])) / 2.0
+            elif "c s exact octuple float" in line or \
+                    "c s exact quadruple float" in line or \
+                    "c s exact double float" in line:
+                count = float(line.split()[5])
+            elif "c s exact arb int" in line:
+                count = int(line.split()[5])
+            elif "c s exact arb frac" in line:
+                parts = line.split()
                 if parts[5] == "[":
                     # mpqi rolled over to interval: [ left right ]
-                    num = (float(parts[6]) + float(parts[7])) / 2.0
+                    count = (float(parts[6]) + float(parts[7])) / 2.0
                 else:
                     frac = parts[5].split("/")
-                    num1 = int(frac[0])
+                    numerator = int(frac[0])
                     if len(frac) < 2:
-                        num = float(num1)
+                        count = float(numerator)
                     else:
-                        num = float(num1) / float(frac[1])
-            elif "s exact double prec-sci" in l:
-                num = float(l.split()[5])
-            elif "c s approx arb int" in l:
-                num = float(l.split()[5])
+                        count = float(numerator) / float(frac[1])
+            elif "s exact double prec-sci" in line:
+                count = float(line.split()[5])
+            elif "c s approx arb int" in line:
+                count = float(line.split()[5])
             else:
-                print("ERROR, couldn't parse line: ", l)
+                print("ERROR, couldn't parse line: ", line)
                 exit(-1)
     if unsat_found:
         return True, 0
 
-    if num is None:
+    if count is None:
         print("ERROR, could not find 's mc', 'c s exact arb int', or 'c s exact arb frac' or 'c s approx arb int' in output")
-        for w in out.split("\n"):
-            print(w.strip())
+        for out_line in out.split("\n"):
+            print(out_line.strip())
         if ("ganak" in solver.exe or "approx" in solver.exe):
             return False, None
         else :
             print("Not erroring out, it's not our solver")
             return True, None
 
-    return True, num
+    return True, count
 
-def check_header(fname):
-    with open(fname, "r") as f:
+def check_header(cnf_path):
+    with open(cnf_path, "r") as f:
         num_cls = 0
         max_vars = 0
         header_cls = 0
@@ -688,11 +648,10 @@ def check_header(fname):
                 continue
 
             num_cls += 1
-            line = line.split()
-            for w in line:
-                w = abs(int(w))
-                if w > max_vars:
-                    max_vars = w
+            for lit in line.split():
+                var = abs(int(lit))
+                if var > max_vars:
+                    max_vars = var
 
         if num_cls != header_cls:
             print("cls in CNF: %d but header said: %d" % (num_cls, header_cls))
@@ -704,84 +663,39 @@ def check_header(fname):
     return True
 
 # Arjun must keep the no-touch vars as vars 1..k, in the sampling set
-def check_no_touch_preserved(fname2, num_no_touch):
+def check_no_touch_preserved(simp_path, num_no_touch):
     if num_no_touch == 0:
         return True
-    nvars = get_nvars(fname2)
-    found = None
-    show = None
-    with open(fname2, "r") as f:
+    nvars = get_nvars(simp_path)
+    no_touch = None
+    show_vars = None
+    with open(simp_path, "r") as f:
         for line in f:
             line = line.strip()
             if line.startswith("c p no-touch"):
-                found = [int(x) for x in line.split()[3:-1]]
+                no_touch = [int(x) for x in line.split()[3:-1]]
             if line.startswith("c p show"):
-                show = set(int(x) for x in line.split()[3:-1])
-    want = list(range(1, num_no_touch+1))
-    if found != want:
-        print("ERROR: no-touch header in %s is %s but should be %s" % (fname2, found, want))
+                show_vars = set(int(x) for x in line.split()[3:-1])
+    want_no_touch = list(range(1, num_no_touch+1))
+    if no_touch != want_no_touch:
+        print("ERROR: no-touch header in %s is %s but should be %s" % (simp_path, no_touch, want_no_touch))
         return False
     if nvars < num_no_touch:
-        print("ERROR: %s has only %d vars, but %d are no-touch" % (fname2, nvars, num_no_touch))
+        print("ERROR: %s has only %d vars, but %d are no-touch" % (simp_path, nvars, num_no_touch))
         return False
-    missing = [v for v in want if v not in show]
+    missing = [v for v in want_no_touch if v not in show_vars]
     if missing:
-        print("ERROR: no-touch vars %s of %s are not in 'c p show'" % (missing, fname2))
+        print("ERROR: no-touch vars %s of %s are not in 'c p show'" % (missing, simp_path))
         return False
     return True
 
-def add_units(fname, fname2, units):
-    with open(fname, "r") as f:
-        lines = f.readlines()
-    with open(fname2, "w") as f:
-        for line in lines:
-            if line.strip().startswith("p cnf"):
-                parts = line.split()
-                f.write("p cnf %s %d\n" % (parts[2], int(parts[3]) + len(units)))
-            else:
-                f.write(line)
-        for l in units:
-            f.write("%d 0\n" % l)
-
-# the count must be preserved under EVERY assignment of the no-touch vars
-def check_no_touch_counts(solver, fname, fname2, num_no_touch):
-    if num_no_touch == 0:
-        return True
-    if num_no_touch <= 3:
-        assigns = [[(v+1) * (1 if (i >> v) & 1 else -1) for v in range(num_no_touch)]
-                   for i in range(2**num_no_touch)]
-    else:
-        assigns = [[(v+1) * random.choice([1, -1]) for v in range(num_no_touch)]
-                   for _ in range(4)]
-    for units in assigns:
-        cond = unique_file("fuzzTest")
-        cond2 = unique_file("fuzzTest")
-        add_units(fname, cond, units)
-        add_units(fname2, cond2, units)
-        OK, c1 = run_one_counter(solver, cond)
-        OK2, c2 = run_one_counter(solver, cond2)
-        os.unlink(cond)
-        os.unlink(cond2)
-        if not OK or not OK2:
-            print("ERROR: counter failed on no-touch conditioned files")
-            return False
-        if c1 is None or c2 is None:
-            continue
-        if c1 != c2:
-            print("ERROR: conditioned on no-touch %s: orig count %s but simplified count %s"
-                  % (units, c1, c2))
-            print("       orig: %s simplified: %s" % (fname, fname2))
-            return False
-        print("OK, no-touch conditioned on %s: both count %s" % (units, c1))
-    return True
-
-def run_one_preproc(preproc, fname, fname2, num_no_touch):
+def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     curr_time = time.time()
     toexec = preproc.exe.split()
-    toexec.append(os.getcwd() + "/" + fname)
-    toexec.append(os.getcwd() + "/" + fname2)
+    toexec.append(os.getcwd() + "/" + in_path)
+    toexec.append(os.getcwd() + "/" + out_path)
     print("Executing preproc ", preproc)
-    out, err, returncode = run(toexec, preproc.dir)
+    out, err, returncode = run(toexec, preproc.cwd)
     if err is None:
         pass
     else:
@@ -798,9 +712,7 @@ def run_one_preproc(preproc, fname, fname2, num_no_touch):
         print("ERROR: preproc %s crashed with exit code %d, output was:" % (preproc.exe, returncode))
         print(out)
         exit(-1)
-    assert check_header(fname2)
-    if not check_no_touch_preserved(fname2, num_no_touch):
-        exit(-1)
+    assert check_header(out_path)
     return True
 
 if __name__ == "__main__":
@@ -821,8 +733,7 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     if options.rnd_seed is None:
-        b = os.urandom(8)
-        rnd_seed = int.from_bytes(b)
+        rnd_seed = int.from_bytes(os.urandom(8))
         print("Using seed:", rnd_seed)
     else:
         rnd_seed = options.rnd_seed
@@ -830,8 +741,7 @@ if __name__ == "__main__":
 
     for i in range(options.only):
         if options.rnd_seed is None:
-            b = os.urandom(8)
-            seed = int.from_bytes(b)
+            seed = int.from_bytes(os.urandom(8))
             random.seed(seed)
         else:
             seed = options.rnd_seed
@@ -852,8 +762,8 @@ if __name__ == "__main__":
             proj = False
             weighted = True
 
-        fname = unique_file("fuzzTest")
-        print("\033[32mSeed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking fname: ", fname, "\033[0m")
+        cnf_path = unique_file("fuzzTest")
+        print("\033[32mSeed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking file: ", cnf_path, "\033[0m")
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
@@ -861,8 +771,8 @@ if __name__ == "__main__":
         # Mate TODO: add other binaries from competition, add CNF checker
         # Mate TODO: get https://github.com/vroland/sharptrace working together with https://github.com/vroland/sharpSAT/tree/proof-trace
         call = random.choice([
-            gen_fuzz_call_biere("./biere-fuzz", fname, proj, weighted),
-            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", fname, proj, weighted)])
+            gen_fuzz_call_biere("./biere-fuzz", cnf_path, proj, weighted),
+            gen_fuzz_call_brummayer("./cnf-fuzz-brummayer.py", cnf_path, proj, weighted)])
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
@@ -872,19 +782,19 @@ if __name__ == "__main__":
             print("Failed fuzzer file generator call: ", call)
             exit(-1)
         else:
-            print("Generated fuzz file %s with call: %s" % (fname, call))
+            print("Generated fuzz file %s with call: %s" % (cnf_path, call))
 
         num_no_touch = 0
         if not cpx:
-            num_no_touch = pick_num_no_touch(get_nvars(fname))
+            num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
         projected_vars = None
         if proj:
-            projected_vars = add_projection(fname, num_no_touch)
-        add_no_touch(fname, num_no_touch)
+            projected_vars = add_projection(cnf_path, num_no_touch)
+        add_no_touch(cnf_path, num_no_touch)
         if not cpx and weighted:
-            add_weights(fname, projected_vars)
+            add_weights(cnf_path, projected_vars)
         if cpx:
-            add_weights_cpx(fname, projected_vars)
+            add_weights_cpx(cnf_path, projected_vars)
         counts = []
         solvers = []
 
@@ -956,21 +866,21 @@ if __name__ == "__main__":
 
         simplified = []
         for preproc in preprocs:
-            fname2 = unique_file("fuzzTest")
-            OK = False
+            simp_path = unique_file("fuzzTest")
+            ok = False
             if preproc.exe is None:
-                shutil.copyfile(fname, fname2)
-                OK = True
+                shutil.copyfile(cnf_path, simp_path)
+                ok = True
                 if options.verbose:
-                    print("Copied file %s to %s for the empty preproc" % (fname, fname2))
+                    print("Copied file %s to %s for the empty preproc" % (cnf_path, simp_path))
             else:
-                OK = run_one_preproc(preproc, fname, fname2, num_no_touch)
+                ok = run_one_preproc(preproc, cnf_path, simp_path, num_no_touch)
                 if options.verbose:
-                    print("Generated file %s by preproc %s which preprocessed %s" % (fname2, preproc.exe, fname))
-            if OK:
-                simplified.append((preproc, fname2))
+                    print("Generated file %s by preproc %s which preprocessed %s" % (simp_path, preproc.exe, cnf_path))
+            if ok:
+                simplified.append((preproc, simp_path))
             else:
-                os.unlink(fname2)
+                os.unlink(simp_path)
 
         exact_count = None
         print("Set of solvers is: ", solvers)
@@ -979,104 +889,101 @@ if __name__ == "__main__":
             exit(-1)
 
         for solver in solvers:
-            for preproc, fname2 in simplified:
+            for preproc, simp_path in simplified:
                 if (preproc.exe is not None and "arjun" in preproc.exe) and \
                         ("ganak" not in solver.exe and "approx" not in solver.exe):
                     # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
                     continue
-                s = solver
+                to_run = solver
                 if preproc.exe is not None and "arjun" in preproc.exe:
                     # arjun's output has show < optshow, which arjun's backward
                     # pass (re-run inside the counter) refuses
-                    e = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
-                    s = solver._replace(exe=e)
-                OK, count = run_one_counter(s, fname2)
-                if not OK:
+                    exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
+                    to_run = solver._replace(exe=exe)
+                ok, count = run_one_counter(to_run, simp_path)
+                if not ok:
                     print("Error running ", solver)
                     exit(-1)
-                print("got back: ", OK, " , ", count)
+                print("got back: ", ok, " , ", count)
                 if count is not None and solver.exact and preproc.exe is None:
                     exact_count = Count(solver, preproc, count)
                 if count is not None:
                     counts.append(Count(solver, preproc, count))
         if num_no_touch > 0 and not weighted and not cpx:
             checker = Solver(ganak_base + " --arjun 0 ", True)
-            for preproc, fname2 in simplified:
+            for preproc, simp_path in simplified:
                 if preproc.exe is None:
                     continue
-                if not check_no_touch_counts(checker, fname, fname2, num_no_touch):
+                if not check_no_touch_counts(checker, cnf_path, simp_path, num_no_touch):
                     exit(-1)
 
         if exact_count is None:
             if options.rnd_seed is not None:
                 print("Exiting as we only wanted to run one test due to --seed")
                 exit(0)
-            os.unlink(fname)
-            for _, fname2 in simplified:
-                os.unlink(fname2)
+            os.unlink(cnf_path)
+            for _, simp_path in simplified:
+                os.unlink(simp_path)
             continue
 
         print("counts is: ", counts)
-        def perc_diff(a, b):
-            amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
-            val_r = abs(b.real) + abs(b.imag)
-            if (a != b and val_r == 0):
+        def perc_diff(got, want):
+            diff = abs(got.real-want.real) + abs(got.imag-want.imag)
+            magnitude = abs(want.real) + abs(want.imag)
+            if (got != want and magnitude == 0):
                 return 100.0
-            val = amnt/val_r
-            # print("perc diff is: ", val)
-            return val
+            return diff/magnitude
 
-        def abs_diff(a, b):
-            amnt = abs(a.real-b.real) + abs(a.imag-b.imag)
-            return amnt
+        def abs_diff(got, want):
+            return abs(got.real-want.real) + abs(got.imag-want.imag)
 
-        for (a,b) in zip(counts, solvers):
+        for got, _ in zip(counts, solvers):
             if weighted:
-                assert(a.solver.exact)
-                is_float_mode = "--mode 7" in a.solver.exe or "--mode 8" in a.solver.exe or "--mode 9" in a.solver.exe or \
+                assert(got.solver.exact)
+                is_float_mode = "--mode 7" in got.solver.exe or "--mode 8" in got.solver.exe or "--mode 9" in got.solver.exe or \
                     "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
-                if a.count != exact_count.count and perc_diff(a.count, exact_count.count) > 0.02 and abs_diff(a.count, exact_count.count) > abs_diff_threshold:
-                    print("ERROR: One weighted count is %s, but other count is %s" % (a.count, exact_count.count))
+                if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
+                    print("ERROR: One weighted count is %s, but other count is %s" % (got.count, exact_count.count))
                     exit(-1)
 
             if not weighted:
-                if a.count != exact_count.count and a.solver.exact:
+                if got.count != exact_count.count and got.solver.exact:
                     print("ERROR!")
-                    print("%s with preproc %s counted: %s" %(a.solver, a.preproc, a.count))
+                    print("%s with preproc %s counted: %s" %(got.solver, got.preproc, got.count))
                     print("%s with preproc %s counted: %s" %(
                         exact_count.solver, exact_count.preproc, exact_count.count))
                     exit(-1)
 
-                if a.count != exact_count.count and not a.solver.exact:
+                if got.count != exact_count.count and not got.solver.exact:
                     max_allowed = exact_count.count * (1.0 + epsilon)
                     min_allowed = exact_count.count * (1.0 / (1.0 + epsilon))
 
-                    print(f"Count is {a.count} for {fname}, but the exact count is {exact_count.count}.")
-                    print(f"Non-exact is |{exact_count.count} - {a.count}| = {abs(exact_count.count - a.count)} off.")
-                    print(f"Non-exact is a factor {exact_count.count / float(a.count)} off.")
+                    print(f"Count is {got.count} for {cnf_path}, but the exact count is {exact_count.count}.")
+                    print(f"Non-exact is |{exact_count.count} - {got.count}| = {abs(exact_count.count - got.count)} off.")
+                    print(f"Non-exact is a factor {exact_count.count / float(got.count)} off.")
                     print(f"With epsilon = {epsilon}, min_allowed = {min_allowed}, max_allowed = {max_allowed}.")
-                    print(f"Wrong counting: {a.solver.exe} with preproc {a.preproc}")
-                    if a.count > max_allowed or a.count < min_allowed:
-                        wrong = 0
-                        numruns = 100
-                        num = 0
-                        failed = 0
-                        while num < numruns and failed < 5:
-                            OK, count2 = run_one_counter(a.solver, fname, random.randint(0, 1000*1000*1000))
-                            if count2 is None:
-                                failed+=1
+                    print(f"Wrong counting: {got.solver.exe} with preproc {got.preproc}")
+                    if got.count > max_allowed or got.count < min_allowed:
+                        num_wrong = 0
+                        num_reruns = 100
+                        num_done = 0
+                        num_failed = 0
+                        while num_done < num_reruns and num_failed < 5:
+                            ok, rerun_count = run_one_counter(got.solver, cnf_path, random.randint(0, 1000*1000*1000))
+                            if rerun_count is None:
+                                num_failed += 1
                                 continue
-                            num += 1
-                            print(f"Rerun gives count = {count2}")
-                            if not OK:
+                            num_done += 1
+                            print(f"Rerun gives count = {rerun_count}")
+                            if not ok:
                                 print("ERROR: rerun failed?")
                                 exit(-1)
-                            if count2 > max_allowed or count2 < min_allowed:
-                                wrong += 1
-                        if failed < 5:
-                            perc_wrong = float(wrong) / float(numruns) * 100.0
-                            print(f"Out of {numruns} reruns, {wrong} were outside the allowed range, percentage {perc_wrong}%")
+                            if rerun_count > max_allowed or rerun_count < min_allowed:
+                                num_wrong += 1
+                        if num_failed < 5:
+                            perc_wrong = float(num_wrong) / float(num_reruns) * 100.0
+                            print(f"Out of {num_reruns} reruns, {num_wrong} were outside the allowed range, percentage {perc_wrong}%")
 
                             allowed_perc_wrong = (delta) * 100.0
                             if perc_wrong > allowed_perc_wrong:
@@ -1089,17 +996,17 @@ if __name__ == "__main__":
 
 
             print("OK, count is %s. Solve %s with preproc %s matches solver %s count with preproc %s" %
-                      (a.count, a.solver.exe, a.preproc, exact_count.solver, exact_count.preproc))
+                      (got.count, got.solver.exe, got.preproc, exact_count.solver, exact_count.preproc))
 
         print(" ---------------------------")
         if options.rnd_seed is not None:
             print("Exiting as we only wanted to run one test due to --seed")
             exit(0)
 
-        print("Checking with file %s finished\n" % fname)
-        os.unlink(fname)
-        for _, fname2 in simplified:
-            os.unlink(fname2)
+        print("Checking with file %s finished\n" % cnf_path)
+        os.unlink(cnf_path)
+        for _, simp_path in simplified:
+            os.unlink(simp_path)
 
 
 
