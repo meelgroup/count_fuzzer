@@ -34,6 +34,15 @@ from collections import namedtuple
 Solver = namedtuple("Solver", "exe exact cwd", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe cwd", defaults=[None, None])
 Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
+
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+BLUE = "\033[34m"
+MAGENTA = "\033[35m"
+CYAN = "\033[36m"
+BOLD = "\033[1m"
+NC = "\033[0m"
 maxtimediff = 1
 
 current_proc = None
@@ -122,7 +131,7 @@ def set_up_parser():
 def run(command, cwd):
     global current_proc
     if options.verbose:
-        print(f"\033[35m--> Executing: \033[0m{' '.join(command)} in dir {cwd}")
+        print(f"{MAGENTA}--> Executing: {NC}{' '.join(command)} in dir {cwd}")
     if options.verbose:
         print(f"CPU limit of parent (pid {os.getpid()})", resource.getrlimit(resource.RLIMIT_CPU))
 
@@ -239,7 +248,7 @@ def add_no_touch(cnf_path, num_no_touch):
         for i in range(num_no_touch):
             f.write(f"{i+1} ")
         f.write("0\n")
-    print(f"\033[35m--> Added no-touch header\033[0m to {cnf_path} for vars 1..{num_no_touch}")
+    print(f"{MAGENTA}--> Added no-touch header{NC} to {cnf_path} for vars 1..{num_no_touch}")
 
 def add_projection(cnf_path, num_no_touch) :
     nvars = get_nvars(cnf_path)
@@ -513,6 +522,25 @@ def parse_frac_complex(s):
     return complex(parse_frac(match.group(1)), imag)
 
 
+def short_exe(exe):
+    """long command line -> "ganak mode=2", "arjun", "no-preproc" """
+    if exe is None: return "no-preproc"
+    name = os.path.basename(exe.split()[0])
+    mode = re.search(r"--?mode[= ](\d+)", exe)
+    return f"{name} mode={mode.group(1)}" if mode else name
+
+
+def solver_desc(solver):
+    desc = short_exe(solver.exe) + ("" if solver.exact else " (approx)")
+    if solver.cwd is not None: desc += f" in {solver.cwd}"
+    return desc
+
+
+def run_desc(solver, preproc):
+    approx = "" if solver.exact else " (approx)"
+    return f"{short_exe(solver.exe)}{approx} + {short_exe(preproc.exe)}"
+
+
 def run_one_counter(solver, cnf_path, seed=42):
     curr_time = time.time()
     toexec = solver.exe.split()
@@ -531,7 +559,7 @@ def run_one_counter(solver, cnf_path, seed=42):
         print("Error string is: ", err)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
-        print(f"Too much time to solve with {solver.exe}, aborted!")
+        print(f"{YELLOW}--> Too much time to solve with {solver_desc(solver)}, aborted!{NC}")
         return True, None
     if returncode != 0 and not out.startswith("TIMEOUT"):
         print(f"Solver crashed with exit code {returncode} (signal {-returncode})")
@@ -557,7 +585,7 @@ def run_one_counter(solver, cnf_path, seed=42):
                 print(out_line.strip())
             return False, None
         if "ERROR" in line and "ERROR SUMMARY" not in line:
-            print("ERROR in output: ", line)
+            print(f"{RED}ERROR in output: {NC}", line)
             for out_line in out.split("\n"):
                 print(out_line.strip())
             return False, None
@@ -589,10 +617,10 @@ def run_one_counter(solver, cnf_path, seed=42):
                         # c s exact arb frac 3/2 + -1i
                         count = parse_frac_complex(line.split("frac", 1)[1])
                         if count is None:
-                            print("ERROR, couldn't parse cpx frac line: ", line)
+                            print(f"{RED}ERROR, couldn't parse cpx frac line: {NC}", line)
                             sys.exit(-1)
                     else:
-                        print("ERROR, couldn't parse cpx line: ", line)
+                        print(f"{RED}ERROR, couldn't parse cpx line: {NC}", line)
                         sys.exit(-1)
             elif line[:4] == "s mc" or line[:5] == "s pmc":
                 count = int(line.split()[2])
@@ -622,7 +650,7 @@ def run_one_counter(solver, cnf_path, seed=42):
             elif "c s approx arb int" in line:
                 count = int(line.split()[5])
             else:
-                print("ERROR, couldn't parse line: ", line)
+                print(f"{RED}ERROR, couldn't parse line: {NC}", line)
                 sys.exit(-1)
     if unsat_found:
         return True, 0
@@ -728,7 +756,10 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     toexec.append(os.getcwd() + "/" + in_path)
     toexec.append(os.getcwd() + "/" + out_path)
 
-    print(f"\033[35m--> Executing preproc: \033[0m{' '.join(toexec)} in dir {preproc.cwd}")
+    if options.verbose:
+        print(f"{MAGENTA}--> Executing preproc: {NC}{' '.join(toexec)} in dir {preproc.cwd}")
+    else:
+        print(f"{MAGENTA}--> Executing preproc:{NC} {short_exe(preproc.exe)} {in_path} -> {out_path}")
     # print("Executing preproc ", preproc)
     out, err, returncode = run(toexec, preproc.cwd)
     if err is None:
@@ -738,13 +769,13 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         print("output was: ", out)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
-        print(f"Too much time to preproc with {preproc.exe}, aborted!")
+        print(f"{YELLOW}--> Too much time to preproc with {short_exe(preproc.exe)}, aborted!{NC}")
         return False
     if out.startswith("TIMEOUT"):
-        print(f"Preproc {preproc.exe} timed out, skipping")
+        print(f"{YELLOW}--> Preproc {short_exe(preproc.exe)} timed out, skipping{NC}")
         return False
     if returncode != 0:
-        print(f"ERROR: preproc {preproc.exe} crashed with exit code {returncode}, output was:")
+        print(f"ERROR: preproc {short_exe(preproc.exe)} crashed with exit code {returncode}, output was:")
         print(out)
         sys.exit(-1)
     assert check_header(out_path)
@@ -796,7 +827,7 @@ if __name__ == "__main__":
 
         cpx :bool = random.choice([True, False, False])
         cnf_path = unique_file("fuzzTest")
-        print("\033[32mSeed: ", seed, " projected: ", proj, "weighted: ", weighted, " checking file: ", cnf_path, "\033[0m")
+        print(f"{GREEN}=== Seed: {seed}  projected: {proj}  weighted: {weighted}  cpx: {cpx}  file: {cnf_path}{NC}")
 
         # NOTE Baysian network: http://reasoning.cs.ucla.edu/ace/
         # Generate random PB formulas, translate with Stephan Gocht's translator to CNF, and count with CPLEX.
@@ -809,13 +840,13 @@ if __name__ == "__main__":
         # print("TODO: ./dnfstream --eager 1 a.cnf -e 0.01 --delta 0.01 out.dnf");
         # print("TODO: ./cnftranslate out.dnf out.cnf");
 
-        print(f"\033[35m--> Calling: \033[0m{call}")
+        print(f"{MAGENTA}--> Calling: {NC}{call}")
         status = subprocess.call(call, shell=True)
         if status != 0:
             print("Failed fuzzer file generator call: ", call)
             sys.exit(-1)
         else:
-            print(f"\033[35m--> Generated fuzz file\033[0m {cnf_path} with call: {call}")
+            print(f"{MAGENTA}--> Generated fuzz file{NC} {cnf_path} with call: {call}")
 
         num_no_touch = 0
         num_no_touch = pick_num_no_touch(get_nvars(cnf_path))
@@ -877,7 +908,7 @@ if __name__ == "__main__":
             solvers = [
                 make_ganak_solver(ganak_base, epsilon, delta, mode=2),
                 make_ganak_solver(ganak_base, epsilon, delta, mode=6),
-                Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
+                # Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
                 ]
 
         preprocs = [
@@ -904,36 +935,49 @@ if __name__ == "__main__":
                 os.unlink(simp_path)
 
         exact_count = None
-        print("Set of solvers is: ", solvers)
+        print(f"{MAGENTA}--> Solvers to run ({len(solvers)}):{NC}")
+        for i, solver in enumerate(solvers, 1):
+            print(f"      [{i}] {solver_desc(solver)}")
+            if options.verbose: print(f"          {' '.join(solver.exe.split())}")
+        print(f"{MAGENTA}--> Preprocessors ({len(simplified)}):{NC}")
+        for preproc, simp_path in simplified:
+            print(f"      {short_exe(preproc.exe)} -> {simp_path}")
         if len(solvers) == 1:
             print("ERROR, it makes no sense to run a single solver, exiting")
             sys.exit(-1)
 
-        for solver in solvers:
-            for preproc, simp_path in simplified:
-                if (preproc.exe is not None and "arjun" in preproc.exe) and \
-                        ("ganak" not in solver.exe and "approx" not in solver.exe):
-                    # only GANAK and ApproxMC understand "MUST MULTIPLY BY"
-                    continue
-                to_run = solver
-                if preproc.exe is not None and "arjun" in preproc.exe:
-                    # arjun's output has show < optshow, which arjun's backward
-                    # pass (re-run inside the counter) refuses
-                    exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
-                    to_run = solver._replace(exe=exe)
-                ok, count = run_one_counter(to_run, simp_path)
-                if not ok:
-                    print("Error running ", solver)
-                    sys.exit(-1)
-                print("Result: ", ok, " , ", count)
-                if count is not None and solver.exact and preproc.exe is None:
-                    exact_count = Count(solver, preproc, count)
-                if count is not None:
-                    counts.append(Count(solver, preproc, count))
+        # only GANAK and ApproxMC understand arjun's "MUST MULTIPLY BY"
+        runs = [(solver, preproc, simp_path)
+                for solver in solvers
+                for preproc, simp_path in simplified
+                if preproc.exe is None or "arjun" not in preproc.exe
+                or "ganak" in solver.exe or "approx" in solver.exe]
+
+        for run_idx, (solver, preproc, simp_path) in enumerate(runs, 1):
+            tag = f"[{run_idx}/{len(runs)}] {run_desc(solver, preproc)}"
+            print(f"{MAGENTA}--> Counting:{NC} {tag} on {simp_path}")
+            to_run = solver
+            if preproc.exe is not None and "arjun" in preproc.exe:
+                # arjun's output has show < optshow, which arjun's backward
+                # pass (re-run inside the counter) refuses
+                exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
+                to_run = solver._replace(exe=exe)
+            ok, count = run_one_counter(to_run, simp_path)
+            if not ok:
+                print(f"{RED}ERROR running {tag}{NC}")
+                sys.exit(-1)
+            if count is None:
+                print(f"    {YELLOW}{tag}: NO COUNT (timed out/aborted){NC}")
+            else:
+                print(f"    {tag}: count = {CYAN}{count}{NC}")
+            if count is not None and solver.exact and preproc.exe is None:
+                exact_count = Count(solver, preproc, count)
+            if count is not None:
+                counts.append(Count(solver, preproc, count))
 
         if exact_count is None:
             if options.rnd_seed is not None:
-                print("Exiting as we only wanted to run one test due to --seed")
+                print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
                 sys.exit(0)
             os.unlink(cnf_path)
             for _, simp_path in simplified:
@@ -948,27 +992,32 @@ if __name__ == "__main__":
                     "--mode 7" in exact_count.solver.exe or "--mode 8" in exact_count.solver.exe or "--mode 9" in exact_count.solver.exe
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
                 if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
-                    print(f"ERROR: One weighted count is {got.count}, but other count is {exact_count.count}")
+                    print(f"{RED}ERROR: weighted counts disagree for {cnf_path}:{NC}")
+                    print(f"    {run_desc(got.solver, got.preproc)} counted: {CYAN}{got.count}{NC}")
+                    print(f"    {run_desc(exact_count.solver, exact_count.preproc)} counted: "
+                          f"{CYAN}{exact_count.count}{NC}   (used as reference)")
                     sys.exit(-1)
 
             if not weighted:
                 if got.count != exact_count.count and got.solver.exact:
-                    print("ERROR!")
-                    print(f"{got.solver} with preproc {got.preproc} counted: {got.count}")
-                    print(f"{exact_count.solver} with preproc {exact_count.preproc} counted: "
-                          f"{exact_count.count}")
+                    print(f"{RED}ERROR: counts disagree for {cnf_path}:{NC}")
+                    print(f"    {run_desc(got.solver, got.preproc)} counted: {CYAN}{got.count}{NC}")
+                    print(f"    {run_desc(exact_count.solver, exact_count.preproc)} counted: "
+                          f"{CYAN}{exact_count.count}{NC}   (used as reference)")
                     sys.exit(-1)
 
                 if got.count != exact_count.count and not got.solver.exact:
                     max_allowed = exact_count.count * (1.0 + epsilon)
                     min_allowed = exact_count.count * (1.0 / (1.0 + epsilon))
 
-                    print(f"Count is {got.count} for {cnf_path}, but the exact count is {exact_count.count}.")
-                    print(f"Non-exact is |{exact_count.count} - {got.count}| = {abs(exact_count.count - got.count)} off.")
-                    print(f"Non-exact is a factor {exact_count.count / float(got.count)} off.")
-                    print(f"With epsilon = {epsilon}, min_allowed = {min_allowed}, max_allowed = {max_allowed}.")
-                    print(f"Wrong counting: {got.solver.exe} with preproc {got.preproc}")
-                    if got.count > max_allowed or got.count < min_allowed:
+                    oob = got.count > max_allowed or got.count < min_allowed
+                    col = RED if oob else YELLOW
+                    print(f"{col}{run_desc(got.solver, got.preproc)} counted {got.count}, "
+                          f"exact is {exact_count.count} "
+                          f"(factor {exact_count.count / float(got.count)} off){NC}")
+                    print(f"    allowed with epsilon={epsilon}: [{min_allowed}, {max_allowed}] -> "
+                          f"{RED + 'OUT OF RANGE' + NC if oob else 'in range'}")
+                    if oob:
                         num_wrong = 0
                         num_reruns = 100
                         num_done = 0
@@ -981,7 +1030,7 @@ if __name__ == "__main__":
                             num_done += 1
                             print(f"Rerun gives count = {rerun_count}")
                             if not ok:
-                                print("ERROR: rerun failed?")
+                                print(f"{RED}ERROR: rerun failed?{NC}")
                                 sys.exit(-1)
                             if rerun_count > max_allowed or rerun_count < min_allowed:
                                 num_wrong += 1
@@ -991,23 +1040,22 @@ if __name__ == "__main__":
 
                             allowed_perc_wrong = (delta) * 100.0
                             if perc_wrong > allowed_perc_wrong:
-                                print(f"ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %")
+                                print(f"{RED}ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %{NC}")
                                 sys.exit(-1)
                             else:
-                                print(f"OK within delta after reruns. Delta was {allowed_perc_wrong} %")
+                                print(f"{GREEN}OK within delta after reruns. Delta was {allowed_perc_wrong} %{NC}")
                         else:
                             print("Too many failed reruns, not checking delta.")
 
 
-            print(f"OK, count is {got.count}. Solve {got.solver.exe} with preproc {got.preproc} "
-                  f"matches solver {exact_count.solver} count with preproc {exact_count.preproc}")
+            print(f"{GREEN}OK{NC} {run_desc(got.solver, got.preproc)} = {CYAN}{got.count}{NC} "
+                  f"matches {run_desc(exact_count.solver, exact_count.preproc)}")
 
-        print(" ---------------------------")
+        print(f"{GREEN}=== Checking with file {cnf_path} finished{NC}")
         if options.rnd_seed is not None:
-            print("Exiting as we only wanted to run one test due to --seed")
+            print(f"{YELLOW}Exiting as we only wanted to run one test due to --seed{NC}")
             sys.exit(0)
 
-        print(f"Checking with file {cnf_path} finished\n")
         os.unlink(cnf_path)
         for _, simp_path in simplified:
             os.unlink(simp_path)
