@@ -940,8 +940,9 @@ if __name__ == "__main__":
             print(f"      [{i}] {solver_desc(solver)}")
             if options.verbose: print(f"          {' '.join(solver.exe.split())}")
         print(f"{MAGENTA}--> Preprocessors ({len(simplified)}):{NC}")
+        pp_w = max(len(short_exe(pp.exe)) for pp, _ in simplified)
         for preproc, simp_path in simplified:
-            print(f"      {short_exe(preproc.exe)} -> {simp_path}")
+            print(f"      {short_exe(preproc.exe):<{pp_w}} -> {simp_path}")
         if len(solvers) == 1:
             print("ERROR, it makes no sense to run a single solver, exiting")
             sys.exit(-1)
@@ -953,8 +954,12 @@ if __name__ == "__main__":
                 if preproc.exe is None or "arjun" not in preproc.exe
                 or "ganak" in solver.exe or "approx" in solver.exe]
 
+        # pad to the widest name so the counts line up in a column
+        name_w = max(len(run_desc(so, pp)) for so, pp, _ in runs)
+        idx_w = len(str(len(runs)))
+
         for run_idx, (solver, preproc, simp_path) in enumerate(runs, 1):
-            tag = f"[{run_idx}/{len(runs)}] {run_desc(solver, preproc)}"
+            tag = f"[{run_idx:>{idx_w}}/{len(runs)}] {run_desc(solver, preproc):<{name_w}}"
             print(f"{MAGENTA}--> Counting:{NC} {tag} on {simp_path}")
             to_run = solver
             if preproc.exe is not None and "arjun" in preproc.exe:
@@ -967,9 +972,9 @@ if __name__ == "__main__":
                 print(f"{RED}ERROR running {tag}{NC}")
                 sys.exit(-1)
             if count is None:
-                print(f"    {YELLOW}{tag}: NO COUNT (timed out/aborted){NC}")
+                print(f"    {YELLOW}{tag}  NO COUNT (timed out/aborted){NC}")
             else:
-                print(f"    {tag}: count = {CYAN}{count}{NC}")
+                print(f"    {tag}  count = {CYAN}{count}{NC}")
             if count is not None and solver.exact and preproc.exe is None:
                 exact_count = Count(solver, preproc, count)
             if count is not None:
@@ -993,16 +998,16 @@ if __name__ == "__main__":
                 abs_diff_threshold = 1e-10 if is_float_mode else 1e-50
                 if got.count != exact_count.count and perc_diff(got.count, exact_count.count) > 0.02 and abs_diff(got.count, exact_count.count) > abs_diff_threshold:
                     print(f"{RED}ERROR: weighted counts disagree for {cnf_path}:{NC}")
-                    print(f"    {run_desc(got.solver, got.preproc)} counted: {CYAN}{got.count}{NC}")
-                    print(f"    {run_desc(exact_count.solver, exact_count.preproc)} counted: "
+                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
+                    print(f"    {run_desc(exact_count.solver, exact_count.preproc):<{name_w}}  count = "
                           f"{CYAN}{exact_count.count}{NC}   (used as reference)")
                     sys.exit(-1)
 
             if not weighted:
                 if got.count != exact_count.count and got.solver.exact:
                     print(f"{RED}ERROR: counts disagree for {cnf_path}:{NC}")
-                    print(f"    {run_desc(got.solver, got.preproc)} counted: {CYAN}{got.count}{NC}")
-                    print(f"    {run_desc(exact_count.solver, exact_count.preproc)} counted: "
+                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}")
+                    print(f"    {run_desc(exact_count.solver, exact_count.preproc):<{name_w}}  count = "
                           f"{CYAN}{exact_count.count}{NC}   (used as reference)")
                     sys.exit(-1)
 
@@ -1012,9 +1017,9 @@ if __name__ == "__main__":
 
                     oob = got.count > max_allowed or got.count < min_allowed
                     col = RED if oob else YELLOW
-                    print(f"{col}{run_desc(got.solver, got.preproc)} counted {got.count}, "
-                          f"exact is {exact_count.count} "
-                          f"(factor {exact_count.count / float(got.count)} off){NC}")
+                    print(f"    {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}"
+                          f"  vs exact {exact_count.count}"
+                          f"  {col}(factor {exact_count.count / float(got.count)} off){NC}")
                     print(f"    allowed with epsilon={epsilon}: [{min_allowed}, {max_allowed}] -> "
                           f"{RED + 'OUT OF RANGE' + NC if oob else 'in range'}")
                     if oob:
@@ -1048,8 +1053,8 @@ if __name__ == "__main__":
                             print("Too many failed reruns, not checking delta.")
 
 
-            print(f"{GREEN}OK{NC} {run_desc(got.solver, got.preproc)} = {CYAN}{got.count}{NC} "
-                  f"matches {run_desc(exact_count.solver, exact_count.preproc)}")
+            print(f"{GREEN}OK{NC}  {run_desc(got.solver, got.preproc):<{name_w}}  count = {CYAN}{got.count}{NC}"
+                  f"  matches {run_desc(exact_count.solver, exact_count.preproc)}")
 
         print(f"{GREEN}=== Checking with file {cnf_path} finished{NC}")
         if options.rnd_seed is not None:
