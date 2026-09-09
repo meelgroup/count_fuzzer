@@ -22,6 +22,7 @@ import optparse
 import os
 import random
 import re
+import shlex
 import shutil
 import signal
 import stat
@@ -33,7 +34,7 @@ from dataclasses import dataclass, field
 
 Solver = namedtuple("Solver", "exe exact cwd", defaults=[None, True, None])
 Preproc = namedtuple("Preproc", "exe cwd", defaults=[None, None])
-Count = namedtuple("Count", "solver preproc count", defaults=[None, None, -1])
+Count = namedtuple("Count", "solver preproc count cmd", defaults=[None, None, -1, None])
 
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -46,6 +47,8 @@ NC = "\033[0m"
 maxtimediff = 1
 
 current_proc = None
+last_cmd = None
+current_test = None
 
 
 def _cleanup_and_exit(_signum, _frame):
@@ -125,8 +128,46 @@ def set_up_parser():
     return parser
 
 
+def cmd_str(command, cwd=None):
+    line = " ".join(shlex.quote(str(x)) for x in command)
+    if cwd is not None and os.path.abspath(cwd) != os.getcwd():
+        line = f"cd {shlex.quote(cwd)} && {line}"
+    return line
+
+
+def fuzz_rerun_cmd():
+    if current_test is None:
+        return None
+    args = []
+    skip = False
+    for arg in sys.argv[1:]:
+        if skip:
+            skip = False
+            continue
+        if arg == "--seed":
+            skip = True
+            continue
+        if arg.startswith("--seed="):
+            continue
+        args.append(arg)
+    return cmd_str([sys.argv[0]] + args + ["--seed", str(current_test.seed)])
+
+
+def print_repro(*cmds):
+    cmds = [c for c in cmds if c is not None] or ([last_cmd] if last_cmd else [])
+    if cmds:
+        print(f"{YELLOW}--> To re-run by hand:{NC}")
+        for cmd in cmds:
+            print(f"      {cmd}")
+    rerun = fuzz_rerun_cmd()
+    if rerun is not None:
+        print(f"{YELLOW}--> To re-run this whole fuzz test:{NC}")
+        print(f"      {rerun}")
+
+
 def run(command, cwd):
-    global current_proc
+    global current_proc, last_cmd
+    last_cmd = cmd_str(command, cwd)
     if options.verbose:
         print(f"{MAGENTA}--> Executing: {NC}{' '.join(command)} in dir {cwd}")
 
@@ -573,6 +614,7 @@ def report_mismatch(got, ref, cnf_path, desc_width, kind=""):
     print(f"    {run_desc(got.solver, got.preproc):<{desc_width}}  count = {CYAN}{got.count}{NC}")
     print(f"    {run_desc(ref.solver, ref.preproc):<{desc_width}}  count = "
           f"{CYAN}{ref.count}{NC}   (used as reference)")
+    print_repro(got.cmd, ref.cmd)
     sys.exit(-1)
 
 
@@ -586,14 +628,16 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
 
     if "ganak" in solver.exe and random.randint(1, 100) == 30:
         toexec = "valgrind --leak-check=full --track-origins=yes".split() + toexec
+    cmd = cmd_str(toexec, solver.cwd)
     out, returncode = run(toexec, solver.cwd)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
         print(f"{YELLOW}--> Too much time to solve with {solver_desc(solver)}, aborted!{NC}")
-        return True, None
+        return True, None, cmd
     if returncode != 0 and not out.startswith("TIMEOUT"):
-        print(f"Solver crashed with exit code {returncode} (signal {-returncode})")
-        return False, None
+        why = f"signal {-returncode}" if returncode < 0 else f"exit code {returncode}"
+        print(f"{RED}Solver crashed with {why}{NC}")
+        return False, None, cmd
 
     count = None
     unsat_found = False
@@ -604,21 +648,21 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
         if "s UNSATIS" in line:
             unsat_found = True
         if "Assertion " in line and "failed" in line:
-            return False, None
+            return False, None, cmd
         # if "sat call" in line:
         #     print(line)
         if "ERROR Memory out!" in line:
-            return True, None
+            return True, None, cmd
         if "blocks are definitely lost" in line:
             print(f"ERROR: Memory leak in solver {solver.exe}, output was: ")
             for out_line in out.split("\n"):
                 print(out_line.strip())
-            return False, None
+            return False, None, cmd
         if "ERROR" in line and "ERROR SUMMARY" not in line:
             print(f"{RED}ERROR in output: {NC}", line)
             for out_line in out.split("\n"):
                 print(out_line.strip())
-            return False, None
+            return False, None, cmd
         if len(line) < 4:
             continue
         if "c s exact arb cpx" in line:
@@ -633,7 +677,7 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                 or "s approx arb int" in line or "c s exact" in line):
             if count is not None:
                 print("ERROR: Two 's mc' lines in output!!")
-                # TODO: print command that got executed
+                print_repro(cmd)
                 sys.exit(-1)
             if cpx:
                 if unsat_found:
@@ -649,9 +693,11 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                         count = parse_frac_complex(line.split("frac", 1)[1])
                         if count is None:
                             print(f"{RED}ERROR, couldn't parse cpx frac line: {NC}", line)
+                            print_repro(cmd)
                             sys.exit(-1)
                     else:
                         print(f"{RED}ERROR, couldn't parse cpx line: {NC}", line)
+                        print_repro(cmd)
                         sys.exit(-1)
             elif line[:4] == "s mc" or line[:5] == "s pmc":
                 count = int(line.split()[2])
@@ -680,9 +726,10 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                 count = int(line.split()[5])
             else:
                 print(f"{RED}ERROR, couldn't parse line: {NC}", line)
+                print_repro(cmd)
                 sys.exit(-1)
     if unsat_found:
-        return True, 0
+        return True, 0, cmd
 
     if count is None:
         print("ERROR, could not find 's mc', 'c s exact arb int', 'c s exact arb frac'"
@@ -690,12 +737,12 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
         for out_line in out.split("\n"):
             print(out_line.strip())
         if ("ganak" in solver.exe or "approx" in solver.exe):
-            return False, None
+            return False, None, cmd
         else:
             print("Not erroring out, it's not our solver")
-            return True, None
+            return True, None, cmd
 
-    return True, count
+    return True, count, cmd
 
 
 def check_header(cnf_path):
@@ -793,6 +840,7 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
     else:
         print(f"{MAGENTA}--> Executing preproc:{NC} {short_exe(preproc.exe)} {in_path} -> {out_path}")
     # print("Executing preproc ", preproc)
+    cmd = cmd_str(toexec, preproc.cwd)
     out, returncode = run(toexec, preproc.cwd)
     diff_time = time.time() - curr_time
     if diff_time > options.maxtime - maxtimediff:
@@ -802,11 +850,16 @@ def run_one_preproc(preproc, in_path, out_path, num_no_touch):
         print(f"{YELLOW}--> Preproc {short_exe(preproc.exe)} timed out, skipping{NC}")
         return False
     if returncode != 0:
-        print(f"ERROR: preproc {short_exe(preproc.exe)} crashed with exit code {returncode}, output was:")
+        print(f"{RED}ERROR: preproc {short_exe(preproc.exe)} crashed with exit code {returncode}, output was:{NC}")
         print(out)
+        print_repro(cmd)
         sys.exit(-1)
-    assert check_header(out_path)
+    if not check_header(out_path):
+        print(f"{RED}ERROR: preproc {short_exe(preproc.exe)} wrote a broken header to {out_path}{NC}")
+        print_repro(cmd)
+        sys.exit(-1)
     if not check_no_touch_preserved(out_path, num_no_touch):
+        print_repro(cmd)
         sys.exit(-1)
     return True
 
@@ -878,7 +931,8 @@ def generate_cnf(t):
     print(f"{MAGENTA}--> Calling: {NC}{call}")
     status = subprocess.call(call, shell=True)
     if status != 0:
-        print("Failed fuzzer file generator call: ", call)
+        print(f"{RED}ERROR: fuzzer file generator call failed{NC}")
+        print_repro(call)
         sys.exit(-1)
     else:
         print(f"{MAGENTA}--> Generated fuzz file{NC} {t.cnf_path} with call: {call}")
@@ -1000,18 +1054,19 @@ def do_runs(t):
             # pass (re-run inside the counter) refuses
             exe = re.sub(r"--arjun\s+\S+", "", solver.exe) + " --arjun 0 "
             to_run = solver._replace(exe=exe)
-        ok, count = run_one_counter(to_run, simp_path, t.cpx)
+        ok, count, cmd = run_one_counter(to_run, simp_path, t.cpx)
         if not ok:
             print(f"{RED}ERROR running {tag}{NC}")
+            print_repro(cmd)
             sys.exit(-1)
         if count is None:
             print(f"    {YELLOW}{tag}  NO COUNT (timed out/aborted){NC}")
         else:
             print(f"    {tag}  count = {CYAN}{count}{NC}")
         if count is not None and solver.exact and preproc.exe is None:
-            t.exact_count = Count(solver, preproc, count)
+            t.exact_count = Count(solver, preproc, count, cmd)
         if count is not None:
-            t.counts.append(Count(solver, preproc, count))
+            t.counts.append(Count(solver, preproc, count, cmd))
 
 
 def check_approx(t, got):
@@ -1034,7 +1089,8 @@ def check_approx(t, got):
     num_done = 0
     num_failed = 0
     while num_done < num_reruns and num_failed < 5:
-        ok, rerun_count = run_one_counter(got.solver, t.cnf_path, t.cpx, random.randint(0, 1000*1000*1000))
+        ok, rerun_count, rerun_cmd = run_one_counter(
+                got.solver, t.cnf_path, t.cpx, random.randint(0, 1000*1000*1000))
         if rerun_count is None:
             num_failed += 1
             continue
@@ -1042,6 +1098,7 @@ def check_approx(t, got):
         print(f"Rerun gives count = {rerun_count}")
         if not ok:
             print(f"{RED}ERROR: rerun failed?{NC}")
+            print_repro(rerun_cmd)
             sys.exit(-1)
         if rerun_count > max_allowed or rerun_count < min_allowed:
             num_wrong += 1
@@ -1052,6 +1109,7 @@ def check_approx(t, got):
         allowed_perc_wrong = t.delta * 100.0
         if perc_wrong > allowed_perc_wrong:
             print(f"{RED}ERROR: Delta was exceeded. It was allowed to be only {allowed_perc_wrong} %{NC}")
+            print_repro(got.cmd)
             sys.exit(-1)
         else:
             print(f"{GREEN}OK within delta after reruns. Delta was {allowed_perc_wrong} %{NC}")
@@ -1081,7 +1139,9 @@ def compare_counts(t):
 
 
 def one_test(seed):
+    global current_test
     t = FuzzTest(seed=seed)
+    current_test = t
     pick_test_params(t)
     generate_cnf(t)
     build_solvers(t)
