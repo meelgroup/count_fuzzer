@@ -493,7 +493,6 @@ def gen_arjun_extra(weighted, cpx):
         ("iter2grow",       ["0", "4", "16"]),
         ("bveresolvmaxsz",  ["-1", "4", "20"]),
         ("weakenlim",       ["10", "8000", "100000"]),
-        ("puurastrategy",   ["0", "1", "2", "3", "4", "5", "6", "7"]),
         ("oraclemult",      ["0", "0.0001", "1"]),
         ("findbins",        ["0", "1", "2"]),
         ("cmsmult",         ["-1", "0.0001", "1"]),
