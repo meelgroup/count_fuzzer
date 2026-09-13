@@ -387,6 +387,9 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("arjunbackwmaxc",       ["100", "20000"]),
         ("arjunextendmaxconfl",  ["100", "1000"]),
         ("puurabackbonemaxconfl", ["0", "10", "1000", "10000", "-1"]),
+        ("iter2grow",            ["0", "4", "16"]),
+        ("iter2growlarge",       ["-1", "0", "16"]),
+        ("iter2growlargevars",   ["0", "10", "20000"]),
         # Tree decomposition — small tditers/tdsteps hits timeout paths
         ("td",                   ["0", "0", "1"]),
         ("tdlooktwcut",          ["2", "5", "26"]),
@@ -491,6 +494,8 @@ def gen_arjun_extra(weighted, cpx):
         ("iter2",           ["0", "1", "2"]),
         ("iter1grow",       ["0", "4", "16"]),
         ("iter2grow",       ["0", "4", "16"]),
+        ("iter2growlarge",  ["-1", "0", "16"]),
+        ("iter2growlargevars", ["0", "10", "20000"]),
         ("bveresolvmaxsz",  ["-1", "4", "20"]),
         ("weakenlim",       ["10", "8000", "100000"]),
         ("oraclemult",      ["0", "0.0001", "1"]),
