@@ -441,6 +441,8 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("cnfrwclsw",            ["1", "3"]),
         ("cnfrwmaxclslen",       ["0", "3", "8"]),
         ("cnfrwtries",           ["1", "6"]),
+        ("cnfrwmaxkary",         ["2", "4", "1000000"]),
+        ("cnfrwnowiden",         ["-1", "-1", "0", "2"]),
         # SBVA
         ("sbvaclcut",            ["2", "4", "8"]),
         ("sbvalitcut",           ["2", "5", "10"]),
