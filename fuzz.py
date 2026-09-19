@@ -391,13 +391,60 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("iter2growlarge",       ["-1", "0", "16"]),
         ("iter2growlargevars",   ["0", "10", "20000"]),
         # Tree decomposition — small tditers/tdsteps hits timeout paths
-        ("td",                   ["0", "0", "1"]),
+        ("td",                   ["0", "1", "1"]),
         ("tdlooktwcut",          ["2", "5", "26"]),
         ("tditers",              [str(random.randint(0, 30))]),
         ("tdsteps",              [str(random.randint(0, 1000))]),
         ("tdlimit",              ["100", "10000", "100000"]),
         ("tdmaxw",               ["20", "40", "60"]),
         ("tdminw",               ["3", "7"]),
+        # TD choice and how much it steers branching
+        ("tdbandpct",            ["0", "10", "30"]),
+        ("tddensepct",           ["0", "30", "100"]),
+        ("tdsplitwpct",          ["0", "100", "200"]),
+        ("tdflatpct",            ["0", "30", "50", "100"]),
+        ("tdmaxlevels",          ["0", "0", "2", "5"]),
+        ("tdsepwpct",            ["0", "0", "25", "100"]),
+        ("freqshortbonus",       ["0", "0", "2"]),
+        # 2 also brute-force checks the articulation var code
+        ("cutvars",              ["0", "0", "1", "2"]),
+        ("cutw",                 ["0", "50"]),
+        ("cutminvars",           ["2", "8"]),
+        ("tddiv",                ["1", "1000"]),
+        ("tdexpmult",            ["0.5", "1.1", "3"]),
+        ("tdlookiters",          ["1", "10"]),
+        ("tdmaxdensity",         ["0.1", "0.3", "1.0"]),
+        ("tdmaxedgeratio",       ["5", "30", "1000"]),
+        # the lookahead had four bugs, one a wrong weighted count: probe deeper than level 0
+        ("tdlook",               ["-1", "-1", "1", "3"]),
+        # Branching scores and conflict handling
+        ("actscorediv",          ["1", "3", "10"]),
+        ("freqscorediv",         ["5", "25", "100"]),
+        ("analyzecand",          ["5", "50", "1000"]),
+        ("satrstmult",           ["10", "300"]),
+        ("totusedcutoffvivif",   ["5", "50"]),
+        ("vivifmult",            ["0.1", "1"]),
+        # Arjun / Puura
+        ("arjun",                ["0", "1", "1", "1"]),
+        ("arjunsimplev",         ["0", "1", "2"]),
+        ("bveplanner",           ["0", "1"]),
+        ("bveclsmaxsz",          ["0", "5", "20"]),
+        ("bvegrowiter1",         ["0", "4", "16"]),
+        ("bveocclim",            ["0", "10", "100"]),
+        ("bveresolvmaxsz2",      ["-1", "4", "12"]),
+        ("distillremlevel",      ["0", "1", "2"]),
+        ("xorgatemaxsize",       ["3", "5", "12"]),
+        # CNF rewrite via AIG lifting, bitmask
+        ("cnfrw",                ["0", "0", "1", "2", "4"]),
+        ("cnfrwenc",             ["0", "1", "2"]),
+        ("cnfrwvarw",            ["1", "6"]),
+        ("cnfrwclsw",            ["1", "3"]),
+        ("cnfrwmaxclslen",       ["0", "3", "8"]),
+        ("cnfrwtries",           ["1", "6"]),
+        # SBVA
+        ("sbvaclcut",            ["2", "4", "8"]),
+        ("sbvalitcut",           ["2", "5", "10"]),
+        ("sbvamaxnewvars",       ["0", "5", "1000"]),
         # Vivification — small vivifevery triggers vivif on tiny instances
         ("vivifevery",           ["10", "100", "10000000"]),
         ("vivifoutern",          ["1", "3"]),
@@ -429,6 +476,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         choice_opts.extend([
             ("bitsjobs",             ["1", "3", "5"]),
             ("threads",              [str(options.threads)]),
+            ("debugthreads",         ["0", "0", "1"]),
         ])
 
     # Binary (0/1) options
@@ -441,14 +489,17 @@ def gen_ganak_extra(epsilon, delta, mode):
         "prebackbone", "resolvsub", "extraoracle",
         # Puura
         "puura", "puurabackbone", "puuraautarky",
+        "puurabve", "puuraoraclevivif", "puuraoraclesparsify", "bvecanonties",
+        # CNF rewrite
+        "cnfrwkary", "cnfrwpg", "cnfrwhalf",
         # TD
-        "tdlook", "tdoptindep", "tduseadj", "tdcontract",
+        "tdoptindep", "tduseadj", "tdcontract",
         # SAT solver internals
         "satrst", "satpolarcache", "satvsids",
         # Miscellaneous
         "initact", "rdbkeepused", "updatelbdcutoff",
         "stripoptindep", "rstreadjust",
-        "vivif", "bumpreason", "prob",
+        "vivif", "bumpreason", "prob", "shrink",
     ]
 
     # weighted mode needs the sat solver
@@ -464,6 +515,15 @@ def gen_ganak_extra(epsilon, delta, mode):
         parts.extend(["--" + flag, random.choice(choices)])
     for flag in binary_opts:
         parts.extend(["--" + flag, random.choice(["0", "1"])])
+    if random.random() < 0.2:
+        parts.append("--fast")
+    # ganak refuses chronobt off while the SAT solver is on, and rejects a
+    # repeated option, so drop any --satsolver chosen above
+    if random.random() < 0.3:
+        if "--satsolver" in parts:
+            i = parts.index("--satsolver")
+            del parts[i:i+2]
+        parts.extend(["--chronobt", "0", "--satsolver", "0"])
 
     if options.buddy and mode == 0:
         parts.extend(["--buddy", random.choice(["0", "0", "1"]),
@@ -510,7 +570,7 @@ def gen_arjun_extra(weighted, cpx):
         ("cnfrw",           ["0", "1", "1", "2", "3"]),
         ("cnfrwmaxxor",     ["3", "5", "8"]),
         ("cnfrwirregvars",  ["4", "10", "14"]),
-        ("bveplanner",      ["0", "1", "2", "3", "4", "5"]),
+        ("bveplanner",      ["0", "1"]),
         ("cnfrwtries",      ["1", "2", "4"]),
     ]
 
