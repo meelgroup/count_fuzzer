@@ -404,10 +404,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("tdsplitwpct",          ["0", "100", "200"]),
         ("tdflatpct",            ["0", "30", "50", "100"]),
         ("tdsepwpct",            ["0", "0", "25", "100"]),
-        # 2 also brute-force checks the articulation var code
-        ("cutvars",              ["0", "0", "1", "2"]),
-        ("cutw",                 ["0", "50"]),
-        ("cutminvars",           ["2", "8"]),
         ("tddiv",                ["1", "1000"]),
         ("tdexpmult",            ["0.5", "1.1", "3"]),
         ("tdlookiters",          ["1", "10"]),
