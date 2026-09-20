@@ -403,9 +403,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("tddensepct",           ["0", "30", "100"]),
         ("tdsplitwpct",          ["0", "100", "200"]),
         ("tdflatpct",            ["0", "30", "50", "100"]),
-        ("tdmaxlevels",          ["0", "0", "2", "5"]),
         ("tdsepwpct",            ["0", "0", "25", "100"]),
-        ("freqshortbonus",       ["0", "0", "2"]),
         # 2 also brute-force checks the articulation var code
         ("cutvars",              ["0", "0", "1", "2"]),
         ("cutw",                 ["0", "50"]),
@@ -427,7 +425,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Arjun / Puura
         ("arjun",                ["0", "1", "1", "1"]),
         ("arjunsimplev",         ["0", "1", "2"]),
-        ("bveplanner",           ["0", "1"]),
         ("bveclsmaxsz",          ["0", "5", "20"]),
         ("bvegrowiter1",         ["0", "4", "16"]),
         ("bveocclim",            ["0", "10", "100"]),
@@ -491,7 +488,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         "prebackbone", "resolvsub", "extraoracle",
         # Puura
         "puura", "puurabackbone", "puuraautarky",
-        "puurabve", "puuraoraclevivif", "puuraoraclesparsify", "bvecanonties",
+        "puurabve", "puuraoraclevivif", "puuraoraclesparsify",
         # CNF rewrite
         "cnfrwkary", "cnfrwpg", "cnfrwhalf",
         # TD
@@ -572,13 +569,12 @@ def gen_arjun_extra(weighted, cpx):
         ("cnfrw",           ["0", "1", "1", "2", "3"]),
         ("cnfrwmaxxor",     ["3", "5", "8"]),
         ("cnfrwirregvars",  ["4", "10", "14"]),
-        ("bveplanner",      ["0", "1"]),
         ("cnfrwtries",      ["1", "2", "4"]),
     ]
 
     binary_opts = [
         "backward", "extend", "autarky", "prebackbone",
-        "cnfrwirreg", "cnfrwpg", "cnfrwhalf", "cnfrwrewrite", "cnfrwbalance", "cnfrwcse", "cnfrwcut", "bvecanonties",
+        "cnfrwirreg", "cnfrwpg", "cnfrwhalf", "cnfrwrewrite", "cnfrwbalance", "cnfrwcse", "cnfrwcut",
         "cnfrwite", "cnfrwxor",
         "bve", "bvepresimp", "probe", "intree", "distill", "gaussj",
         "gates", "orgate", "irreggate", "itegate", "xorgate",
