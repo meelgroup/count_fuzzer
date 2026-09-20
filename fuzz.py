@@ -431,15 +431,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("bveresolvmaxsz2",      ["-1", "4", "12"]),
         ("distillremlevel",      ["0", "1", "2"]),
         ("xorgatemaxsize",       ["3", "5", "12"]),
-        # CNF rewrite via AIG lifting, bitmask
-        ("cnfrw",                ["0", "0", "1", "2", "4"]),
-        ("cnfrwenc",             ["0", "1", "2"]),
-        ("cnfrwvarw",            ["1", "6"]),
-        ("cnfrwclsw",            ["1", "3"]),
-        ("cnfrwmaxclslen",       ["0", "3", "8"]),
-        ("cnfrwtries",           ["1", "6"]),
-        ("cnfrwmaxkary",         ["2", "4", "1000000"]),
-        ("cnfrwnowiden",         ["-1", "-1", "0", "2"]),
         # SBVA
         ("sbvaclcut",            ["2", "4", "8"]),
         ("sbvalitcut",           ["2", "5", "10"]),
@@ -489,8 +480,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Puura
         "puura", "puurabackbone", "puuraautarky",
         "puurabve", "puuraoraclevivif", "puuraoraclesparsify",
-        # CNF rewrite
-        "cnfrwkary", "cnfrwpg", "cnfrwhalf",
         # TD
         "tdoptindep", "tduseadj", "tdcontract",
         # SAT solver internals
