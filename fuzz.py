@@ -550,17 +550,10 @@ def gen_arjun_extra(weighted, cpx):
         ("sbvaclcut",       ["2", "4", "20"]),
         ("sbvalitcut",      ["2", "5", "20"]),
         ("sbvamaxnewvars",  ["0", "5", "100"]),
-        # CNF rewrite via AIG lifting
-        ("cnfrw",           ["0", "1", "1", "2", "3"]),
-        ("cnfrwmaxxor",     ["3", "5", "8"]),
-        ("cnfrwirregvars",  ["4", "10", "14"]),
-        ("cnfrwtries",      ["1", "2", "4"]),
     ]
 
     binary_opts = [
         "backward", "extend", "autarky", "prebackbone",
-        "cnfrwirreg", "cnfrwpg", "cnfrwhalf", "cnfrwrewrite", "cnfrwbalance", "cnfrwcse", "cnfrwcut",
-        "cnfrwite", "cnfrwxor",
         "bve", "bvepresimp", "probe", "intree", "distill", "gaussj",
         "gates", "orgate", "irreggate", "itegate", "xorgate",
         "oraclesparsify", "oraclevivif", "oraclevivifgetl", "oracleextra",
