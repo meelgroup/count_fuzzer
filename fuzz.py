@@ -86,10 +86,6 @@ def set_up_parser():
       action="store_true", help="Fuzz buddy, too")
 
     parser.add_option(
-      "--enable-no-touch", dest="enable_no_touch", default=False,
-      action="store_true", help="Use no-touch")
-
-    parser.add_option(
       "--weighted", dest="weighted", default=False,
       action="store_true", help="Weighted only")
 
@@ -985,9 +981,7 @@ def generate_cnf(t):
     else:
         print(f"{MAGENTA}--> Generated fuzz file{NC} {t.cnf_path} with call: {call}")
 
-    t.num_no_touch = 0
-    if options.enable_no_touch:
-        t.num_no_touch = pick_num_no_touch(get_nvars(t.cnf_path))
+    t.num_no_touch = pick_num_no_touch(get_nvars(t.cnf_path))
     if t.proj:
         t.projected_vars = add_projection(t.cnf_path, t.num_no_touch)
     add_no_touch(t.cnf_path, t.num_no_touch)
