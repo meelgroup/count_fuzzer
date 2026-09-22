@@ -749,7 +749,7 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                 count = int(line.split()[5])
             elif "c s exact arb float " in line:
                 count = float(line.split()[5])
-            elif "c s exact quadruple float interval [" in line:
+            elif "float interval [" in line:
                 # using middle of interval
                 parts = line.split()
                 count = (float(parts[7]) + float(parts[8])) / 2.0
@@ -758,12 +758,7 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                     "c s exact double float" in line:
                 count = float(line.split()[5])
             elif "c s exact arb frac" in line:
-                parts = line.split()
-                if parts[5] == "[":
-                    # mpqi rolled over to interval: [ left right ]
-                    count = (parse_frac(parts[6]) + parse_frac(parts[7])) / 2.0
-                else:
-                    count = parse_frac(parts[5])
+                count = parse_frac(line.split()[5])
             elif "s exact double prec-sci" in line:
                 count = float(line.split()[5])
             elif "c s approx arb int" in line:

@@ -48,16 +48,13 @@ def run_and_get_count(cmd):
 def extract_count(line):
     if line.startswith("s mc") or line.startswith("s pmc"):
         return float(line.split()[2])
-    if "c s exact quadruple float interval [" in line:
+    if "float interval [" in line:
         parts = line.split()
         return (float(parts[7]) + float(parts[8])) / 2.0
     if "c s exact quadruple float" in line:
         return float(line.split()[5])
     if "c s exact arb frac" in line:
-        parts = line.split()
-        if parts[5] == "[":
-            return (float(parts[6]) + float(parts[7])) / 2.0
-        frac = parts[5].split("/")
+        frac = line.split()[5].split("/")
         return float(frac[0]) if len(frac) < 2 else float(frac[0]) / float(frac[1])
     if "c s exact arb float" in line or "c s exact arb int" in line:
         return float(line.split()[5])
