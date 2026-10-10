@@ -466,7 +466,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Arjun
         "arjunoraclefindbins", "arjunprobe", "arjungates",
         "arjunextend", "arjunoraclegetlearnt", "arjunextendccnr",
-        "sbvabreak",
+        "sbvabreak", "bvetieminocc",
         # Preprocessing
         "prebackbone", "resolvsub", "extraoracle",
         # Puura
