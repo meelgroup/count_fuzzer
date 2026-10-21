@@ -121,6 +121,11 @@ def set_up_parser():
       "--threads", dest="threads", type=int, default=None,
       help="If set, fuzz ONLY with --threads K given to ganak. Default: random")
 
+    parser.add_option(
+      "--mode", dest="mode", type=int, default=None,
+      help="Fuzz ONLY this ganak mode (0, 1, 2, 4, 6, 7). Mode 4 is checked "
+      "against the parity of a mode 0 count. Default: random")
+
     return parser
 
 
@@ -745,6 +750,8 @@ def run_one_counter(solver, cnf_path, cpx, seed=42):
                         sys.exit(-1)
             elif line[:4] == "s mc" or line[:5] == "s pmc":
                 count = int(line.split()[2])
+            elif "c s exact parity" in line:
+                count = int(line.split()[4])
             elif "c s exact arb int" in line:
                 count = int(line.split()[5])
             elif "c s exact arb float " in line:
@@ -949,6 +956,9 @@ def pick_test_params(t):
         t.weighted = False
 
     t.cpx = random.choice([True, False, False])
+    if options.mode is not None:
+        t.cpx = options.mode in [2, 6]
+        t.weighted = options.mode in [1, 2, 6, 7]
 
 
 def generate_cnf(t):
@@ -1002,6 +1012,9 @@ def build_solvers(t):
             make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=6),
             # Solver("./gpmc -mode=1", True, "./bins/gpmc-complex/"),
             ]
+    elif options.mode == 4:
+        t.solvers = [make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=0)]
+        t.solvers += [make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=4) for _ in range(3)]
     elif not t.weighted:
         t.solvers.extend([
         Solver("../approxmc/build/approxmc " + approx_extra, False),
@@ -1009,6 +1022,8 @@ def build_solvers(t):
         # Solver("./bins/d4-mccomp2022/bin/d4_static -m counting  --output-format competition -i"),
         # Solver("./bins/c2d-mccomp2022/c2d -in ", True),
         ])
+        if options.mode is None and random.choice([True, False]):
+            t.solvers.append(make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=4))
     else:
         t.solvers.extend([
         make_ganak_solver(ganak_base, t.epsilon, t.delta, mode=1),
@@ -1100,7 +1115,7 @@ def do_runs(t):
             print(f"    {YELLOW}{tag}  NO COUNT (timed out/aborted){NC}")
         else:
             print(f"    {tag}  count = {CYAN}{count}{NC}")
-        if count is not None and solver.exact and preproc.exe is None:
+        if count is not None and solver.exact and preproc.exe is None and mode_of(solver.exe) != 4:
             t.exact_count = Count(solver, preproc, count, cmd)
         if count is not None:
             t.counts.append(Count(solver, preproc, count, cmd))
@@ -1164,7 +1179,10 @@ def compare_counts(t):
                     and abs_diff(got.count, ref.count) > abs_diff_threshold):
                 report_mismatch(got, ref, t.cnf_path, t.desc_width, "weighted ")
 
-        if not t.weighted:
+        if mode_of(got.solver.exe) == 4:
+            if got.count != ref.count % 2:
+                report_mismatch(got, ref, t.cnf_path, t.desc_width, "parity ")
+        elif not t.weighted:
             if got.count != ref.count and got.solver.exact:
                 report_mismatch(got, ref, t.cnf_path, t.desc_width)
 
@@ -1208,6 +1226,9 @@ if __name__ == "__main__":
     # parse options
     parser = set_up_parser()
     (options, args) = parser.parse_args()
+    if options.mode not in [None, 0, 1, 2, 4, 6, 7]:
+        print(f"ERROR: --mode {options.mode} is not supported")
+        sys.exit(-1)
 
     if options.rnd_seed is None:
         rnd_seed = int.from_bytes(os.urandom(8))
