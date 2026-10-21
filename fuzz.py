@@ -487,10 +487,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         "vivif", "bumpreason", "prob", "shrink",
     ]
 
-    # weighted mode needs the sat solver
-    if mode in [0]:
-        binary_opts.append("satsolver")
-
     # only for exact counting modes
     if mode in [0, 1, 2, 3, 4, 5]:
         binary_opts.append("rstcheckcnt")
@@ -502,13 +498,6 @@ def gen_ganak_extra(epsilon, delta, mode):
         parts.extend(["--" + flag, random.choice(["0", "1"])])
     if random.random() < 0.2:
         parts.append("--fast")
-    # ganak refuses chronobt off while the SAT solver is on, and rejects a
-    # repeated option, so drop any --satsolver chosen above
-    if random.random() < 0.3:
-        if "--satsolver" in parts:
-            i = parts.index("--satsolver")
-            del parts[i:i+2]
-        parts.extend(["--chronobt", "0", "--satsolver", "0"])
 
     if options.buddy and mode == 0:
         parts.extend(["--buddy", random.choice(["0", "0", "1"]),
