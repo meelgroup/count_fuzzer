@@ -1160,7 +1160,7 @@ def check_approx(t, got):
 
 def compare_counts(t):
     ref = t.exact_count
-    for got, _ in zip(t.counts, t.solvers):
+    for got in t.counts:
         if t.weighted:
             assert (got.solver.exact)
             abs_diff_threshold = 1e-10 if any_float_mode(got.solver, ref.solver) else 1e-50
