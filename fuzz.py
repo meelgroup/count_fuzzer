@@ -437,7 +437,8 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("vivifoutern",          ["1", "3"]),
         # SBVA
         ("sbvasteps",            ["0", "1", "100"]),
-        ("coverdrop",            ["0", "0.001", "1000"]),
+        # Mticks: off, very small, small, medium, large
+        ("coverdrop",            ["0", "0.0001", "0.01", "1", "1000"]),
         ("coverdropcubes",       ["0", "3", "1000"]),
         # Decision / polarity heuristics
         ("polar",                ["0", "1", "2", "3"]),
@@ -542,6 +543,9 @@ def gen_arjun_extra(weighted, cpx):
         ("sbvaclcut",       ["2", "4", "20"]),
         ("sbvalitcut",      ["2", "5", "20"]),
         ("sbvamaxnewvars",  ["0", "5", "100"]),
+        # Mticks: off, very small, small, medium, large
+        ("coverdrop",       ["0", "0.0001", "0.01", "1", "1000"]),
+        ("coverdropcubes",  ["0", "3", "1000"]),
     ]
 
     binary_opts = [
@@ -549,7 +553,7 @@ def gen_arjun_extra(weighted, cpx):
         "bve", "bvepresimp", "probe", "intree", "distill", "gaussj",
         "gates", "orgate", "irreggate", "itegate", "xorgate",
         "oraclesparsify", "oraclevivif", "oraclevivifgetl", "oracleextra",
-        "sbvabreak", "red",
+        "sbvabreak", "red", "coverdropw",
     ]
 
     parts = ["--verb", "0"]
