@@ -477,7 +477,7 @@ def gen_ganak_extra(epsilon, delta, mode):
         # Preprocessing
         "prebackbone", "resolvsub", "extraoracle",
         # Puura
-        "puura", "puurabackbone", "puuraautarky",
+        "puura", "puurabackbone", "puuraautarky", "coverdropw",
         "puurabve", "puuraoraclevivif", "puuraoraclesparsify",
         # TD
         "tdoptindep", "tduseadj", "tdcontract",
