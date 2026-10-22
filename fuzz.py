@@ -437,6 +437,8 @@ def gen_ganak_extra(epsilon, delta, mode):
         ("vivifoutern",          ["1", "3"]),
         # SBVA
         ("sbvasteps",            ["0", "1", "100"]),
+        ("coverdrop",            ["0", "0.001", "1000"]),
+        ("coverdropcubes",       ["0", "3", "1000"]),
         # Decision / polarity heuristics
         ("polar",                ["0", "1", "2", "3"]),
         ("decide",               ["0", "1"]),
